@@ -1,5 +1,19 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Vercel auto-refresh (every 15 min)
+
+Set these env vars in Vercel:
+
+- `HORMUZ_INDEX_URL` = `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/index.json`
+- `SUPABASE_URL` = your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` = service role key (for storage upload)
+- `NEXT_PUBLIC_HORMUZ_PROCESSED_URL` = `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/processed.json`
+- `CRON_SECRET` = random string (optional if using Vercel cron only)
+
+A Vercel cron is configured in `vercel.json` to call `/api/refresh` every 15 minutes.
+The refresh route rebuilds processed data and uploads to `x-scrapes-public/hormuz/processed.json`.
+
+
 ## Getting Started
 
 First, run the development server:

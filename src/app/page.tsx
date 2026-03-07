@@ -90,7 +90,11 @@ export default function Page() {
   const [showNonCrossing, setShowNonCrossing] = useState(true);
 
   useEffect(() => {
-    fetch("/data/processed.json")
+    const url =
+      process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL ||
+      "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/processed.json";
+
+    fetch(`${url}?t=${Date.now()}`)
       .then((r) => r.json())
       .then((json: DataShape) => {
         setData(json);

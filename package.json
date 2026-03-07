@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "npm run build:data && next dev",
     "build:data": "node scripts/build-data.mjs",
     "build": "npm run build:data && next build",
     "start": "next start",

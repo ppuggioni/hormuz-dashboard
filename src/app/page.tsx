@@ -96,10 +96,28 @@ export default function Page() {
 
     fetch(`${url}?t=${Date.now()}`)
       .then((r) => r.json())
-      .then((json: DataShape) => {
-        setData(json);
-        const defaults = ["tanker", "cargo"].filter((t) => json.vesselTypes.includes(t));
-        setSelectedTypes(defaults.length ? defaults : json.vesselTypes);
+      .then((json: any) => {
+        const normalized: DataShape = {
+          metadata: json?.metadata || {
+            generatedAt: new Date().toISOString(),
+            eastLon: 56.4,
+            westLon: 56.15,
+            fileCount: 0,
+            shipCount: 0,
+            crossingShipCount: 0,
+            crossingEventCount: 0,
+          },
+          vesselTypes: Array.isArray(json?.vesselTypes) ? json.vesselTypes : [],
+          shipMeta: json?.shipMeta || {},
+          snapshots: Array.isArray(json?.snapshots) ? json.snapshots : [],
+          crossingsByHour: Array.isArray(json?.crossingsByHour) ? json.crossingsByHour : [],
+          crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
+          crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
+        };
+
+        setData(normalized);
+        const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
+        setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
       });
   }, []);
 
@@ -120,7 +138,7 @@ export default function Page() {
 
   const filteredCrossingPaths = useMemo(() => {
     if (!data) return [];
-    return data.crossingPaths.filter((p) => selectedTypes.includes(p.vesselType));
+    return (data.crossingPaths || []).filter((p) => selectedTypes.includes(p.vesselType));
   }, [data, selectedTypes]);
 
   const crossingShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((p) => p.shipId)), [data]);

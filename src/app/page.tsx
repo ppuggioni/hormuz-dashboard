@@ -185,10 +185,17 @@ export default function Page() {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
   }
 
+  const lastIngestedAt = data.snapshots?.length
+    ? data.snapshots[data.snapshots.length - 1].t
+    : data.metadata.generatedAt;
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 backdrop-blur">
+          <div className="mb-3 inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
+            Last ingested: {new Date(lastIngestedAt).toUTCString()}
+          </div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
           <p className="mt-2 text-slate-400 text-sm">
             East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}. Default selection is Cargo + Tanker.

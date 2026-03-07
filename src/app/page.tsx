@@ -90,33 +90,46 @@ export default function Page() {
   const [showNonCrossing, setShowNonCrossing] = useState(true);
 
   useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
+    const remoteUrl = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL;
+    const candidates = [remoteUrl, "/data/processed.json"].filter(Boolean) as string[];
 
-    fetch(`${url}?t=${Date.now()}`)
-      .then((r) => r.json())
-      .then((json: any) => {
-        const normalized: DataShape = {
-          metadata: json?.metadata || {
-            generatedAt: new Date().toISOString(),
-            eastLon: 56.4,
-            westLon: 56.15,
-            fileCount: 0,
-            shipCount: 0,
-            crossingShipCount: 0,
-            crossingEventCount: 0,
-          },
-          vesselTypes: Array.isArray(json?.vesselTypes) ? json.vesselTypes : [],
-          shipMeta: json?.shipMeta || {},
-          snapshots: Array.isArray(json?.snapshots) ? json.snapshots : [],
-          crossingsByHour: Array.isArray(json?.crossingsByHour) ? json.crossingsByHour : [],
-          crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
-          crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
-        };
+    const load = async () => {
+      let json: any = null;
+      for (const base of candidates) {
+        try {
+          const r = await fetch(`${base}?t=${Date.now()}`);
+          if (!r.ok) continue;
+          json = await r.json();
+          if (json?.metadata && Array.isArray(json?.snapshots)) break;
+        } catch {
+          // try next candidate
+        }
+      }
 
-        setData(normalized);
-        const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
-        setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
-      });
+      const normalized: DataShape = {
+        metadata: json?.metadata || {
+          generatedAt: new Date().toISOString(),
+          eastLon: 56.4,
+          westLon: 56.15,
+          fileCount: 0,
+          shipCount: 0,
+          crossingShipCount: 0,
+          crossingEventCount: 0,
+        },
+        vesselTypes: Array.isArray(json?.vesselTypes) ? json.vesselTypes : [],
+        shipMeta: json?.shipMeta || {},
+        snapshots: Array.isArray(json?.snapshots) ? json.snapshots : [],
+        crossingsByHour: Array.isArray(json?.crossingsByHour) ? json.crossingsByHour : [],
+        crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
+        crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
+      };
+
+      setData(normalized);
+      const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
+      setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
+    };
+
+    load();
   }, []);
 
   useEffect(() => {

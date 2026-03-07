@@ -1,17 +1,22 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Vercel auto-refresh (every 15 min)
+## Auto-refresh (every 15 min) via GitHub Actions
 
-Set these env vars in Vercel:
+A scheduled GitHub Actions workflow rebuilds `public/data/processed.json` every 15 minutes and commits changes to `main`.
+Vercel then redeploys automatically from GitHub.
+
+Workflow file:
+
+- `.github/workflows/refresh-data.yml`
+
+Required behavior:
+
+- Vercel project connected to this repo
+- Auto-deploy on `main` enabled in Vercel
+
+Data source env in workflow:
 
 - `HORMUZ_INDEX_URL` = `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/index.json`
-- `SUPABASE_URL` = your Supabase project URL
-- `SUPABASE_SERVICE_ROLE_KEY` = service role key (for storage upload)
-- `NEXT_PUBLIC_HORMUZ_PROCESSED_URL` = `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/processed.json`
-- `CRON_SECRET` = random string (optional if using Vercel cron only)
-
-A Vercel cron is configured in `vercel.json` to call `/api/refresh` every 15 minutes.
-The refresh route rebuilds processed data and uploads to `x-scrapes-public/hormuz/processed.json`.
 
 
 ## Getting Started

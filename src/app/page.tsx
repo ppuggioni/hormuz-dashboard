@@ -77,6 +77,31 @@ function alignHours(
   return allHours.map((hour) => map.get(hour) || { hour, east_to_west: 0, west_to_east: 0 });
 }
 
+function toHourStartIso(ts: string) {
+  const d = new Date(ts);
+  d.setUTCMinutes(0, 0, 0);
+  return d.toISOString();
+}
+
+function buildContinuousHourRange(startIso: string, endIso: string) {
+  const out: string[] = [];
+  const cur = new Date(startIso);
+  const end = new Date(endIso);
+  while (cur <= end) {
+    out.push(cur.toISOString());
+    cur.setUTCHours(cur.getUTCHours() + 1);
+  }
+  return out;
+}
+
+function formatHourTick(iso: string) {
+  const d = new Date(iso);
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const hour = String(d.getUTCHours()).padStart(2, "0");
+  return `${day}/${month} ${hour}:00`;
+}
+
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -172,9 +197,21 @@ export default function Page() {
     return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon);
   }, [data, cargoPaths]);
 
-  const sharedHours = useMemo(() => allFilteredHourly.map((x) => x.hour), [allFilteredHourly]);
+  const sharedHours = useMemo(() => {
+    if (!data || !data.snapshots?.length) return [] as string[];
+    const start = toHourStartIso(data.snapshots[0].t);
+    const end = toHourStartIso(data.snapshots[data.snapshots.length - 1].t);
+    return buildContinuousHourRange(start, end);
+  }, [data]);
+
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
+
+  const chartTickInterval = useMemo(() => {
+    if (!sharedHours.length) return 0;
+    const targetTicks = 24;
+    return Math.max(0, Math.ceil(sharedHours.length / targetTicks) - 1);
+  }, [sharedHours]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string }[];
@@ -337,7 +374,13 @@ export default function Page() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis dataKey="hour" tickFormatter={(v) => new Date(v).getUTCHours() + ":00"} stroke="#94a3b8" />
+                  <XAxis
+                    dataKey="hour"
+                    tickFormatter={(v) => formatHourTick(v as string)}
+                    interval={chartTickInterval}
+                    minTickGap={24}
+                    stroke="#94a3b8"
+                  />
                   <YAxis stroke="#94a3b8" />
                   <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
                   <Legend />
@@ -389,7 +432,13 @@ export default function Page() {
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis dataKey="hour" tickFormatter={(v) => new Date(v).getUTCHours() + ":00"} stroke="#94a3b8" />
+                  <XAxis
+                    dataKey="hour"
+                    tickFormatter={(v) => formatHourTick(v as string)}
+                    interval={chartTickInterval}
+                    minTickGap={24}
+                    stroke="#94a3b8"
+                  />
                   <YAxis stroke="#94a3b8" />
                   <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
                   <Legend />

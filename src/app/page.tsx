@@ -102,6 +102,22 @@ function formatHourTick(iso: string) {
   return `${day}/${month} ${hour}:00`;
 }
 
+function buildReadableTicks(hours: string[]) {
+  if (!hours.length) return [] as string[];
+  const total = hours.length;
+  const step = total <= 72 ? 3 : total <= 168 ? 6 : total <= 336 ? 12 : 24;
+
+  const ticks: string[] = [];
+  for (const h of hours) {
+    const d = new Date(h);
+    if (d.getUTCHours() % step === 0) ticks.push(h);
+  }
+
+  if (ticks[0] !== hours[0]) ticks.unshift(hours[0]);
+  if (ticks[ticks.length - 1] !== hours[hours.length - 1]) ticks.push(hours[hours.length - 1]);
+  return ticks;
+}
+
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -206,12 +222,7 @@ export default function Page() {
 
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
-
-  const chartTickInterval = useMemo(() => {
-    if (!sharedHours.length) return 0;
-    const targetTicks = 24;
-    return Math.max(0, Math.ceil(sharedHours.length / targetTicks) - 1);
-  }, [sharedHours]);
+  const chartTicks = useMemo(() => buildReadableTicks(sharedHours), [sharedHours]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string }[];
@@ -376,9 +387,13 @@ export default function Page() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                   <XAxis
                     dataKey="hour"
+                    ticks={chartTicks}
                     tickFormatter={(v) => formatHourTick(v as string)}
-                    interval={chartTickInterval}
-                    minTickGap={24}
+                    minTickGap={40}
+                    angle={-35}
+                    textAnchor="end"
+                    height={56}
+                    tick={{ fontSize: 11 }}
                     stroke="#94a3b8"
                   />
                   <YAxis stroke="#94a3b8" />
@@ -434,9 +449,13 @@ export default function Page() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                   <XAxis
                     dataKey="hour"
+                    ticks={chartTicks}
                     tickFormatter={(v) => formatHourTick(v as string)}
-                    interval={chartTickInterval}
-                    minTickGap={24}
+                    minTickGap={40}
+                    angle={-35}
+                    textAnchor="end"
+                    height={56}
+                    tick={{ fontSize: 11 }}
                     stroke="#94a3b8"
                   />
                   <YAxis stroke="#94a3b8" />

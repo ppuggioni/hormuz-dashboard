@@ -209,6 +209,7 @@ export default function Page() {
     <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 backdrop-blur">
+          <div className="hidden" data-deploy-marker="deploy-marker-20260307-2324" />
           <div className="mb-3 inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
             Last ingested: {new Date(lastIngestedAt).toUTCString()}
           </div>

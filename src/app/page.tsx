@@ -27,6 +27,19 @@ type CrossingEvent = {
   direction: "east_to_west" | "west_to_east";
 };
 
+type LinkageEvent = {
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  fromRegion: string;
+  toRegion: string;
+  hormuzWestTime: string;
+  otherRegion: string;
+  otherRegionTime: string;
+  deltaHours: number;
+  deltaDh: string;
+};
+
 type DataShape = {
   metadata: {
     generatedAt: string;
@@ -37,6 +50,7 @@ type DataShape = {
     shipCount: number;
     crossingShipCount: number;
     crossingEventCount: number;
+    linkageEventCount?: number;
   };
   vesselTypes: string[];
   shipMeta: Record<string, { shipName: string; vesselType: string }>;
@@ -44,6 +58,7 @@ type DataShape = {
   crossingsByHour: CrossingHour[];
   crossingEvents: CrossingEvent[];
   crossingPaths: CrossingPath[];
+  linkageEvents?: LinkageEvent[];
 };
 
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
@@ -166,6 +181,7 @@ export default function Page() {
         crossingsByHour: Array.isArray(json?.crossingsByHour) ? json.crossingsByHour : [],
         crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
         crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
+        linkageEvents: Array.isArray(json?.linkageEvents) ? json.linkageEvents : [],
       };
 
       setData(normalized);
@@ -300,6 +316,14 @@ export default function Page() {
     }
     return `Crossing Paths Map — ${crossingMapTypes.length ? crossingMapTypes.join(" + ") : "None selected"}`;
   }, [crossingMapTypes]);
+
+  const linkageRows = useMemo(() => {
+    if (!data?.linkageEvents?.length) return [] as LinkageEvent[];
+    return data.linkageEvents
+      .filter((r) => selectedTypes.includes(r.vesselType))
+      .sort((a, b) => +new Date(b.hormuzWestTime) - +new Date(a.hormuzWestTime))
+      .slice(0, 800);
+  }, [data, selectedTypes]);
 
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
@@ -563,6 +587,39 @@ export default function Page() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+          <h2 className="text-lg font-medium">Detected From → To Regions (anchored on Hormuz West)</h2>
+          <p className="text-xs text-slate-400">Delta is measured from Hormuz West in days:hours (D:HH). Positive means after Hormuz West; negative means before.</p>
+          <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-900 sticky top-0">
+                <tr>
+                  <th className="text-left p-2">Ship</th>
+                  <th className="text-left p-2">Type</th>
+                  <th className="text-left p-2">From</th>
+                  <th className="text-left p-2">To</th>
+                  <th className="text-left p-2">Hormuz West (UTC)</th>
+                  <th className="text-left p-2">Other Region (UTC)</th>
+                  <th className="text-left p-2">Delta (D:HH)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linkageRows.map((r, idx) => (
+                  <tr key={`${r.shipId}-${r.hormuzWestTime}-${r.otherRegionTime}-${idx}`} className="border-t border-slate-800">
+                    <td className="p-2">{r.shipName} ({r.shipId})</td>
+                    <td className="p-2">{r.vesselType}</td>
+                    <td className="p-2">{r.fromRegion}</td>
+                    <td className="p-2">{r.toRegion}</td>
+                    <td className="p-2">{new Date(r.hormuzWestTime).toUTCString()}</td>
+                    <td className="p-2">{new Date(r.otherRegionTime).toUTCString()}</td>
+                    <td className="p-2 font-medium">{r.deltaDh}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 

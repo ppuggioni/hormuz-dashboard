@@ -303,7 +303,18 @@ async function main() {
     }
   }
 
-  linkageEvents.sort((a, b) => +new Date(b.hormuzWestTime) - +new Date(a.hormuzWestTime));
+  // De-duplicate linkage rows so each ship has at most one row per route pair.
+  // Keep the closest detection to Hormuz West (smallest absolute delta).
+  const linkageByKey = new Map();
+  for (const row of linkageEvents) {
+    const key = `${row.shipId}|${row.fromRegion}|${row.toRegion}`;
+    const prev = linkageByKey.get(key);
+    if (!prev || Math.abs(row.deltaHours) < Math.abs(prev.deltaHours)) {
+      linkageByKey.set(key, row);
+    }
+  }
+  const dedupedLinkageEvents = [...linkageByKey.values()];
+  dedupedLinkageEvents.sort((a, b) => +new Date(b.hormuzWestTime) - +new Date(a.hormuzWestTime));
 
   const vesselTypes = [...new Set(Object.values(shipMeta).map((m) => m.vesselType))].sort();
 
@@ -320,7 +331,7 @@ async function main() {
       shipCount: Object.keys(shipMeta).length,
       crossingShipCount: crossingShipIds.size,
       crossingEventCount: crossingEvents.length,
-      linkageEventCount: linkageEvents.length,
+      linkageEventCount: dedupedLinkageEvents.length,
     },
     vesselTypes,
     shipMeta,
@@ -328,7 +339,7 @@ async function main() {
     crossingEvents,
     crossingsByHour,
     crossingPaths,
-    linkageEvents,
+    linkageEvents: dedupedLinkageEvents,
   };
 
   const outDir = path.resolve('public/data');

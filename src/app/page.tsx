@@ -260,6 +260,33 @@ export default function Page() {
     return filtered.sort((a, b) => +new Date(a.t) - +new Date(b.t));
   }, [data, selectedCargoHour]);
 
+  const last24hCrossingCounts = useMemo(() => {
+    if (!data?.crossingEvents?.length) return { tanker: 0, cargo: 0, other: 0 };
+
+    const latestTs = data.snapshots?.length
+      ? +new Date(data.snapshots[data.snapshots.length - 1].t)
+      : +new Date(data.metadata.generatedAt);
+    const cutoff = latestTs - 48 * 60 * 60 * 1000;
+
+    const tankerIds = new Set<string>();
+    const cargoIds = new Set<string>();
+    const otherIds = new Set<string>();
+
+    for (const e of data.crossingEvents) {
+      const ts = +new Date(e.t);
+      if (ts < cutoff || ts > latestTs) continue;
+      if (e.vesselType === "tanker") tankerIds.add(e.shipId);
+      else if (e.vesselType === "cargo") cargoIds.add(e.shipId);
+      else otherIds.add(e.shipId);
+    }
+
+    return {
+      tanker: tankerIds.size,
+      cargo: cargoIds.size,
+      other: otherIds.size,
+    };
+  }, [data]);
+
   const filteredCrossingPathsForMap = useMemo(() => {
     if (!data) return [] as CrossingPath[];
     return (data.crossingPaths || []).filter((p) => crossingMapTypes.includes(p.vesselType));
@@ -289,15 +316,18 @@ export default function Page() {
             Last ingested: {new Date(lastIngestedAt).toUTCString()}
           </div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
-          <p className="mt-1 text-sm font-medium text-cyan-200/90">BLK - SET team</p>
+          <div className="mt-2 inline-flex items-center rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
+            BLK - SET team
+          </div>
           <p className="mt-2 text-slate-400 text-sm">
             East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}. Default selection is Cargo + Tanker.
           </p>
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
             <Stat label="Files" value={String(data.metadata.fileCount)} />
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
-            <Stat label="Crossing Boats" value={String(filteredCrossingPaths.length)} />
-            <Stat label="Crossing Events" value={String(filteredCrossingPaths.reduce((s, p) => s + p.directionCounts.east_to_west + p.directionCounts.west_to_east, 0))} />
+            <Stat label="Crossing Tankers (last 48h)" value={String(last24hCrossingCounts.tanker)} />
+            <Stat label="Crossing Cargo (last 48h)" value={String(last24hCrossingCounts.cargo)} />
+            <Stat label="Crossing Others (last 48h)" value={String(last24hCrossingCounts.other)} />
           </div>
         </header>
 
@@ -385,8 +415,8 @@ export default function Page() {
         </section>
 
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="xl:col-span-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs text-slate-300">
-            Tankers are the vessels most likely to carry oil and gas. Cargo vessels are far less likely to be energy carriers.
+          <div className="xl:col-span-2 rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-3 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
+            <strong>Tankers</strong> are the vessels most likely to carry oil and gas. <strong>Cargo vessels</strong> are far less likely to be energy carriers.
           </div>
           <div className="xl:col-span-2 flex flex-wrap gap-2 text-xs">
             <button onClick={() => setShowEastToWest((v) => !v)} className={`px-2 py-1 rounded border ${showEastToWest ? "border-sky-300 text-sky-200" : "border-slate-700 text-slate-500"}`}>East → West</button>

@@ -8,6 +8,7 @@ const INDEX_URL =
 
 const EAST_LON = 56.4;
 const WEST_LON = 56.15;
+const MIN_LAT = 24;
 
 function hourBin(iso) {
   const d = new Date(iso);
@@ -15,7 +16,8 @@ function hourBin(iso) {
   return d.toISOString();
 }
 
-function sideFromLon(lon) {
+function sideFromPoint(lat, lon) {
+  if (lat < MIN_LAT) return null;
   if (lon >= EAST_LON) return 'east';
   if (lon <= WEST_LON) return 'west';
   return null;
@@ -160,7 +162,7 @@ async function main() {
     const directionCounts = { east_to_west: 0, west_to_east: 0 };
 
     for (const point of obs) {
-      const side = sideFromLon(point.lon);
+      const side = sideFromPoint(point.lat, point.lon);
       if (!side) continue;
 
       if (lastDefinedSide && side !== lastDefinedSide) {
@@ -216,6 +218,7 @@ async function main() {
       sourceIndexUrl: INDEX_URL,
       eastLon: EAST_LON,
       westLon: WEST_LON,
+      minLat: MIN_LAT,
       fileCount: files.length,
       shipCount: Object.keys(shipMeta).length,
       crossingShipCount: crossingShipIds.size,

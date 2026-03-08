@@ -32,6 +32,7 @@ type DataShape = {
     generatedAt: string;
     eastLon: number;
     westLon: number;
+    minLat?: number;
     fileCount: number;
     shipCount: number;
     crossingShipCount: number;
@@ -48,12 +49,12 @@ type DataShape = {
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 
-function computeHourly(paths: CrossingPath[], eastLon: number, westLon: number) {
+function computeHourly(paths: CrossingPath[], eastLon: number, westLon: number, minLat = 24) {
   const byHour = new Map<string, { hour: string; east_to_west: number; west_to_east: number }>();
   for (const ship of paths) {
     let lastSide: "east" | "west" | null = null;
     for (const p of ship.points) {
-      const side = p.lon >= eastLon ? "east" : p.lon <= westLon ? "west" : null;
+      const side = p.lat >= minLat ? (p.lon >= eastLon ? "east" : p.lon <= westLon ? "west" : null) : null;
       if (!side) continue;
       if (lastSide && side !== lastSide) {
         const d = new Date(p.t);
@@ -153,6 +154,7 @@ export default function Page() {
           generatedAt: new Date().toISOString(),
           eastLon: 56.4,
           westLon: 56.15,
+          minLat: 24,
           fileCount: 0,
           shipCount: 0,
           crossingShipCount: 0,
@@ -202,17 +204,17 @@ export default function Page() {
 
   const allFilteredHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(filteredCrossingPaths, data.metadata.eastLon, data.metadata.westLon);
+    return computeHourly(filteredCrossingPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
   }, [data, filteredCrossingPaths]);
 
   const tankerHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(tankerPaths, data.metadata.eastLon, data.metadata.westLon);
+    return computeHourly(tankerPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
   }, [data, tankerPaths]);
 
   const cargoHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon);
+    return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
   }, [data, cargoPaths]);
 
   const sharedHours = useMemo(() => {
@@ -320,7 +322,7 @@ export default function Page() {
             BLK - SET team
           </div>
           <p className="mt-2 text-slate-400 text-sm">
-            East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}. Default selection is Cargo + Tanker.
+            East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}, and latitude floor {data.metadata.minLat ?? 24}. Default selection is Cargo + Tanker.
           </p>
           <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
             <Stat label="Files" value={String(data.metadata.fileCount)} />

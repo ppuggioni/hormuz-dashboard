@@ -129,6 +129,7 @@ export default function Page() {
   const [showWestToEast, setShowWestToEast] = useState(true);
   const [showCrossing, setShowCrossing] = useState(true);
   const [showNonCrossing, setShowNonCrossing] = useState(true);
+  const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
 
   useEffect(() => {
     const remoteUrl = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL;
@@ -168,6 +169,7 @@ export default function Page() {
       setData(normalized);
       const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
       setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
+      setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults.length ? defaults : normalized.vesselTypes);
     };
 
     load();
@@ -258,6 +260,18 @@ export default function Page() {
     return filtered.sort((a, b) => +new Date(a.t) - +new Date(b.t));
   }, [data, selectedCargoHour]);
 
+  const filteredCrossingPathsForMap = useMemo(() => {
+    if (!data) return [] as CrossingPath[];
+    return (data.crossingPaths || []).filter((p) => crossingMapTypes.includes(p.vesselType));
+  }, [data, crossingMapTypes]);
+
+  const crossingMapTitle = useMemo(() => {
+    if (crossingMapTypes.length === 1 && crossingMapTypes[0] === "tanker") {
+      return "Crossing Paths Map — Tankers";
+    }
+    return `Crossing Paths Map — ${crossingMapTypes.length ? crossingMapTypes.join(" + ") : "None selected"}`;
+  }, [crossingMapTypes]);
+
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
   }
@@ -275,6 +289,7 @@ export default function Page() {
             Last ingested: {new Date(lastIngestedAt).toUTCString()}
           </div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
+          <p className="mt-1 text-sm font-medium text-cyan-200/90">BLK - SET team</p>
           <p className="mt-2 text-slate-400 text-sm">
             East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}. Default selection is Cargo + Tanker.
           </p>
@@ -370,6 +385,9 @@ export default function Page() {
         </section>
 
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="xl:col-span-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs text-slate-300">
+            Tankers are the vessels most likely to carry oil and gas. Cargo vessels are far less likely to be energy carriers.
+          </div>
           <div className="xl:col-span-2 flex flex-wrap gap-2 text-xs">
             <button onClick={() => setShowEastToWest((v) => !v)} className={`px-2 py-1 rounded border ${showEastToWest ? "border-sky-300 text-sky-200" : "border-slate-700 text-slate-500"}`}>East → West</button>
             <button onClick={() => setShowWestToEast((v) => !v)} className={`px-2 py-1 rounded border ${showWestToEast ? "border-orange-300 text-orange-200" : "border-slate-700 text-slate-500"}`}>West → East</button>
@@ -501,7 +519,7 @@ export default function Page() {
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <h2 className="text-lg font-medium">Crossing Boats Map (color by ship type)</h2>
+          <h2 className="text-lg font-medium">{crossingMapTitle}</h2>
           <div className="flex items-center gap-2 text-xs text-slate-300">
             <span className="text-slate-200 mr-2">Legend (click to toggle)</span>
             {[
@@ -509,11 +527,15 @@ export default function Page() {
               ["cargo", "bg-green-500"],
               ["other", "bg-amber-500"],
             ].map(([type, cls]) => {
-              const active = selectedTypes.includes(type);
+              const active = crossingMapTypes.includes(type);
               return (
                 <button
                   key={`cross-${type}`}
-                  onClick={() => setSelectedTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]))}
+                  onClick={() =>
+                    setCrossingMapTypes((prev) =>
+                      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+                    )
+                  }
                   className={`px-2 py-1 rounded border ${active ? "border-slate-200" : "border-slate-700 opacity-50"}`}
                 >
                   <span className={`inline-block w-3 h-3 rounded-full ${cls} mr-2`} />{type}
@@ -523,12 +545,12 @@ export default function Page() {
           </div>
           <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
             <CrossingPathsMap
-              paths={filteredCrossingPaths.slice(0, 180)}
+              paths={filteredCrossingPathsForMap.slice(0, 180)}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
             />
           </div>
-          <p className="text-xs text-slate-400">Each dot is interactive. Click any historical point to view ship name, type, timestamp, and direction stats.</p>
+          <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
         </section>
       </div>
     </main>

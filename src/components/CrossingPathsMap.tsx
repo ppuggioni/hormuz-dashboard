@@ -46,7 +46,7 @@ export default function CrossingPathsMap({
         const polyline = ship.points.map((p) => [p.lat, p.lon] as [number, number]);
         return (
           <Fragment key={ship.shipId}>
-            <Polyline positions={polyline} pathOptions={{ color, weight: 2.5, opacity: 0.9 }} />
+            <Polyline positions={polyline} pathOptions={{ color, weight: 1.25, opacity: 0.8, dashArray: "4 6" }} />
             {ship.points.map((p, idx) => (
               <CircleMarker
                 key={`${ship.shipId}-pt-${idx}`}

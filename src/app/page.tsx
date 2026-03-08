@@ -335,6 +335,20 @@ export default function Page() {
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <h2 className="text-lg font-medium mb-3">FAQ / Method Notes</h2>
+          <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+            <summary className="cursor-pointer select-none font-medium text-slate-100">
+              How do we detect a crossing if a vessel turns its transponder off?
+            </summary>
+            <p className="mt-3 leading-relaxed">
+              To detect a crossing, a vessel must report AIS position at least once while inside the Gulf side of the boundary logic.
+              If the vessel then sails with transponder off, we can still detect the crossing once it switches AIS back on in the Indian Ocean side,
+              because the latest known side and the new side indicate a side change.
+            </p>
+          </details>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <h2 className="text-lg font-medium mb-3">Filter by Vessel Type</h2>
           <div className="flex flex-wrap gap-2">
             {data.vesselTypes.map((type) => {

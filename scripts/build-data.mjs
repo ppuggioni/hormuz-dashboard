@@ -6,9 +6,15 @@ const INDEX_URLS = {
   hormuz:
     process.env.HORMUZ_INDEX_URL ||
     'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/index.json',
-  suez: process.env.SUEZ_INDEX_URL || '',
-  malacca: process.env.MALACCA_INDEX_URL || '',
-  cape_good_hope: process.env.CAPE_INDEX_URL || '',
+  suez:
+    process.env.SUEZ_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/suez/index.json',
+  malacca:
+    process.env.MALACCA_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/malacca/index.json',
+  cape_good_hope:
+    process.env.CAPE_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/cape_good_hope/index.json',
 };
 
 const EAST_LON = 56.4;

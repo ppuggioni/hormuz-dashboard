@@ -61,6 +61,7 @@ type DataShape = {
     eastLon: number;
     westLon: number;
     minLat?: number;
+    westMinLon?: number;
     fileCount: number;
     shipCount: number;
     crossingShipCount: number;
@@ -80,12 +81,12 @@ type DataShape = {
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 
-function computeHourly(paths: CrossingPath[], eastLon: number, westLon: number, minLat = 24) {
+function computeHourly(paths: CrossingPath[], eastLon: number, westLon: number, minLat = 24, westMinLon = 47.5) {
   const byHour = new Map<string, { hour: string; east_to_west: number; west_to_east: number }>();
   for (const ship of paths) {
     let lastSide: "east" | "west" | null = null;
     for (const p of ship.points) {
-      const side = p.lat >= minLat ? (p.lon >= eastLon ? "east" : p.lon <= westLon ? "west" : null) : null;
+      const side = p.lat >= minLat ? (p.lon >= eastLon ? "east" : p.lon <= westLon && p.lon >= westMinLon ? "west" : null) : null;
       if (!side) continue;
       if (lastSide && side !== lastSide) {
         const d = new Date(p.t);
@@ -238,17 +239,17 @@ export default function Page() {
 
   const allFilteredHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(filteredCrossingPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
+    return computeHourly(filteredCrossingPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24, data.metadata.westMinLon ?? 47.5);
   }, [data, filteredCrossingPaths]);
 
   const tankerHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(tankerPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
+    return computeHourly(tankerPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24, data.metadata.westMinLon ?? 47.5);
   }, [data, tankerPaths]);
 
   const cargoHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
+    return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24, data.metadata.westMinLon ?? 47.5);
   }, [data, cargoPaths]);
 
   const sharedHours = useMemo(() => {
@@ -363,37 +364,45 @@ export default function Page() {
   }, [externalLinkRows]);
 
   const playbackLinkedPoints = useMemo(() => {
-    if (!data?.externalPresencePoints?.length || !currentSnapshot?.t) {
+    if (!data?.externalPresencePoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {
       return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
     }
 
-    const nowTs = +new Date(currentSnapshot.t);
-    const grouped = new Map<string, ExternalPresencePoint>();
+    const hormuzFrameTimes = data.snapshots.map((s) => s.t);
+    const hormuzFrameEpochs = hormuzFrameTimes.map((t) => +new Date(t));
+
+    const assigned: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string; frameTime: string }[] = [];
 
     for (const p of data.externalPresencePoints) {
       if (showOnlyLinkedExternal && !p.linkedToHormuz) continue;
-      const key = `${p.shipId}|${p.region}`;
-      const pts = +new Date(p.t);
-      const prev = grouped.get(key);
-      if (!prev) {
-        grouped.set(key, p);
-        continue;
+      const ts = +new Date(p.t);
+
+      let bestIdx = 0;
+      let bestDelta = Math.abs(hormuzFrameEpochs[0] - ts);
+      for (let i = 1; i < hormuzFrameEpochs.length; i++) {
+        const d = Math.abs(hormuzFrameEpochs[i] - ts);
+        if (d < bestDelta) {
+          bestDelta = d;
+          bestIdx = i;
+        }
       }
-      const prevTs = +new Date(prev.t);
-      const prevDelta = prevTs <= nowTs ? nowTs - prevTs : Number.MAX_SAFE_INTEGER;
-      const curDelta = pts <= nowTs ? nowTs - pts : Number.MAX_SAFE_INTEGER;
-      if (curDelta < prevDelta) grouped.set(key, p);
+
+      assigned.push({
+        shipId: p.shipId,
+        shipName: p.shipName,
+        vesselType: p.vesselType,
+        region: p.region,
+        lat: p.lat,
+        lon: p.lon,
+        deltaDh: p.linkedToHormuz ? "linked" : "not linked",
+        frameTime: hormuzFrameTimes[bestIdx],
+      });
     }
 
-    return [...grouped.values()].slice(0, 2000).map((p) => ({
-      shipId: p.shipId,
-      shipName: p.shipName,
-      vesselType: p.vesselType,
-      region: p.region,
-      lat: p.lat,
-      lon: p.lon,
-      deltaDh: p.linkedToHormuz ? 'linked' : 'not linked',
-    }));
+    return assigned
+      .filter((p) => p.frameTime === currentSnapshot.t)
+      .slice(0, 4000)
+      .map(({ frameTime: _ft, ...rest }) => rest);
   }, [data, currentSnapshot?.t, showOnlyLinkedExternal]);
 
   if (!data) {

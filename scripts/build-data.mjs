@@ -19,6 +19,7 @@ const INDEX_URLS = {
 
 const EAST_LON = 56.4;
 const WEST_LON = 56.15;
+const WEST_MIN_LON = 47.5;
 const MIN_LAT = 24;
 
 function hourBin(iso) {
@@ -30,7 +31,7 @@ function hourBin(iso) {
 function sideFromPoint(lat, lon) {
   if (lat < MIN_LAT) return null;
   if (lon >= EAST_LON) return 'east';
-  if (lon <= WEST_LON) return 'west';
+  if (lon <= WEST_LON && lon >= WEST_MIN_LON) return 'west';
   return null;
 }
 
@@ -348,6 +349,7 @@ async function main() {
       sourceIndexes: INDEX_URLS,
       eastLon: EAST_LON,
       westLon: WEST_LON,
+      westMinLon: WEST_MIN_LON,
       minLat: MIN_LAT,
       fileCount: hormuzFiles.length,
       regionFileCounts: Object.fromEntries(Object.entries(regionFiles).map(([k, v]) => [k, v.length])),

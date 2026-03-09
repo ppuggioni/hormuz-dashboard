@@ -3,7 +3,7 @@
 import { CircleMarker, MapContainer, Popup, Polyline, TileLayer } from "react-leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
-type LinkedPoint = { shipId: string; shipName: string; region: string; lat: number; lon: number; deltaDh: string };
+type LinkedPoint = { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string };
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
@@ -50,12 +50,14 @@ export default function PlaybackMap({
       <Polyline positions={[[25.2, eastLon], [27.3, eastLon]]} pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "6" }} />
       <Polyline positions={[[25.2, westLon], [27.3, westLon]]} pathOptions={{ color: "#f97316", weight: 3, dashArray: "6" }} />
 
-      {(linkedPoints || []).map((p, idx) => (
+      {(linkedPoints || []).map((p, idx) => {
+        const color = typeColor[p.vesselType] || '#e5e7eb';
+        return (
         <CircleMarker
           key={`linked-${p.shipId}-${p.region}-${idx}`}
           center={[p.lat, p.lon]}
-          radius={4}
-          pathOptions={{ color: '#a78bfa', fillColor: '#a78bfa', fillOpacity: 0.9, weight: 1 }}
+          radius={1}
+          pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 1 }}
         >
           <Popup>
             <div style={{ minWidth: 200 }}>
@@ -66,7 +68,7 @@ export default function PlaybackMap({
             </div>
           </Popup>
         </CircleMarker>
-      ))}
+      )})}
 
       {points.map((p) => {
         const color = typeColor[p.vesselType] || "#e5e7eb";

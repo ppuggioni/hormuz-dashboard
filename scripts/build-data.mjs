@@ -159,9 +159,10 @@ async function main() {
 
       if (regionId === 'hormuz') {
         snapshots.push({ t: file.run_utc, points });
-        if ((i + 1) % 10 === 0) {
-          console.log(`Processed Hormuz ${i + 1}/${hormuzFiles.length} files`);
-        }
+      }
+
+      if ((i + 1) % 10 === 0 || i + 1 === files.length) {
+        console.log(`Processed ${regionId} ${i + 1}/${files.length} files`);
       }
     }
   }
@@ -239,6 +240,7 @@ async function main() {
   const crossingsByHour = Array.from(hourly.values()).sort((a, b) => new Date(a.hour) - new Date(b.hour));
 
   const zonePresenceByShip = new Map();
+  const allHormuzShipIds = new Set(hormuzObservationsByShip.keys());
   for (const [shipId, obsList] of observationsByShip.entries()) {
     for (const obs of obsList) {
       let regionDetected = null;
@@ -320,6 +322,23 @@ async function main() {
   const dedupedLinkageEvents = [...linkageByKey.values()];
   dedupedLinkageEvents.sort((a, b) => +new Date(b.hormuzWestTime) - +new Date(a.hormuzWestTime));
 
+  const externalPresencePoints = [];
+  for (const [shipId, obsList] of observationsByShip.entries()) {
+    for (const o of obsList) {
+      if (!['suez', 'malacca', 'cape_good_hope'].includes(o.sourceRegion)) continue;
+      externalPresencePoints.push({
+        shipId,
+        shipName: shipMeta[shipId]?.shipName || 'Unknown',
+        vesselType: shipMeta[shipId]?.vesselType || 'other',
+        region: o.sourceRegion,
+        t: o.t,
+        lat: o.lat,
+        lon: o.lon,
+        linkedToHormuz: allHormuzShipIds.has(shipId),
+      });
+    }
+  }
+
   const vesselTypes = [...new Set(Object.values(shipMeta).map((m) => m.vesselType))].sort();
 
   const output = {
@@ -336,6 +355,7 @@ async function main() {
       crossingShipCount: crossingShipIds.size,
       crossingEventCount: crossingEvents.length,
       linkageEventCount: dedupedLinkageEvents.length,
+      externalPresenceCount: externalPresencePoints.length,
     },
     vesselTypes,
     shipMeta,
@@ -344,6 +364,7 @@ async function main() {
     crossingsByHour,
     crossingPaths,
     linkageEvents: dedupedLinkageEvents,
+    externalPresencePoints,
   };
 
   const outDir = path.resolve('public/data');

@@ -27,6 +27,17 @@ type CrossingEvent = {
   direction: "east_to_west" | "west_to_east";
 };
 
+type ExternalPresencePoint = {
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  region: string;
+  t: string;
+  lat: number;
+  lon: number;
+  linkedToHormuz: boolean;
+};
+
 type LinkageEvent = {
   shipId: string;
   shipName: string;
@@ -63,6 +74,7 @@ type DataShape = {
   crossingEvents: CrossingEvent[];
   crossingPaths: CrossingPath[];
   linkageEvents?: LinkageEvent[];
+  externalPresencePoints?: ExternalPresencePoint[];
 };
 
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
@@ -149,6 +161,7 @@ export default function Page() {
   const [showWestToEast, setShowWestToEast] = useState(true);
   const [showCrossing, setShowCrossing] = useState(true);
   const [showNonCrossing, setShowNonCrossing] = useState(true);
+  const [showOnlyLinkedExternal, setShowOnlyLinkedExternal] = useState(false);
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
 
   useEffect(() => {
@@ -186,6 +199,7 @@ export default function Page() {
         crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
         crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
         linkageEvents: Array.isArray(json?.linkageEvents) ? json.linkageEvents : [],
+        externalPresencePoints: Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : [],
       };
 
       setData(normalized);
@@ -349,35 +363,38 @@ export default function Page() {
   }, [externalLinkRows]);
 
   const playbackLinkedPoints = useMemo(() => {
-    if (!currentSnapshot?.t) return [] as { shipId: string; shipName: string; region: string; lat: number; lon: number; deltaDh: string }[];
-    const nowTs = +new Date(currentSnapshot.t);
-    const activeShipIds = new Set(filteredCurrentPoints.map((p) => p.shipId));
-    const byKey = new Map<string, LinkageEvent>();
-
-    for (const r of externalLinkRows) {
-      if (!activeShipIds.has(r.shipId)) continue;
-      const key = `${r.shipId}-${r.otherRegion}`;
-      const rTs = +new Date(r.hormuzWestTime);
-      const prev = byKey.get(key);
-      if (!prev) {
-        byKey.set(key, r);
-        continue;
-      }
-      const prevTs = +new Date(prev.hormuzWestTime);
-      const prevDelta = prevTs <= nowTs ? nowTs - prevTs : Number.MAX_SAFE_INTEGER;
-      const curDelta = rTs <= nowTs ? nowTs - rTs : Number.MAX_SAFE_INTEGER;
-      if (curDelta < prevDelta) byKey.set(key, r);
+    if (!data?.externalPresencePoints?.length || !currentSnapshot?.t) {
+      return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
     }
 
-    return [...byKey.values()].slice(0, 300).map((r) => ({
-      shipId: r.shipId,
-      shipName: r.shipName,
-      region: r.otherRegion,
-      lat: r.otherLat,
-      lon: r.otherLon,
-      deltaDh: r.deltaDh,
+    const nowTs = +new Date(currentSnapshot.t);
+    const grouped = new Map<string, ExternalPresencePoint>();
+
+    for (const p of data.externalPresencePoints) {
+      if (showOnlyLinkedExternal && !p.linkedToHormuz) continue;
+      const key = `${p.shipId}|${p.region}`;
+      const pts = +new Date(p.t);
+      const prev = grouped.get(key);
+      if (!prev) {
+        grouped.set(key, p);
+        continue;
+      }
+      const prevTs = +new Date(prev.t);
+      const prevDelta = prevTs <= nowTs ? nowTs - prevTs : Number.MAX_SAFE_INTEGER;
+      const curDelta = pts <= nowTs ? nowTs - pts : Number.MAX_SAFE_INTEGER;
+      if (curDelta < prevDelta) grouped.set(key, p);
+    }
+
+    return [...grouped.values()].slice(0, 2000).map((p) => ({
+      shipId: p.shipId,
+      shipName: p.shipName,
+      vesselType: p.vesselType,
+      region: p.region,
+      lat: p.lat,
+      lon: p.lon,
+      deltaDh: p.linkedToHormuz ? 'linked' : 'not linked',
     }));
-  }, [currentSnapshot?.t, filteredCurrentPoints, externalLinkRows]);
+  }, [data, currentSnapshot?.t, showOnlyLinkedExternal]);
 
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
@@ -495,6 +512,7 @@ export default function Page() {
             })}
             <button onClick={() => setShowCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>✕ crossing</button>
             <button onClick={() => setShowNonCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showNonCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>● non-crossing</button>
+            <button onClick={() => setShowOnlyLinkedExternal((v) => !v)} className={`px-2 py-1 rounded border ${showOnlyLinkedExternal ? "border-violet-300 text-violet-200" : "border-slate-700 text-slate-500"}`}>◉ display only linked ships: {showOnlyLinkedExternal ? "on" : "off (show all external ships)"}</button>
           </div>
 
           <div className="h-[460px] rounded-xl overflow-hidden border border-slate-800">

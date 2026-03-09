@@ -175,7 +175,21 @@ export default function Page() {
         try {
           const r = await fetch(`${base}?t=${Date.now()}`);
           if (!r.ok) continue;
-          json = await r.json();
+
+          const buf = await r.arrayBuffer();
+          const bytes = new Uint8Array(buf);
+          let text = "";
+
+          const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+          if (isGzip && typeof DecompressionStream !== "undefined") {
+            const ds = new DecompressionStream("gzip");
+            const stream = new Blob([bytes]).stream().pipeThrough(ds);
+            text = await new Response(stream).text();
+          } else {
+            text = new TextDecoder().decode(bytes);
+          }
+
+          json = JSON.parse(text);
           if (json?.metadata && Array.isArray(json?.snapshots)) break;
         } catch {
           // try next candidate

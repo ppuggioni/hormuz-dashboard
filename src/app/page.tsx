@@ -440,6 +440,35 @@ export default function Page() {
     return out.slice(0, 4000);
   }, [data, currentSnapshot?.t, showOnlyLinkedExternal]);
 
+  const freshness = useMemo(() => {
+    if (!data) {
+      return {
+        processedGeneratedAt: new Date(0).toISOString(),
+        latestByRegion: { hormuz: null, suez: null, malacca: null, cape_good_hope: null } as Record<string, string | null>,
+        regionFileCounts: {},
+      };
+    }
+
+    const latestByRegion: Record<string, string | null> = {
+      hormuz: data.snapshots?.length ? data.snapshots[data.snapshots.length - 1].t : null,
+      suez: null,
+      malacca: null,
+      cape_good_hope: null,
+    };
+
+    for (const p of data.externalPresencePoints || []) {
+      const prev = latestByRegion[p.region] ? +new Date(latestByRegion[p.region] as string) : 0;
+      const cur = +new Date(p.t);
+      if (!latestByRegion[p.region] || cur > prev) latestByRegion[p.region] = p.t;
+    }
+
+    return {
+      processedGeneratedAt: data.metadata.generatedAt,
+      latestByRegion,
+      regionFileCounts: (data.metadata as any).regionFileCounts || {},
+    };
+  }, [data]);
+
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
   }
@@ -775,6 +804,18 @@ export default function Page() {
           </div>
           <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
         </section>
+
+        <details className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
+          <summary className="cursor-pointer select-none text-slate-300">Pipeline freshness diagnostics</summary>
+          <div className="mt-2 space-y-1">
+            <div>Processed generated at: {new Date(freshness.processedGeneratedAt).toUTCString()}</div>
+            <div>Latest Hormuz snapshot: {freshness.latestByRegion.hormuz ? new Date(freshness.latestByRegion.hormuz).toUTCString() : "-"}</div>
+            <div>Latest Suez point: {freshness.latestByRegion.suez ? new Date(freshness.latestByRegion.suez).toUTCString() : "-"}</div>
+            <div>Latest Malacca point: {freshness.latestByRegion.malacca ? new Date(freshness.latestByRegion.malacca).toUTCString() : "-"}</div>
+            <div>Latest Cape point: {freshness.latestByRegion.cape_good_hope ? new Date(freshness.latestByRegion.cape_good_hope).toUTCString() : "-"}</div>
+            <div>Region file counts: hormuz={freshness.regionFileCounts.hormuz ?? 0}, suez={freshness.regionFileCounts.suez ?? 0}, malacca={freshness.regionFileCounts.malacca ?? 0}, cape={freshness.regionFileCounts.cape_good_hope ?? 0}</div>
+          </div>
+        </details>
       </div>
     </main>
   );

@@ -371,7 +371,10 @@ async function main() {
 
   const outDir = path.resolve('public/data');
   await fs.mkdir(outDir, { recursive: true });
-  await fs.writeFile(path.join(outDir, 'processed.json'), JSON.stringify(output));
+  const finalPath = path.join(outDir, 'processed.json');
+  const tmpPath = path.join(outDir, 'processed.json.tmp');
+  await fs.writeFile(tmpPath, JSON.stringify(output));
+  await fs.rename(tmpPath, finalPath);
   console.log('Wrote public/data/processed.json');
 }
 

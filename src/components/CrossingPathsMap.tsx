@@ -74,8 +74,8 @@ export default function CrossingPathsMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <Polyline positions={[[25.4, eastLon], [27.1, eastLon]]} pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "6" }} />
-      <Polyline positions={[[25.4, westLon], [27.1, westLon]]} pathOptions={{ color: "#f97316", weight: 3, dashArray: "6" }} />
+      <Polyline positions={[[25.4, eastLon], [27.1, eastLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
+      <Polyline positions={[[25.4, westLon], [27.1, westLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
 
       {(linkLines || []).map((l, idx) => (
         <Polyline
@@ -87,7 +87,7 @@ export default function CrossingPathsMap({
             <div style={{ minWidth: 220 }}>
               <div><strong>Ship:</strong> {l.shipName} ({l.shipId})</div>
               <div><strong>Route:</strong> {l.fromRegion} → {l.toRegion}</div>
-              <div><strong>Δ from Hormuz West:</strong> {l.deltaDh}</div>
+              <div><strong>Transit time from Hormuz West:</strong> {l.deltaDh}</div>
             </div>
           </Popup>
         </Polyline>

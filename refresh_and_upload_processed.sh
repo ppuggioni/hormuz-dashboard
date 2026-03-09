@@ -14,6 +14,14 @@ OBJECTS=(
   "processed_playback_48h.json"
   "processed_playback_72h.json"
   "processed_playback_all.json"
+  "processed_external_24h.json"
+  "processed_external_48h.json"
+  "processed_external_72h.json"
+  "processed_external_all.json"
+  "processed_shipmeta_24h.json"
+  "processed_shipmeta_48h.json"
+  "processed_shipmeta_72h.json"
+  "processed_shipmeta_all.json"
 )
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"

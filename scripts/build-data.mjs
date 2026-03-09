@@ -31,6 +31,15 @@ const WEST_LON = 56.15;
 const WEST_MIN_LON = 47.5;
 const MIN_LAT = 24;
 
+// Default to energy/logistics-relevant vessel classes only.
+// To re-enable all vessel classes, run build/upload with:
+//   ALLOWED_VESSEL_TYPES="all"
+const ALLOWED_VESSEL_TYPES = String(process.env.ALLOWED_VESSEL_TYPES || 'tanker,cargo')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+const KEEP_ALL_VESSEL_TYPES = ALLOWED_VESSEL_TYPES.includes('all');
+
 function hourBin(iso) {
   const d = new Date(iso);
   d.setUTCMinutes(0, 0, 0);
@@ -46,10 +55,12 @@ function sideFromPoint(lat, lon) {
 
 function formatDeltaDh(hours) {
   const sign = hours >= 0 ? '+' : '-';
-  const abs = Math.abs(hours);
-  const d = Math.floor(abs / 24);
-  const h = Math.floor(abs % 24);
-  return `${sign}${d}:${String(h).padStart(2, '0')}`;
+  const totalMinutes = Math.round(Math.abs(hours) * 60);
+  const d = Math.floor(totalMinutes / (24 * 60));
+  const remAfterDays = totalMinutes % (24 * 60);
+  const h = Math.floor(remAfterDays / 60);
+  const m = remAfterDays % 60;
+  return `${sign}${d}d:${String(h).padStart(2, '0')}h:${String(m).padStart(2, '0')}m`;
 }
 
 function modal(entries, fallback = 'unknown') {
@@ -192,6 +203,24 @@ async function main() {
       if (!meta) continue;
       p.vesselType = meta.vesselType;
       if (!p.shipName || p.shipName === 'Unknown') p.shipName = meta.shipName;
+    }
+  }
+
+  if (!KEEP_ALL_VESSEL_TYPES) {
+    const allowedShipIds = new Set(
+      Object.entries(shipMeta)
+        .filter(([, m]) => ALLOWED_VESSEL_TYPES.includes(m.vesselType))
+        .map(([id]) => id),
+    );
+
+    for (const id of [...observationsByShip.keys()]) {
+      if (!allowedShipIds.has(id)) observationsByShip.delete(id);
+    }
+    for (const id of [...hormuzObservationsByShip.keys()]) {
+      if (!allowedShipIds.has(id)) hormuzObservationsByShip.delete(id);
+    }
+    for (const snap of snapshots) {
+      snap.points = snap.points.filter((p) => allowedShipIds.has(p.shipId));
     }
   }
 
@@ -349,8 +378,93 @@ async function main() {
     }
   }
 
-  const vesselTypes = [...new Set(Object.values(shipMeta).map((m) => m.vesselType))].sort();
+  const outDir = path.resolve('public/data');
+  const prevCorePath = path.join(outDir, 'processed_core.json');
+  const prevPathsPath = path.join(outDir, 'processed_paths.json');
+  const prevLegacyPath = path.join(outDir, 'processed.json');
+
+  // Preserve "once crossed, always crossed" by merging previous crossing events/paths.
+  let prevCrossingEvents = [];
+  let prevCrossingPaths = [];
+  try {
+    const prevCore = JSON.parse(await fs.readFile(prevCorePath, 'utf8'));
+    prevCrossingEvents = prevCore?.data?.crossingEvents || prevCore?.crossingEvents || [];
+  } catch {}
+  try {
+    const prevPaths = JSON.parse(await fs.readFile(prevPathsPath, 'utf8'));
+    prevCrossingPaths = prevPaths?.data?.crossingPaths || prevPaths?.crossingPaths || [];
+  } catch {}
+  try {
+    const prevLegacy = JSON.parse(await fs.readFile(prevLegacyPath, 'utf8'));
+    prevCrossingEvents = [...prevCrossingEvents, ...(prevLegacy?.crossingEvents || [])];
+    prevCrossingPaths = [...prevCrossingPaths, ...(prevLegacy?.crossingPaths || [])];
+  } catch {}
+
+  const crossingEventKey = (e) => `${e.shipId}|${e.direction}|${e.t}`;
+  const mergedCrossingEventMap = new Map();
+  for (const e of [...prevCrossingEvents, ...crossingEvents]) {
+    if (!e?.shipId || !e?.t || !e?.direction) continue;
+    mergedCrossingEventMap.set(crossingEventKey(e), e);
+  }
+  const mergedCrossingEvents = [...mergedCrossingEventMap.values()].sort((a, b) => +new Date(a.t) - +new Date(b.t));
+
+  const mergedPathsByShip = new Map();
+  for (const p of [...prevCrossingPaths, ...crossingPaths]) {
+    if (!p?.shipId) continue;
+    if (!mergedPathsByShip.has(p.shipId)) {
+      mergedPathsByShip.set(p.shipId, {
+        shipId: p.shipId,
+        shipName: p.shipName,
+        vesselType: p.vesselType,
+        primaryDirection: p.primaryDirection,
+        directionCounts: { east_to_west: p.directionCounts?.east_to_west || 0, west_to_east: p.directionCounts?.west_to_east || 0 },
+        points: [],
+      });
+    }
+    const cur = mergedPathsByShip.get(p.shipId);
+    if (p.shipName) cur.shipName = p.shipName;
+    if (p.vesselType) cur.vesselType = p.vesselType;
+    if (p.primaryDirection) cur.primaryDirection = p.primaryDirection;
+    cur.directionCounts.east_to_west = Math.max(cur.directionCounts.east_to_west, p.directionCounts?.east_to_west || 0);
+    cur.directionCounts.west_to_east = Math.max(cur.directionCounts.west_to_east, p.directionCounts?.west_to_east || 0);
+    for (const pt of p.points || []) cur.points.push(pt);
+  }
+  const mergedCrossingPaths = [...mergedPathsByShip.values()].map((p) => {
+    const seen = new Set();
+    const points = [];
+    for (const pt of p.points || []) {
+      const key = `${pt.t}|${pt.lat}|${pt.lon}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      points.push(pt);
+    }
+    points.sort((a, b) => +new Date(a.t) - +new Date(b.t));
+    return { ...p, points };
+  });
+
+  const mergedCrossingsByHourMap = new Map();
+  for (const event of mergedCrossingEvents) {
+    if (!mergedCrossingsByHourMap.has(event.hour)) {
+      mergedCrossingsByHourMap.set(event.hour, { hour: event.hour, east_to_west: 0, west_to_east: 0 });
+    }
+    if (event.direction === 'east_to_west') mergedCrossingsByHourMap.get(event.hour).east_to_west += 1;
+    else mergedCrossingsByHourMap.get(event.hour).west_to_east += 1;
+  }
+  const mergedCrossingsByHour = [...mergedCrossingsByHourMap.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
+
+  const vesselTypes = KEEP_ALL_VESSEL_TYPES
+    ? [...new Set(Object.values(shipMeta).map((m) => m.vesselType))].sort()
+    : [...new Set(ALLOWED_VESSEL_TYPES)].sort();
   const generatedAt = new Date().toISOString();
+  const latestByRegion = { hormuz: snapshots.length ? snapshots[snapshots.length - 1].t : null };
+  for (const p of externalPresencePoints) {
+    const prev = latestByRegion[p.region] ? +new Date(latestByRegion[p.region]) : 0;
+    const cur = +new Date(p.t);
+    if (!latestByRegion[p.region] || cur > prev) latestByRegion[p.region] = p.t;
+  }
+
+  const mergedCrossingShipIds = new Set(mergedCrossingPaths.map((p) => p.shipId));
+
   const baseMetadata = {
     generatedAt,
     sourceIndexUrl: INDEX_URLS.hormuz,
@@ -361,21 +475,33 @@ async function main() {
     minLat: MIN_LAT,
     fileCount: hormuzFiles.length,
     regionFileCounts: Object.fromEntries(Object.entries(regionFiles).map(([k, v]) => [k, v.length])),
+    latestByRegion,
     shipCount: Object.keys(shipMeta).length,
-    crossingShipCount: crossingShipIds.size,
-    crossingEventCount: crossingEvents.length,
+    crossingShipCount: mergedCrossingShipIds.size,
+    crossingEventCount: mergedCrossingEvents.length,
     linkageEventCount: dedupedLinkageEvents.length,
     externalPresenceCount: externalPresencePoints.length,
+    vesselTypeFilter: KEEP_ALL_VESSEL_TYPES ? 'all' : ALLOWED_VESSEL_TYPES,
   };
+
+  const crossingAndLinkShipIds = new Set();
+  for (const e of mergedCrossingEvents) crossingAndLinkShipIds.add(e.shipId);
+  for (const p of mergedCrossingPaths) crossingAndLinkShipIds.add(p.shipId);
+  for (const l of dedupedLinkageEvents) crossingAndLinkShipIds.add(l.shipId);
+
+  const coreShipMeta = {};
+  for (const id of crossingAndLinkShipIds) {
+    if (shipMeta[id]) coreShipMeta[id] = shipMeta[id];
+  }
 
   const output = {
     metadata: baseMetadata,
     vesselTypes,
-    shipMeta,
+    shipMeta: coreShipMeta,
     snapshots,
-    crossingEvents,
-    crossingsByHour,
-    crossingPaths,
+    crossingEvents: mergedCrossingEvents,
+    crossingsByHour: mergedCrossingsByHour,
+    crossingPaths: mergedCrossingPaths,
     linkageEvents: dedupedLinkageEvents,
     externalPresencePoints,
   };
@@ -401,7 +527,25 @@ async function main() {
     return snapshots.filter((s) => +new Date(s.t) >= cutoff);
   };
 
-  const outDir = path.resolve('public/data');
+  const selectExternalWindow = (hours) => {
+    if (hours === 'all') return externalPresencePoints;
+    const cutoff = +new Date(generatedAt) - hours * 3600 * 1000;
+    return externalPresencePoints.filter((p) => +new Date(p.t) >= cutoff);
+  };
+
+  const buildShipMetaForWindow = (hours) => {
+    const ids = new Set(crossingAndLinkShipIds);
+    const snaps = selectSnapshotsWindow(hours);
+    const ext = selectExternalWindow(hours);
+    for (const s of snaps) for (const p of s.points || []) ids.add(p.shipId);
+    for (const p of ext) ids.add(p.shipId);
+    const subset = {};
+    for (const id of ids) {
+      if (shipMeta[id]) subset[id] = shipMeta[id];
+    }
+    return subset;
+  };
+
   await fs.mkdir(outDir, { recursive: true });
 
   async function writeJson(name, obj) {
@@ -421,11 +565,10 @@ async function main() {
       'core',
       {
         vesselTypes,
-        shipMeta,
-        crossingEvents,
-        crossingsByHour,
+        shipMeta: coreShipMeta,
+        crossingEvents: mergedCrossingEvents,
+        crossingsByHour: mergedCrossingsByHour,
         linkageEvents: dedupedLinkageEvents,
-        externalPresencePoints,
       },
       null,
       baseMetadata,
@@ -434,7 +577,7 @@ async function main() {
 
   await writeJson(
     'processed_paths.json',
-    wrap('paths', { crossingPaths }, 'all', { pathCount: crossingPaths.length }),
+    wrap('paths', { crossingPaths: mergedCrossingPaths }, 'all', { pathCount: mergedCrossingPaths.length }),
   );
 
   for (const [label, hours] of [
@@ -452,6 +595,24 @@ async function main() {
         pointCount,
         fromUtc: snaps.length ? snaps[0].t : null,
         toUtc: snaps.length ? snaps[snaps.length - 1].t : null,
+      }),
+    );
+
+    const ext = selectExternalWindow(hours);
+    await writeJson(
+      `processed_external_${label}.json`,
+      wrap('external', { externalPresencePoints: ext }, label, {
+        pointCount: ext.length,
+        fromUtc: ext.length ? ext[0].t : null,
+        toUtc: ext.length ? ext[ext.length - 1].t : null,
+      }),
+    );
+
+    const shipMetaWindow = buildShipMetaForWindow(hours);
+    await writeJson(
+      `processed_shipmeta_${label}.json`,
+      wrap('shipmeta', { shipMeta: shipMetaWindow }, label, {
+        shipCount: Object.keys(shipMetaWindow).length,
       }),
     );
   }

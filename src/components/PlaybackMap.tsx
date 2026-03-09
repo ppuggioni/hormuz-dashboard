@@ -47,8 +47,8 @@ export default function PlaybackMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <Polyline positions={[[25.2, eastLon], [27.3, eastLon]]} pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "6" }} />
-      <Polyline positions={[[25.2, westLon], [27.3, westLon]]} pathOptions={{ color: "#f97316", weight: 3, dashArray: "6" }} />
+      <Polyline positions={[[25.2, eastLon], [27.3, eastLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
+      <Polyline positions={[[25.2, westLon], [27.3, westLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
 
       {(linkedPoints || []).map((p, idx) => {
         const color = typeColor[p.vesselType] || '#e5e7eb';
@@ -63,7 +63,7 @@ export default function PlaybackMap({
             <div style={{ minWidth: 200 }}>
               <div><strong>Linked region:</strong> {p.region}</div>
               <div><strong>Ship:</strong> {p.shipName} ({p.shipId})</div>
-              <div><strong>Δ from Hormuz West:</strong> {p.deltaDh}</div>
+              <div><strong>Transit time from Hormuz West:</strong> {p.deltaDh}</div>
               <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
             </div>
           </Popup>

@@ -6,7 +6,7 @@ WORKROOT="/Users/pp-bot/.openclaw/workspace_2"
 LOG="$WORKROOT/hormuz_processed_remote.log"
 OUT="$ROOT/public/data/processed.json"
 BUCKET="x-scrapes-public"
-OBJECT="hormuz/processed.json"
+OBJECT="multi_region/processed.json"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 

@@ -252,7 +252,7 @@ async function main() {
 
       if (!regionDetected) continue;
       if (!zonePresenceByShip.has(shipId)) zonePresenceByShip.set(shipId, []);
-      zonePresenceByShip.get(shipId).push({ t: obs.t, region: regionDetected });
+      zonePresenceByShip.get(shipId).push({ t: obs.t, region: regionDetected, lat: obs.lat, lon: obs.lon });
     }
   }
 
@@ -293,8 +293,12 @@ async function main() {
             fromRegion,
             toRegion,
             hormuzWestTime: anchor.t,
+            hormuzWestLat: anchor.lat,
+            hormuzWestLon: anchor.lon,
             otherRegion: target,
             otherRegionTime: other.t,
+            otherLat: other.lat,
+            otherLon: other.lon,
             deltaHours: Number(deltaHours.toFixed(2)),
             deltaDh: formatDeltaDh(deltaHours),
           });

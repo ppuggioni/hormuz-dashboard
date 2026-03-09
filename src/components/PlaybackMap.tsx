@@ -3,6 +3,7 @@
 import { CircleMarker, MapContainer, Popup, Polyline, TileLayer } from "react-leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
+type LinkedPoint = { shipId: string; shipName: string; region: string; lat: number; lon: number; deltaDh: string };
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
@@ -29,6 +30,7 @@ export default function PlaybackMap({
   crossingShipIds,
   showCrossing,
   showNonCrossing,
+  linkedPoints,
 }: {
   points: Point[];
   eastLon: number;
@@ -36,6 +38,7 @@ export default function PlaybackMap({
   crossingShipIds: Set<string>;
   showCrossing: boolean;
   showNonCrossing: boolean;
+  linkedPoints?: LinkedPoint[];
 }) {
   return (
     <MapContainer center={[26.15, 56.2]} zoom={7} style={{ height: "100%", width: "100%" }}>
@@ -46,6 +49,24 @@ export default function PlaybackMap({
 
       <Polyline positions={[[25.2, eastLon], [27.3, eastLon]]} pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "6" }} />
       <Polyline positions={[[25.2, westLon], [27.3, westLon]]} pathOptions={{ color: "#f97316", weight: 3, dashArray: "6" }} />
+
+      {(linkedPoints || []).map((p, idx) => (
+        <CircleMarker
+          key={`linked-${p.shipId}-${p.region}-${idx}`}
+          center={[p.lat, p.lon]}
+          radius={4}
+          pathOptions={{ color: '#a78bfa', fillColor: '#a78bfa', fillOpacity: 0.9, weight: 1 }}
+        >
+          <Popup>
+            <div style={{ minWidth: 200 }}>
+              <div><strong>Linked region:</strong> {p.region}</div>
+              <div><strong>Ship:</strong> {p.shipName} ({p.shipId})</div>
+              <div><strong>Δ from Hormuz West:</strong> {p.deltaDh}</div>
+              <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
+            </div>
+          </Popup>
+        </CircleMarker>
+      ))}
 
       {points.map((p) => {
         const color = typeColor[p.vesselType] || "#e5e7eb";

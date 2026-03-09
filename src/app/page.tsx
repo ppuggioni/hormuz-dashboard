@@ -34,8 +34,12 @@ type LinkageEvent = {
   fromRegion: string;
   toRegion: string;
   hormuzWestTime: string;
+  hormuzWestLat: number;
+  hormuzWestLon: number;
   otherRegion: string;
   otherRegionTime: string;
+  otherLat: number;
+  otherLon: number;
   deltaHours: number;
   deltaDh: string;
 };
@@ -325,6 +329,56 @@ export default function Page() {
       .slice(0, 800);
   }, [data, selectedTypes]);
 
+  const externalLinkRows = useMemo(
+    () => linkageRows.filter((r) => ["suez", "malacca", "cape_good_hope"].includes(r.otherRegion)),
+    [linkageRows],
+  );
+
+  const crossingMapLinkLines = useMemo(() => {
+    return externalLinkRows.slice(0, 300).map((r) => ({
+      shipId: r.shipId,
+      shipName: r.shipName,
+      fromRegion: r.fromRegion,
+      toRegion: r.toRegion,
+      fromLat: r.hormuzWestLat,
+      fromLon: r.hormuzWestLon,
+      toLat: r.otherLat,
+      toLon: r.otherLon,
+      deltaDh: r.deltaDh,
+    }));
+  }, [externalLinkRows]);
+
+  const playbackLinkedPoints = useMemo(() => {
+    if (!currentSnapshot?.t) return [] as { shipId: string; shipName: string; region: string; lat: number; lon: number; deltaDh: string }[];
+    const nowTs = +new Date(currentSnapshot.t);
+    const activeShipIds = new Set(filteredCurrentPoints.map((p) => p.shipId));
+    const byKey = new Map<string, LinkageEvent>();
+
+    for (const r of externalLinkRows) {
+      if (!activeShipIds.has(r.shipId)) continue;
+      const key = `${r.shipId}-${r.otherRegion}`;
+      const rTs = +new Date(r.hormuzWestTime);
+      const prev = byKey.get(key);
+      if (!prev) {
+        byKey.set(key, r);
+        continue;
+      }
+      const prevTs = +new Date(prev.hormuzWestTime);
+      const prevDelta = prevTs <= nowTs ? nowTs - prevTs : Number.MAX_SAFE_INTEGER;
+      const curDelta = rTs <= nowTs ? nowTs - rTs : Number.MAX_SAFE_INTEGER;
+      if (curDelta < prevDelta) byKey.set(key, r);
+    }
+
+    return [...byKey.values()].slice(0, 300).map((r) => ({
+      shipId: r.shipId,
+      shipName: r.shipName,
+      region: r.otherRegion,
+      lat: r.otherLat,
+      lon: r.otherLon,
+      deltaDh: r.deltaDh,
+    }));
+  }, [currentSnapshot?.t, filteredCurrentPoints, externalLinkRows]);
+
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
   }
@@ -451,6 +505,7 @@ export default function Page() {
               crossingShipIds={crossingShipIds}
               showCrossing={showCrossing}
               showNonCrossing={showNonCrossing}
+              linkedPoints={playbackLinkedPoints}
             />
           </div>
         </section>
@@ -653,6 +708,7 @@ export default function Page() {
               paths={filteredCrossingPathsForMap.slice(0, 180)}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
+              linkLines={crossingMapLinkLines}
             />
           </div>
           <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>

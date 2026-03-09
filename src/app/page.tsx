@@ -557,7 +557,6 @@ export default function Page() {
           north_arabian: null,
           yemen_channel: null,
           south_sri_lanka: null,
-          arabian_sea: null,
         } as Record<string, string | null>,
         regionFileCounts: {},
       };
@@ -571,7 +570,6 @@ export default function Page() {
       north_arabian: null,
       yemen_channel: null,
       south_sri_lanka: null,
-      arabian_sea: null,
       ...(data.metadata as any)?.latestByRegion,
     };
 
@@ -958,7 +956,6 @@ export default function Page() {
               ["north_arabian", "North Arabian"],
               ["yemen_channel", "Yemen Channel"],
               ["south_sri_lanka", "South Sri Lanka"],
-              ["arabian_sea", "Arabian Sea"],
             ].map(([key, label]) => (
               <div key={key}>Latest {label}: {freshness.latestByRegion[key] ? new Date(freshness.latestByRegion[key] as string).toUTCString() : "-"}</div>
             ))}

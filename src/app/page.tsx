@@ -27,16 +27,46 @@ type CrossingEvent = {
   direction: "east_to_west" | "west_to_east";
 };
 
+type ExternalPresencePoint = {
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  region: string;
+  t: string;
+  lat: number;
+  lon: number;
+  linkedToHormuz: boolean;
+};
+
+type LinkageEvent = {
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  fromRegion: string;
+  toRegion: string;
+  hormuzWestTime: string;
+  hormuzWestLat: number;
+  hormuzWestLon: number;
+  otherRegion: string;
+  otherRegionTime: string;
+  otherLat: number;
+  otherLon: number;
+  deltaHours: number;
+  deltaDh: string;
+};
+
 type DataShape = {
   metadata: {
     generatedAt: string;
     eastLon: number;
     westLon: number;
     minLat?: number;
+    westMinLon?: number;
     fileCount: number;
     shipCount: number;
     crossingShipCount: number;
     crossingEventCount: number;
+    linkageEventCount?: number;
   };
   vesselTypes: string[];
   shipMeta: Record<string, { shipName: string; vesselType: string }>;
@@ -44,17 +74,19 @@ type DataShape = {
   crossingsByHour: CrossingHour[];
   crossingEvents: CrossingEvent[];
   crossingPaths: CrossingPath[];
+  linkageEvents?: LinkageEvent[];
+  externalPresencePoints?: ExternalPresencePoint[];
 };
 
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 
-function computeHourly(paths: CrossingPath[], eastLon: number, westLon: number, minLat = 24) {
+function computeHourly(paths: CrossingPath[], eastLon: number, westLon: number, minLat = 24, westMinLon = 47.5) {
   const byHour = new Map<string, { hour: string; east_to_west: number; west_to_east: number }>();
   for (const ship of paths) {
     let lastSide: "east" | "west" | null = null;
     for (const p of ship.points) {
-      const side = p.lat >= minLat ? (p.lon >= eastLon ? "east" : p.lon <= westLon ? "west" : null) : null;
+      const side = p.lat >= minLat ? (p.lon >= eastLon ? "east" : p.lon <= westLon && p.lon >= westMinLon ? "west" : null) : null;
       if (!side) continue;
       if (lastSide && side !== lastSide) {
         const d = new Date(p.t);
@@ -130,6 +162,7 @@ export default function Page() {
   const [showWestToEast, setShowWestToEast] = useState(true);
   const [showCrossing, setShowCrossing] = useState(true);
   const [showNonCrossing, setShowNonCrossing] = useState(true);
+  const [showOnlyLinkedExternal, setShowOnlyLinkedExternal] = useState(false);
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
 
   useEffect(() => {
@@ -166,6 +199,8 @@ export default function Page() {
         crossingsByHour: Array.isArray(json?.crossingsByHour) ? json.crossingsByHour : [],
         crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
         crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
+        linkageEvents: Array.isArray(json?.linkageEvents) ? json.linkageEvents : [],
+        externalPresencePoints: Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : [],
       };
 
       setData(normalized);
@@ -204,17 +239,17 @@ export default function Page() {
 
   const allFilteredHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(filteredCrossingPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
+    return computeHourly(filteredCrossingPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24, data.metadata.westMinLon ?? 47.5);
   }, [data, filteredCrossingPaths]);
 
   const tankerHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(tankerPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
+    return computeHourly(tankerPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24, data.metadata.westMinLon ?? 47.5);
   }, [data, tankerPaths]);
 
   const cargoHourly = useMemo(() => {
     if (!data) return [];
-    return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24);
+    return computeHourly(cargoPaths, data.metadata.eastLon, data.metadata.westLon, data.metadata.minLat ?? 24, data.metadata.westMinLon ?? 47.5);
   }, [data, cargoPaths]);
 
   const sharedHours = useMemo(() => {
@@ -300,6 +335,75 @@ export default function Page() {
     }
     return `Crossing Paths Map — ${crossingMapTypes.length ? crossingMapTypes.join(" + ") : "None selected"}`;
   }, [crossingMapTypes]);
+
+  const linkageRows = useMemo(() => {
+    if (!data?.linkageEvents?.length) return [] as LinkageEvent[];
+    return data.linkageEvents
+      .filter((r) => selectedTypes.includes(r.vesselType))
+      .sort((a, b) => +new Date(b.hormuzWestTime) - +new Date(a.hormuzWestTime))
+      .slice(0, 800);
+  }, [data, selectedTypes]);
+
+  const externalLinkRows = useMemo(
+    () => linkageRows.filter((r) => ["suez", "malacca", "cape_good_hope"].includes(r.otherRegion)),
+    [linkageRows],
+  );
+
+  const crossingMapLinkLines = useMemo(() => {
+    return externalLinkRows.slice(0, 300).map((r) => ({
+      shipId: r.shipId,
+      shipName: r.shipName,
+      fromRegion: r.fromRegion,
+      toRegion: r.toRegion,
+      fromLat: r.hormuzWestLat,
+      fromLon: r.hormuzWestLon,
+      toLat: r.otherLat,
+      toLon: r.otherLon,
+      deltaDh: r.deltaDh,
+    }));
+  }, [externalLinkRows]);
+
+  const playbackLinkedPoints = useMemo(() => {
+    if (!data?.externalPresencePoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {
+      return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
+    }
+
+    const hormuzFrameTimes = data.snapshots.map((s) => s.t);
+    const hormuzFrameEpochs = hormuzFrameTimes.map((t) => +new Date(t));
+
+    const assigned: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string; frameTime: string }[] = [];
+
+    for (const p of data.externalPresencePoints) {
+      if (showOnlyLinkedExternal && !p.linkedToHormuz) continue;
+      const ts = +new Date(p.t);
+
+      let bestIdx = 0;
+      let bestDelta = Math.abs(hormuzFrameEpochs[0] - ts);
+      for (let i = 1; i < hormuzFrameEpochs.length; i++) {
+        const d = Math.abs(hormuzFrameEpochs[i] - ts);
+        if (d < bestDelta) {
+          bestDelta = d;
+          bestIdx = i;
+        }
+      }
+
+      assigned.push({
+        shipId: p.shipId,
+        shipName: p.shipName,
+        vesselType: p.vesselType,
+        region: p.region,
+        lat: p.lat,
+        lon: p.lon,
+        deltaDh: p.linkedToHormuz ? "linked" : "not linked",
+        frameTime: hormuzFrameTimes[bestIdx],
+      });
+    }
+
+    return assigned
+      .filter((p) => p.frameTime === currentSnapshot.t)
+      .slice(0, 4000)
+      .map(({ frameTime: _ft, ...rest }) => rest);
+  }, [data, currentSnapshot?.t, showOnlyLinkedExternal]);
 
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
@@ -417,6 +521,7 @@ export default function Page() {
             })}
             <button onClick={() => setShowCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>✕ crossing</button>
             <button onClick={() => setShowNonCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showNonCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>● non-crossing</button>
+            <button onClick={() => setShowOnlyLinkedExternal((v) => !v)} className={`px-2 py-1 rounded border ${showOnlyLinkedExternal ? "border-violet-300 text-violet-200" : "border-slate-700 text-slate-500"}`}>◉ display only linked ships: {showOnlyLinkedExternal ? "on" : "off (show all external ships)"}</button>
           </div>
 
           <div className="h-[460px] rounded-xl overflow-hidden border border-slate-800">
@@ -427,6 +532,7 @@ export default function Page() {
               crossingShipIds={crossingShipIds}
               showCrossing={showCrossing}
               showNonCrossing={showNonCrossing}
+              linkedPoints={playbackLinkedPoints}
             />
           </div>
         </section>
@@ -567,6 +673,39 @@ export default function Page() {
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+          <h2 className="text-lg font-medium">Detected From → To Regions (anchored on Hormuz West)</h2>
+          <p className="text-xs text-slate-400">Delta is measured from Hormuz West in days:hours (D:HH). Positive means after Hormuz West; negative means before.</p>
+          <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-900 sticky top-0">
+                <tr>
+                  <th className="text-left p-2">Ship</th>
+                  <th className="text-left p-2">Type</th>
+                  <th className="text-left p-2">From</th>
+                  <th className="text-left p-2">To</th>
+                  <th className="text-left p-2">Hormuz West (UTC)</th>
+                  <th className="text-left p-2">Other Region (UTC)</th>
+                  <th className="text-left p-2">Delta (D:HH)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linkageRows.map((r, idx) => (
+                  <tr key={`${r.shipId}-${r.hormuzWestTime}-${r.otherRegionTime}-${idx}`} className="border-t border-slate-800">
+                    <td className="p-2">{r.shipName} ({r.shipId})</td>
+                    <td className="p-2">{r.vesselType}</td>
+                    <td className="p-2">{r.fromRegion}</td>
+                    <td className="p-2">{r.toRegion}</td>
+                    <td className="p-2">{new Date(r.hormuzWestTime).toUTCString()}</td>
+                    <td className="p-2">{new Date(r.otherRegionTime).toUTCString()}</td>
+                    <td className="p-2 font-medium">{r.deltaDh}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">{crossingMapTitle}</h2>
           <div className="flex items-center gap-2 text-xs text-slate-300">
             <span className="text-slate-200 mr-2">Legend (click to toggle)</span>
@@ -596,6 +735,7 @@ export default function Page() {
               paths={filteredCrossingPathsForMap.slice(0, 180)}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
+              linkLines={crossingMapLinkLines}
             />
           </div>
           <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>

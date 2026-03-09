@@ -12,6 +12,17 @@ type CrossingPath = {
   directionCounts: { east_to_west: number; west_to_east: number };
   points: PathPoint[];
 };
+type LinkLine = {
+  shipId: string;
+  shipName: string;
+  fromRegion: string;
+  toRegion: string;
+  fromLat: number;
+  fromLon: number;
+  toLat: number;
+  toLon: number;
+  deltaDh: string;
+};
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
@@ -26,10 +37,12 @@ export default function CrossingPathsMap({
   paths,
   eastLon,
   westLon,
+  linkLines,
 }: {
   paths: CrossingPath[];
   eastLon: number;
   westLon: number;
+  linkLines?: LinkLine[];
 }) {
   return (
     <MapContainer center={[26.1, 56.2]} zoom={9} style={{ height: "100%", width: "100%" }}>
@@ -40,6 +53,22 @@ export default function CrossingPathsMap({
 
       <Polyline positions={[[25.4, eastLon], [27.1, eastLon]]} pathOptions={{ color: "#22d3ee", weight: 3, dashArray: "6" }} />
       <Polyline positions={[[25.4, westLon], [27.1, westLon]]} pathOptions={{ color: "#f97316", weight: 3, dashArray: "6" }} />
+
+      {(linkLines || []).map((l, idx) => (
+        <Polyline
+          key={`linkline-${l.shipId}-${idx}`}
+          positions={[[l.fromLat, l.fromLon], [l.toLat, l.toLon]]}
+          pathOptions={{ color: '#94a3b8', weight: 1, opacity: 0.75, dashArray: '3 8' }}
+        >
+          <Popup>
+            <div style={{ minWidth: 220 }}>
+              <div><strong>Ship:</strong> {l.shipName} ({l.shipId})</div>
+              <div><strong>Route:</strong> {l.fromRegion} → {l.toRegion}</div>
+              <div><strong>Δ from Hormuz West:</strong> {l.deltaDh}</div>
+            </div>
+          </Popup>
+        </Polyline>
+      ))}
 
       {paths.map((ship) => {
         const color = typeColor[ship.vesselType] || "#e5e7eb";

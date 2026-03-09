@@ -358,8 +358,10 @@ export default function Page() {
       .slice(0, 800);
   }, [data, selectedTypes]);
 
+  const externalRegions = ["suez", "malacca", "cape_good_hope", "north_arabian", "yemen_channel", "south_sri_lanka"];
+
   const externalLinkRows = useMemo(
-    () => linkageRows.filter((r) => ["suez", "malacca", "cape_good_hope"].includes(r.otherRegion)),
+    () => linkageRows.filter((r) => externalRegions.includes(r.otherRegion)),
     [linkageRows],
   );
 
@@ -421,7 +423,7 @@ export default function Page() {
     }
 
     const out: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[] = [];
-    for (const region of ["suez", "malacca", "cape_good_hope"]) {
+    for (const region of externalRegions) {
       const pick = frameRegionPick.get(`${currentSnapshot.t}|${region}`);
       if (!pick) continue;
       for (const p of pick.points) {

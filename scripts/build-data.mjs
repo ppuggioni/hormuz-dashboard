@@ -15,6 +15,15 @@ const INDEX_URLS = {
   cape_good_hope:
     process.env.CAPE_INDEX_URL ||
     'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/cape_good_hope/index.json',
+  north_arabian:
+    process.env.NORTH_ARABIAN_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/north_arabian/index.json',
+  yemen_channel:
+    process.env.YEMEN_CHANNEL_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/yemen_channel/index.json',
+  south_sri_lanka:
+    process.env.SOUTH_SRI_LANKA_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/south_sri_lanka/index.json',
 };
 
 const EAST_LON = 56.4;
@@ -249,7 +258,7 @@ async function main() {
         const side = sideFromPoint(obs.lat, obs.lon);
         if (side === 'west') regionDetected = 'hormuz_west';
         if (side === 'east') regionDetected = 'hormuz_east';
-      } else if (['suez', 'malacca', 'cape_good_hope'].includes(obs.sourceRegion)) {
+      } else if (['suez', 'malacca', 'cape_good_hope', 'north_arabian', 'yemen_channel', 'south_sri_lanka'].includes(obs.sourceRegion)) {
         regionDetected = obs.sourceRegion;
       }
 
@@ -260,7 +269,7 @@ async function main() {
   }
 
   const linkageEvents = [];
-  const targetRegions = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope'];
+  const targetRegions = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'north_arabian', 'yemen_channel', 'south_sri_lanka'];
 
   for (const [shipId, events] of zonePresenceByShip.entries()) {
     const sorted = events.slice().sort((a, b) => new Date(a.t) - new Date(b.t));
@@ -326,7 +335,7 @@ async function main() {
   const externalPresencePoints = [];
   for (const [shipId, obsList] of observationsByShip.entries()) {
     for (const o of obsList) {
-      if (!['suez', 'malacca', 'cape_good_hope'].includes(o.sourceRegion)) continue;
+      if (!['suez', 'malacca', 'cape_good_hope', 'north_arabian', 'yemen_channel', 'south_sri_lanka'].includes(o.sourceRegion)) continue;
       externalPresencePoints.push({
         shipId,
         shipName: shipMeta[shipId]?.shipName || 'Unknown',

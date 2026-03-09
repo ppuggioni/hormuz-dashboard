@@ -549,7 +549,16 @@ export default function Page() {
     if (!data) {
       return {
         processedGeneratedAt: new Date(0).toISOString(),
-        latestByRegion: { hormuz: null, suez: null, malacca: null, cape_good_hope: null } as Record<string, string | null>,
+        latestByRegion: {
+          hormuz: null,
+          suez: null,
+          malacca: null,
+          cape_good_hope: null,
+          north_arabian: null,
+          yemen_channel: null,
+          south_sri_lanka: null,
+          arabian_sea: null,
+        } as Record<string, string | null>,
         regionFileCounts: {},
       };
     }
@@ -559,6 +568,10 @@ export default function Page() {
       suez: null,
       malacca: null,
       cape_good_hope: null,
+      north_arabian: null,
+      yemen_channel: null,
+      south_sri_lanka: null,
+      arabian_sea: null,
       ...(data.metadata as any)?.latestByRegion,
     };
 
@@ -937,11 +950,24 @@ export default function Page() {
           <summary className="cursor-pointer select-none text-slate-300">Pipeline freshness diagnostics</summary>
           <div className="mt-2 space-y-1">
             <div>Processed generated at: {new Date(freshness.processedGeneratedAt).toUTCString()}</div>
-            <div>Latest Hormuz snapshot: {freshness.latestByRegion.hormuz ? new Date(freshness.latestByRegion.hormuz).toUTCString() : "-"}</div>
-            <div>Latest Suez point: {freshness.latestByRegion.suez ? new Date(freshness.latestByRegion.suez).toUTCString() : "-"}</div>
-            <div>Latest Malacca point: {freshness.latestByRegion.malacca ? new Date(freshness.latestByRegion.malacca).toUTCString() : "-"}</div>
-            <div>Latest Cape point: {freshness.latestByRegion.cape_good_hope ? new Date(freshness.latestByRegion.cape_good_hope).toUTCString() : "-"}</div>
-            <div>Region file counts: hormuz={freshness.regionFileCounts.hormuz ?? 0}, suez={freshness.regionFileCounts.suez ?? 0}, malacca={freshness.regionFileCounts.malacca ?? 0}, cape={freshness.regionFileCounts.cape_good_hope ?? 0}</div>
+            {[
+              ["hormuz", "Hormuz"],
+              ["suez", "Suez"],
+              ["malacca", "Malacca"],
+              ["cape_good_hope", "Cape of Good Hope"],
+              ["north_arabian", "North Arabian"],
+              ["yemen_channel", "Yemen Channel"],
+              ["south_sri_lanka", "South Sri Lanka"],
+              ["arabian_sea", "Arabian Sea"],
+            ].map(([key, label]) => (
+              <div key={key}>Latest {label}: {freshness.latestByRegion[key] ? new Date(freshness.latestByRegion[key] as string).toUTCString() : "-"}</div>
+            ))}
+            <div>
+              Region file counts: {Object.entries(freshness.regionFileCounts || {})
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([k, v]) => `${k}=${v ?? 0}`)
+                .join(", ")}
+            </div>
           </div>
         </details>
       </div>

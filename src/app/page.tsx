@@ -368,16 +368,24 @@ export default function Page() {
       return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
     }
 
+    const MAX_FRAME_DELTA_MS = 30 * 60 * 1000;
     const hormuzFrameTimes = data.snapshots.map((s) => s.t);
     const hormuzFrameEpochs = hormuzFrameTimes.map((t) => +new Date(t));
 
-    const assigned: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string; frameTime: string }[] = [];
-
-    const MAX_FRAME_DELTA_MS = 30 * 60 * 1000;
-
+    // Group external points by region+snapshot time first.
+    const grouped = new Map<string, ExternalPresencePoint[]>();
     for (const p of data.externalPresencePoints) {
       if (showOnlyLinkedExternal && !p.linkedToHormuz) continue;
-      const ts = +new Date(p.t);
+      const key = `${p.region}|${p.t}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(p);
+    }
+
+    // External -> closest Hormuz frame mapping (with hard 30m cutoff), one best external snapshot per region per frame.
+    const frameRegionPick = new Map<string, { points: ExternalPresencePoint[]; deltaMs: number }>();
+    for (const [key, points] of grouped.entries()) {
+      const [region, t] = key.split("|");
+      const ts = +new Date(t);
 
       let bestIdx = 0;
       let bestDelta = Math.abs(hormuzFrameEpochs[0] - ts);
@@ -391,22 +399,31 @@ export default function Page() {
 
       if (bestDelta > MAX_FRAME_DELTA_MS) continue;
 
-      assigned.push({
-        shipId: p.shipId,
-        shipName: p.shipName,
-        vesselType: p.vesselType,
-        region: p.region,
-        lat: p.lat,
-        lon: p.lon,
-        deltaDh: p.linkedToHormuz ? "linked" : "not linked",
-        frameTime: hormuzFrameTimes[bestIdx],
-      });
+      const frameKey = `${hormuzFrameTimes[bestIdx]}|${region}`;
+      const prev = frameRegionPick.get(frameKey);
+      if (!prev || bestDelta < prev.deltaMs) {
+        frameRegionPick.set(frameKey, { points, deltaMs: bestDelta });
+      }
     }
 
-    return assigned
-      .filter((p) => p.frameTime === currentSnapshot.t)
-      .slice(0, 4000)
-      .map(({ frameTime: _ft, ...rest }) => rest);
+    const out: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[] = [];
+    for (const region of ["suez", "malacca", "cape_good_hope"]) {
+      const pick = frameRegionPick.get(`${currentSnapshot.t}|${region}`);
+      if (!pick) continue;
+      for (const p of pick.points) {
+        out.push({
+          shipId: p.shipId,
+          shipName: p.shipName,
+          vesselType: p.vesselType,
+          region: p.region,
+          lat: p.lat,
+          lon: p.lon,
+          deltaDh: p.linkedToHormuz ? "linked" : "not linked",
+        });
+      }
+    }
+
+    return out.slice(0, 4000);
   }, [data, currentSnapshot?.t, showOnlyLinkedExternal]);
 
   if (!data) {

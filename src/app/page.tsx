@@ -610,6 +610,24 @@ export default function Page() {
             >
               Data source: {splitMode ? "split-v2" : "legacy"}
             </button>
+            <button
+              onClick={async () => {
+                const email = window.prompt("Enter your email for tanker crossing alerts:");
+                if (!email) return;
+                const r = await fetch('/api/alerts/signup', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email }),
+                });
+                const j = await r.json().catch(() => ({}));
+                if (r.ok) alert('Check your inbox to confirm alerts subscription.');
+                else alert(`Signup failed: ${j?.error || 'unknown_error'}`);
+              }}
+              className="inline-flex items-center rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-violet-200"
+              title="Subscribe to tanker crossing email alerts"
+            >
+              Sign up for alerts
+            </button>
           </div>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
           <div className="mt-2 inline-flex items-center rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">

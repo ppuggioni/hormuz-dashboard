@@ -74,4 +74,14 @@ API_BASE="${SUPABASE_URL%/}/storage/v1"
   done
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] upload done files=${#OBJECTS[@]} raw_total=${total_raw} gzip_total=${total_gzip} bytes"
+
+  if [[ -n "${RESEND_API_KEY:-}" && -n "${ALERTS_FROM_EMAIL:-}" ]]; then
+    if node "$ROOT/scripts/dispatch-alerts.mjs"; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] alerts dispatch done"
+    else
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] alerts dispatch failed (non-fatal)"
+    fi
+  else
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] alerts dispatch skipped (email env missing)"
+  fi
 } >> "$LOG" 2>&1

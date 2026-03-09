@@ -373,6 +373,8 @@ export default function Page() {
 
     const assigned: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string; frameTime: string }[] = [];
 
+    const MAX_FRAME_DELTA_MS = 30 * 60 * 1000;
+
     for (const p of data.externalPresencePoints) {
       if (showOnlyLinkedExternal && !p.linkedToHormuz) continue;
       const ts = +new Date(p.t);
@@ -386,6 +388,8 @@ export default function Page() {
           bestIdx = i;
         }
       }
+
+      if (bestDelta > MAX_FRAME_DELTA_MS) continue;
 
       assigned.push({
         shipId: p.shipId,

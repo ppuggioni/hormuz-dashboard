@@ -461,7 +461,7 @@ export default function Page() {
       .slice(0, 800);
   }, [data, selectedTypes, linkSort]);
 
-  const externalRegions = ["suez", "malacca", "cape_good_hope", "north_arabian", "yemen_channel", "south_sri_lanka"];
+  const externalRegions = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka"];
 
   const externalLinkRows = useMemo(
     () => linkageRows.filter((r) => externalRegions.includes(r.otherRegion)),
@@ -554,7 +554,6 @@ export default function Page() {
           suez: null,
           malacca: null,
           cape_good_hope: null,
-          north_arabian: null,
           yemen_channel: null,
           south_sri_lanka: null,
         } as Record<string, string | null>,
@@ -567,7 +566,6 @@ export default function Page() {
       suez: null,
       malacca: null,
       cape_good_hope: null,
-      north_arabian: null,
       yemen_channel: null,
       south_sri_lanka: null,
       ...(data.metadata as any)?.latestByRegion,
@@ -953,7 +951,6 @@ export default function Page() {
               ["suez", "Suez"],
               ["malacca", "Malacca"],
               ["cape_good_hope", "Cape of Good Hope"],
-              ["north_arabian", "North Arabian"],
               ["yemen_channel", "Yemen Channel"],
               ["south_sri_lanka", "South Sri Lanka"],
             ].map(([key, label]) => (

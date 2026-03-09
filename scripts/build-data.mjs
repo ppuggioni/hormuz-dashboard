@@ -350,24 +350,26 @@ async function main() {
   }
 
   const vesselTypes = [...new Set(Object.values(shipMeta).map((m) => m.vesselType))].sort();
+  const generatedAt = new Date().toISOString();
+  const baseMetadata = {
+    generatedAt,
+    sourceIndexUrl: INDEX_URLS.hormuz,
+    sourceIndexes: INDEX_URLS,
+    eastLon: EAST_LON,
+    westLon: WEST_LON,
+    westMinLon: WEST_MIN_LON,
+    minLat: MIN_LAT,
+    fileCount: hormuzFiles.length,
+    regionFileCounts: Object.fromEntries(Object.entries(regionFiles).map(([k, v]) => [k, v.length])),
+    shipCount: Object.keys(shipMeta).length,
+    crossingShipCount: crossingShipIds.size,
+    crossingEventCount: crossingEvents.length,
+    linkageEventCount: dedupedLinkageEvents.length,
+    externalPresenceCount: externalPresencePoints.length,
+  };
 
   const output = {
-    metadata: {
-      generatedAt: new Date().toISOString(),
-      sourceIndexUrl: INDEX_URLS.hormuz,
-      sourceIndexes: INDEX_URLS,
-      eastLon: EAST_LON,
-      westLon: WEST_LON,
-      westMinLon: WEST_MIN_LON,
-      minLat: MIN_LAT,
-      fileCount: hormuzFiles.length,
-      regionFileCounts: Object.fromEntries(Object.entries(regionFiles).map(([k, v]) => [k, v.length])),
-      shipCount: Object.keys(shipMeta).length,
-      crossingShipCount: crossingShipIds.size,
-      crossingEventCount: crossingEvents.length,
-      linkageEventCount: dedupedLinkageEvents.length,
-      externalPresenceCount: externalPresencePoints.length,
-    },
+    metadata: baseMetadata,
     vesselTypes,
     shipMeta,
     snapshots,
@@ -378,13 +380,83 @@ async function main() {
     externalPresencePoints,
   };
 
+  const wrap = (fileKind, data, window = null, metadata = {}) => ({
+    schemaVersion: 'v2',
+    fileKind,
+    window,
+    generatedAt,
+    sourceRun: {
+      hormuzIndexRunCount: regionFiles.hormuz?.length || 0,
+      suezIndexRunCount: regionFiles.suez?.length || 0,
+      malaccaIndexRunCount: regionFiles.malacca?.length || 0,
+      capeIndexRunCount: regionFiles.cape_good_hope?.length || 0,
+    },
+    metadata,
+    data,
+  });
+
+  const selectSnapshotsWindow = (hours) => {
+    if (hours === 'all') return snapshots;
+    const cutoff = +new Date(generatedAt) - hours * 3600 * 1000;
+    return snapshots.filter((s) => +new Date(s.t) >= cutoff);
+  };
+
   const outDir = path.resolve('public/data');
   await fs.mkdir(outDir, { recursive: true });
-  const finalPath = path.join(outDir, 'processed.json');
-  const tmpPath = path.join(outDir, 'processed.json.tmp');
-  await fs.writeFile(tmpPath, JSON.stringify(output));
-  await fs.rename(tmpPath, finalPath);
-  console.log('Wrote public/data/processed.json');
+
+  async function writeJson(name, obj) {
+    const finalPath = path.join(outDir, name);
+    const tmpPath = path.join(outDir, `${name}.tmp`);
+    await fs.writeFile(tmpPath, JSON.stringify(obj));
+    await fs.rename(tmpPath, finalPath);
+  }
+
+  // Legacy monolith (kept for compatibility during migration)
+  await writeJson('processed.json', output);
+
+  // New split outputs
+  await writeJson(
+    'processed_core.json',
+    wrap(
+      'core',
+      {
+        vesselTypes,
+        shipMeta,
+        crossingEvents,
+        crossingsByHour,
+        linkageEvents: dedupedLinkageEvents,
+        externalPresencePoints,
+      },
+      null,
+      baseMetadata,
+    ),
+  );
+
+  await writeJson(
+    'processed_paths.json',
+    wrap('paths', { crossingPaths }, 'all', { pathCount: crossingPaths.length }),
+  );
+
+  for (const [label, hours] of [
+    ['24h', 24],
+    ['48h', 48],
+    ['72h', 72],
+    ['all', 'all'],
+  ]) {
+    const snaps = selectSnapshotsWindow(hours);
+    const pointCount = snaps.reduce((sum, s) => sum + (s.points?.length || 0), 0);
+    await writeJson(
+      `processed_playback_${label}.json`,
+      wrap('playback', { snapshots: snaps }, label, {
+        snapshotCount: snaps.length,
+        pointCount,
+        fromUtc: snaps.length ? snaps[0].t : null,
+        toUtc: snaps.length ? snaps[snaps.length - 1].t : null,
+      }),
+    );
+  }
+
+  console.log('Wrote public/data/processed.json + split v2 files');
 }
 
 main().catch((err) => {

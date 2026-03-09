@@ -164,35 +164,76 @@ export default function Page() {
   const [showNonCrossing, setShowNonCrossing] = useState(true);
   const [showOnlyLinkedExternal, setShowOnlyLinkedExternal] = useState(false);
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
+  const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h" | "72h" | "all">("24h");
+  const [playbackLoading, setPlaybackLoading] = useState(false);
+  const [splitMode, setSplitMode] = useState(false);
 
   useEffect(() => {
-    const remoteUrl = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL;
-    const candidates = [remoteUrl, "/data/processed.json"].filter(Boolean) as string[];
+    const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
+    const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+
+    const fetchJson = async (url: string) => {
+      const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+      if (!r.ok) throw new Error(`fetch failed ${r.status}`);
+      const buf = await r.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let text = "";
+      const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+      if (isGzip && typeof DecompressionStream !== "undefined") {
+        const ds = new DecompressionStream("gzip");
+        const stream = new Blob([bytes]).stream().pipeThrough(ds);
+        text = await new Response(stream).text();
+      } else {
+        text = new TextDecoder().decode(bytes);
+      }
+      return JSON.parse(text);
+    };
 
     const load = async () => {
+      try {
+        const core = await fetchJson(`${root}/processed_core.json`);
+        const paths = await fetchJson(`${root}/processed_paths.json`);
+        const playback24 = await fetchJson(`${root}/processed_playback_24h.json`);
+
+        const normalized: DataShape = {
+          metadata: core?.metadata || {
+            generatedAt: new Date().toISOString(),
+            eastLon: 56.4,
+            westLon: 56.15,
+            minLat: 24,
+            fileCount: 0,
+            shipCount: 0,
+            crossingShipCount: 0,
+            crossingEventCount: 0,
+          },
+          vesselTypes: Array.isArray(core?.data?.vesselTypes) ? core.data.vesselTypes : [],
+          shipMeta: core?.data?.shipMeta || {},
+          snapshots: Array.isArray(playback24?.data?.snapshots) ? playback24.data.snapshots : [],
+          crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
+          crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
+          crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
+          linkageEvents: Array.isArray(core?.data?.linkageEvents) ? core.data.linkageEvents : [],
+          externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
+        };
+
+        setSplitMode(true);
+        setData(normalized);
+        const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
+        setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
+        setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults.length ? defaults : normalized.vesselTypes);
+        return;
+      } catch {
+        // fallback to legacy monolith
+      }
+
       let json: any = null;
-      for (const base of candidates) {
+      try {
+        json = await fetchJson(remoteBase);
+      } catch {
         try {
-          const r = await fetch(`${base}?t=${Date.now()}`);
-          if (!r.ok) continue;
-
-          const buf = await r.arrayBuffer();
-          const bytes = new Uint8Array(buf);
-          let text = "";
-
-          const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
-          if (isGzip && typeof DecompressionStream !== "undefined") {
-            const ds = new DecompressionStream("gzip");
-            const stream = new Blob([bytes]).stream().pipeThrough(ds);
-            text = await new Response(stream).text();
-          } else {
-            text = new TextDecoder().decode(bytes);
-          }
-
-          json = JSON.parse(text);
-          if (json?.metadata && Array.isArray(json?.snapshots)) break;
+          json = await fetchJson('/data/processed.json');
         } catch {
-          // try next candidate
+          json = null;
         }
       }
 
@@ -217,6 +258,7 @@ export default function Page() {
         externalPresencePoints: Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : [],
       };
 
+      setSplitMode(false);
       setData(normalized);
       const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
       setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
@@ -233,6 +275,39 @@ export default function Page() {
     }, 650);
     return () => clearInterval(id);
   }, [playing, data?.snapshots?.length]);
+
+  useEffect(() => {
+    if (!splitMode || !data) return;
+    const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
+    const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+
+    const fetchPlayback = async () => {
+      setPlaybackLoading(true);
+      try {
+        const r = await fetch(`${root}/processed_playback_${playbackWindow}.json?t=${Date.now()}`);
+        if (!r.ok) return;
+        const buf = await r.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let text = "";
+        const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+        if (isGzip && typeof DecompressionStream !== "undefined") {
+          const ds = new DecompressionStream("gzip");
+          const stream = new Blob([bytes]).stream().pipeThrough(ds);
+          text = await new Response(stream).text();
+        } else {
+          text = new TextDecoder().decode(bytes);
+        }
+        const json = JSON.parse(text);
+        const snaps = Array.isArray(json?.data?.snapshots) ? json.data.snapshots : [];
+        setData((prev) => (prev ? { ...prev, snapshots: snaps } : prev));
+        setFrameIndex(0);
+      } finally {
+        setPlaybackLoading(false);
+      }
+    };
+
+    fetchPlayback();
+  }, [splitMode, playbackWindow]);
 
   const currentSnapshot = data?.snapshots?.[frameIndex];
 
@@ -548,13 +623,26 @@ export default function Page() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Playback Map (filtered vessels)</h2>
             <div className="flex items-center gap-2 text-sm">
+              {splitMode ? (
+                <div className="flex items-center gap-1 mr-2">
+                  {(["24h", "48h", "72h", "all"] as const).map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => setPlaybackWindow(w)}
+                      className={`rounded-md border px-2 py-1 ${playbackWindow === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <button
                 onClick={() => setPlaying((v) => !v)}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 hover:bg-slate-700"
               >
                 {playing ? "Pause" : "Play"}
               </button>
-              <span className="text-slate-400">{currentSnapshot?.t ? new Date(currentSnapshot.t).toUTCString() : "-"}</span>
+              <span className="text-slate-400">{currentSnapshot?.t ? new Date(currentSnapshot.t).toUTCString() : "-"}{playbackLoading ? " (loading...)" : ""}</span>
             </div>
           </div>
 

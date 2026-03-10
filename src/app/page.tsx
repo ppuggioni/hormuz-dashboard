@@ -317,7 +317,9 @@ export default function Page() {
       setData(normalized);
       setCandidateSnapshots(Array.isArray(normalized.snapshots) ? normalized.snapshots : []);
       setExternalPoints(Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : []);
-      const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
+      const defaults = normalized.vesselTypes.includes("tanker")
+        ? ["tanker"]
+        : ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
       setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
       setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults.length ? defaults : normalized.vesselTypes);
     };

@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
-import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
 
 function scoreToYellowGreen(score: number) {
   const t = Math.max(0, Math.min(1, (score - 30) / 20));
@@ -10,6 +10,23 @@ function scoreToYellowGreen(score: number) {
   const g = Math.round(158 + (197 - 158) * t);
   const b = Math.round(11 + (94 - 11) * t);
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
+  const dLon = b.lon - a.lon;
+  const dLat = b.lat - a.lat;
+  return (Math.atan2(dLon, dLat) * 180) / Math.PI;
+}
+
+function triangleIcon(color: string, deg: number, size = 10) {
+  const h = Math.round(size * 1.15);
+  const w = Math.round(size * 0.7);
+  return divIcon({
+    className: "",
+    html: `<div style='transform: rotate(${deg}deg); width:0;height:0;border-left:${w / 2}px solid transparent;border-right:${w / 2}px solid transparent;border-bottom:${h}px solid ${color};'></div>`,
+    iconSize: [w, h],
+    iconAnchor: [Math.round(w / 2), Math.round(h * 0.75)],
+  });
 }
 
 type PathPoint = { t: string; lat: number; lon: number };
@@ -75,18 +92,25 @@ export default function CandidatePathsMap({
             <Polyline
               key={`cand-line-${c.shipId}`}
               positions={polyline}
-              pathOptions={{ color: baseColor, weight: isSelected ? 2.2 : 1.2, opacity: isSelected ? 0.95 : 0.72, dashArray: isSelected ? "" : "4 8" }}
+              pathOptions={{ color: baseColor, weight: isSelected ? 1.2 : 1.1, opacity: isSelected ? 0.95 : 0.72, dashArray: isSelected ? "3 6" : "4 8" }}
               eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
             />
-            {c.points.map((p, idx) => (
-              <CircleMarker
+            {c.points.map((p, idx) => {
+              const prev = c.points[idx - 1];
+              const next = c.points[idx + 1];
+              const deg = next
+                ? headingDeg({ lat: p.lat, lon: p.lon }, { lat: next.lat, lon: next.lon })
+                : prev
+                  ? headingDeg({ lat: prev.lat, lon: prev.lon }, { lat: p.lat, lon: p.lon })
+                  : 0;
+              return (
+              <Marker
                 key={`cand-pt-${c.shipId}-${idx}`}
-                center={[p.lat, p.lon]}
-                radius={isSelected ? 2.3 : 1.8}
-                pathOptions={{ color: baseColor, fillColor: baseColor, fillOpacity: isSelected ? 0.95 : 0.8, weight: 1 }}
+                position={[p.lat, p.lon]}
+                icon={triangleIcon(baseColor, deg, isSelected ? 11 : 10)}
                 eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
               />
-            ))}
+            )})}
             <Marker
               key={`cand-last-${c.shipId}`}
               position={[last.lat, last.lon]}
@@ -137,7 +161,7 @@ export default function CandidatePathsMap({
           position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid ${labelColor};border-radius:7px;padding:4px 6px;color:${labelColor};font-size:10px;white-space:nowrap;'>${s.shipName} — ${new Date(s.lastSeenAt).toUTCString()}</div>`,
+            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid ${labelColor};border-radius:7px;padding:4px 6px;color:${labelColor};font-size:10px;white-space:nowrap;'>${s.shipName} — ${new Date(s.lastSeenAt).toUTCString()} — confidence: ${s.confidenceBand === "high" ? "high" : s.confidenceBand === "low" ? "low" : "none"}</div>`,
             iconSize: [380, 22],
             iconAnchor: [0, 30],
           })}

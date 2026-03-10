@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
 import { divIcon } from "leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
@@ -17,13 +17,10 @@ const typeColor: Record<string, string> = {
   unknown: "#94a3b8",
 };
 
-function xAt(lat: number, lon: number, size = 0.045): [[number, number], [number, number], [number, number], [number, number]] {
-  return [
-    [lat - size, lon - size],
-    [lat + size, lon + size],
-    [lat - size, lon + size],
-    [lat + size, lon - size],
-  ];
+function triangleIconHtml(color: string, deg: number, size = 14) {
+  const h = Math.round(size * 1.1);
+  const w = Math.round(size * 0.7);
+  return `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
 }
 
 function directionDegrees(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {
@@ -136,6 +133,24 @@ export default function PlaybackMap({
     [selectedTrailWithDir, timestampLabelStep],
   );
 
+  const pointHeadingByShip = useMemo(() => {
+    const m = new Map<string, number>();
+    const byShip = new Map<string, Array<{ lat: number; lon: number }>>();
+    for (const s of snapshots) {
+      for (const p of s.points) {
+        if (!byShip.has(p.shipId)) byShip.set(p.shipId, []);
+        byShip.get(p.shipId)!.push({ lat: p.lat, lon: p.lon });
+      }
+    }
+    for (const [shipId, arr] of byShip.entries()) {
+      if (arr.length < 2) continue;
+      const a = arr[arr.length - 2];
+      const b = arr[arr.length - 1];
+      m.set(shipId, directionDegrees(a, b));
+    }
+    return m;
+  }, [snapshots]);
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       {selectedShipMeta ? (
@@ -237,12 +252,12 @@ export default function PlaybackMap({
 
       {(linkedPoints || []).map((p, idx) => {
         const color = typeColor[p.vesselType] || '#e5e7eb';
+        const deg = pointHeadingByShip.get(p.shipId) || 0;
         return (
-        <CircleMarker
+        <Marker
           key={`linked-${p.shipId}-${p.region}-${idx}`}
-          center={[p.lat, p.lon]}
-          radius={1}
-          pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 1 }}
+          position={[p.lat, p.lon]}
+          icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 12), iconSize: [12, 14], iconAnchor: [6, 10] })}
         >
           <Popup>
             <div style={{ minWidth: 200 }}>
@@ -253,7 +268,7 @@ export default function PlaybackMap({
               <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
             </div>
           </Popup>
-        </CircleMarker>
+        </Marker>
       )})}
 
       {points.map((p) => {
@@ -261,46 +276,15 @@ export default function PlaybackMap({
         const isCandidate = Boolean(candidateShipIds?.has(p.shipId));
         const color = isCandidate ? "#f59e0b" : baseColor;
         const isCrosser = crossingShipIds.has(p.shipId);
+        if (isCrosser && !showCrossing) return null;
+        if (!isCrosser && !showNonCrossing) return null;
 
-        if (isCrosser) {
-          if (!showCrossing) return null;
-          const [a1, a2, b1, b2] = xAt(p.lat, p.lon);
-          return (
-            <>
-              <Polyline
-                key={`${p.shipId}-${p.lat}-${p.lon}-x1`}
-                positions={[a1, a2]}
-                pathOptions={{ color, weight: 3 }}
-                eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
-              >
-                <Popup>
-                  <div style={{ minWidth: 180 }}>
-                    <div><strong>Name:</strong> {p.shipName}</div>
-                    <div><strong>Ship ID:</strong> {p.shipId}</div>
-                    <div><strong>Type:</strong> {p.vesselType}</div>
-                    <div><strong>Status:</strong> crossing vessel{isCandidate ? " (candidate dark crosser)" : ""}</div>
-                    <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
-                    <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
-                  </div>
-                </Popup>
-              </Polyline>
-              <Polyline
-                key={`${p.shipId}-${p.lat}-${p.lon}-x2`}
-                positions={[b1, b2]}
-                pathOptions={{ color, weight: 3 }}
-                eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
-              />
-            </>
-          );
-        }
-
-        if (!showNonCrossing) return null;
+        const deg = pointHeadingByShip.get(p.shipId) || 0;
         return (
-          <CircleMarker
-            key={`${p.shipId}-${p.lat}-${p.lon}-dot`}
-            center={[p.lat, p.lon]}
-            radius={1}
-            pathOptions={{ color, fillColor: color, fillOpacity: 0.9, weight: 1 }}
+          <Marker
+            key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
+            position={[p.lat, p.lon]}
+            icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 15), iconSize: [15, 18], iconAnchor: [7, 12] })}
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
             <Popup>
@@ -308,12 +292,12 @@ export default function PlaybackMap({
                 <div><strong>Name:</strong> {p.shipName}</div>
                 <div><strong>Ship ID:</strong> {p.shipId}</div>
                 <div><strong>Type:</strong> {p.vesselType}</div>
-                <div><strong>Status:</strong> {isCandidate ? "candidate dark crosser" : "non-crossing"}</div>
+                <div><strong>Status:</strong> {isCrosser ? `crossing vessel${isCandidate ? " (candidate dark crosser)" : ""}` : isCandidate ? "candidate dark crosser" : "non-crossing"}</div>
                 <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
                 <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
               </div>
             </Popup>
-          </CircleMarker>
+          </Marker>
         );
       })}
     </MapContainer>

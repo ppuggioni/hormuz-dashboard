@@ -65,14 +65,14 @@ export default function CandidatePathsMap({
             <Polyline
               key={`cand-line-${c.shipId}`}
               positions={polyline}
-              pathOptions={{ color: baseColor, weight: isSelected ? 3.2 : 1.8, opacity: isSelected ? 0.98 : 0.75, dashArray: isSelected ? "" : "4 8" }}
+              pathOptions={{ color: baseColor, weight: isSelected ? 2.2 : 1.2, opacity: isSelected ? 0.95 : 0.72, dashArray: isSelected ? "" : "4 8" }}
               eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
             />
             {c.points.map((p, idx) => (
               <CircleMarker
                 key={`cand-pt-${c.shipId}-${idx}`}
                 center={[p.lat, p.lon]}
-                radius={isSelected ? 2.7 : 2}
+                radius={isSelected ? 2.3 : 1.8}
                 pathOptions={{ color: baseColor, fillColor: baseColor, fillOpacity: isSelected ? 0.95 : 0.8, weight: 1 }}
                 eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
               />
@@ -83,8 +83,8 @@ export default function CandidatePathsMap({
               eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
               icon={divIcon({
                 className: "",
-                html: `<div style='color:${isSelected ? "#111827" : "#f8fafc"};font-size:11px;font-weight:700;text-shadow:0 1px 2px rgba(2,6,23,.95);white-space:nowrap;transform:translate(8px,-8px);'>disappeared: ${new Date(c.lastSeenAt).toUTCString()} | score: ${c.score.toFixed(1)}</div>`,
-                iconSize: [520, 14],
+                html: "",
+                iconSize: [1, 1],
                 iconAnchor: [0, 0],
               })}
             >
@@ -124,8 +124,8 @@ export default function CandidatePathsMap({
           position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:rgba(2,6,23,0.88);border:1px solid #475569;border-radius:8px;padding:6px 8px;color:#e2e8f0;font-size:11px;white-space:nowrap;'>Selected: ${s.shipName} (${s.shipId})</div>`,
-            iconSize: [260, 26],
+            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid #475569;border-radius:7px;padding:4px 6px;color:#e2e8f0;font-size:10px;white-space:nowrap;'>${s.shipName} — ${new Date(s.lastSeenAt).toUTCString()}</div>`,
+            iconSize: [380, 22],
             iconAnchor: [0, 30],
           })}
         />

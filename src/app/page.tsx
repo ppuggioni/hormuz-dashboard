@@ -524,7 +524,7 @@ export default function Page() {
       const proximityScore = proximityRaw * 20;
       const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
       const cosineTowardness = segCount ? towardCosineSum / segCount : 0;
-      const tangentialPenalty = approachDirectionRaw > 0 ? -(1 - cosineTowardness) * 12 : 0;
+      const tangentialPenalty = approachDirectionRaw > 0 ? -(1 - cosineTowardness) * 5 : 0;
       const darknessScore = 0;
 
       const lastSegmentKnots = segSpeeds.length ? segSpeeds[segSpeeds.length - 1] : 0;

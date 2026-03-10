@@ -71,6 +71,7 @@ type CandidateCrosser = {
   darknessScore: number;
   directionScore: number;
   readinessScore: number;
+  onePointPostAnchoringPenalty: number;
   lastSegmentKnots: number;
   prevSegmentKnots: number;
   lastSeenAt: string;
@@ -438,7 +439,17 @@ export default function Page() {
       if (lastSegmentKnots < 2 && approachDirectionRaw <= 0) readinessScore = -12;
       if (lastSegmentKnots >= 4 && lastSegmentKnots > prevSegmentKnots && approachDirectionRaw > 0) readinessScore = 4;
 
-      const score = approachScore + proximityScore + directionScore + readinessScore;
+      // If vessel appears to come off anchoring but has only one post-anchoring segment before disappearing,
+      // reduce confidence (insufficient sustained underway evidence).
+      let onePointPostAnchoringPenalty = 0;
+      if (segSpeeds.length >= 2) {
+        const anchorLikeCount = segSpeeds.slice(0, -1).filter((v) => v < 2).length;
+        const hasAnchorLikeHistory = anchorLikeCount >= 1;
+        const hasOnlyOnePostAnchorSegment = segSpeeds[segSpeeds.length - 1] >= 2 && segSpeeds[segSpeeds.length - 2] < 2;
+        if (hasAnchorLikeHistory && hasOnlyOnePostAnchorSegment) onePointPostAnchoringPenalty = -6;
+      }
+
+      const score = approachScore + proximityScore + directionScore + readinessScore + onePointPostAnchoringPenalty;
 
       out.push({
         shipId,
@@ -456,6 +467,7 @@ export default function Page() {
         darknessScore,
         directionScore,
         readinessScore,
+        onePointPostAnchoringPenalty,
         lastSegmentKnots,
         prevSegmentKnots,
         lastSeenAt: last.t,
@@ -1179,6 +1191,7 @@ export default function Page() {
                   approachConfidence: c.approachConfidence,
                   proximityRaw: c.proximityRaw,
                   approachDirectionRaw: c.approachDirectionRaw,
+                  onePointPostAnchoringPenalty: c.onePointPostAnchoringPenalty,
                   lastSegmentKnots: c.lastSegmentKnots,
                   prevSegmentKnots: c.prevSegmentKnots,
                 }))}
@@ -1235,7 +1248,7 @@ export default function Page() {
           <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
-              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + readinessScore.</div>
+              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + readinessScore + onePointPostAnchoringPenalty.</div>
               <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
               <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
               <div><strong>Darkness filter gate:</strong> candidate must be dark for more than 6 hours (darkHours &gt; 6); darkness is not scored.</div>
@@ -1255,6 +1268,7 @@ export default function Page() {
               <div>- if lastSegmentKnots &lt; 2 and direction not toward midpoint =&gt; -12 penalty.</div>
               <div>- if lastSegmentKnots &ge; 4 and accelerating vs previous segment and toward midpoint =&gt; +4 bonus.</div>
               <div><strong>lastSegmentKnots</strong> / <strong>prevSegmentKnots</strong>: speeds on the final two pre-disappearance segments.</div>
+              <div><strong>onePointPostAnchoringPenalty</strong>: if vessel has anchor-like history (&lt;2 kn) and only one post-anchor segment before disappearance, apply -6.</div>
               <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time), used only as a strict filter (&gt; 6h).</div>
             </div>
           </details>

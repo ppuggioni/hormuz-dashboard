@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Popup, Polyline, TileLayer } from "react-leaflet";
+import { CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, Tooltip } from "react-leaflet";
+import { divIcon } from "leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
 type Snapshot = { t: string; points: Point[] };
@@ -23,6 +24,22 @@ function xAt(lat: number, lon: number, size = 0.045): [[number, number], [number
     [lat - size, lon + size],
     [lat + size, lon - size],
   ];
+}
+
+function directionDegrees(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {
+  const dLon = to.lon - from.lon;
+  const dLat = to.lat - from.lat;
+  const rad = Math.atan2(dLon, dLat);
+  return (rad * 180) / Math.PI;
+}
+
+function timestampShort(ts: string): string {
+  const d = new Date(ts);
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const hour = String(d.getUTCHours()).padStart(2, "0");
+  const min = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${day}/${month} ${hour}:${min} UTC`;
 }
 
 export default function PlaybackMap({
@@ -68,6 +85,21 @@ export default function PlaybackMap({
     return hit || null;
   }, [selectedShipId, snapshots]);
 
+  const selectedTrailWithDir = useMemo(() => {
+    return selectedTrail.map((p, idx) => {
+      const next = selectedTrail[idx + 1] || null;
+      const prev = selectedTrail[idx - 1] || null;
+      const dirRef = next || prev;
+      const deg = dirRef
+        ? directionDegrees(
+            { lat: p.lat, lon: p.lon },
+            next ? { lat: next.lat, lon: next.lon } : { lat: p.lat + (p.lat - prev!.lat), lon: p.lon + (p.lon - prev!.lon) },
+          )
+        : 0;
+      return { ...p, dirDeg: deg };
+    });
+  }, [selectedTrail]);
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       {selectedShipMeta ? (
@@ -108,12 +140,28 @@ export default function PlaybackMap({
           pathOptions={{ color: "#9ca3af", weight: 1, opacity: 0.85, dashArray: "2 8" }}
         />
       ) : null}
-      {selectedTrail.map((p, idx) => (
+      {selectedTrailWithDir.map((p, idx) => (
         <CircleMarker
           key={`trail-dot-${selectedShipId}-${idx}`}
           center={[p.lat, p.lon]}
           radius={1.6}
           pathOptions={{ color: "#9ca3af", fillColor: "#9ca3af", fillOpacity: 0.8, weight: 1 }}
+        >
+          <Tooltip permanent direction="top" offset={[0, -8]} opacity={0.9} className="trail-ts-label">
+            {timestampShort(p.t)}
+          </Tooltip>
+        </CircleMarker>
+      ))}
+      {selectedTrailWithDir.map((p, idx) => (
+        <Marker
+          key={`trail-arrow-${selectedShipId}-${idx}`}
+          position={[p.lat, p.lon]}
+          icon={divIcon({
+            className: "",
+            html: `<div style='transform: rotate(${p.dirDeg}deg); color:#9ca3af; font-size:11px; line-height:11px;'>▲</div>`,
+            iconSize: [11, 11],
+            iconAnchor: [5, 5],
+          })}
         />
       ))}
 

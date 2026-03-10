@@ -2,7 +2,7 @@
 
 import { Fragment } from "react";
 import { divIcon } from "leaflet";
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
 
 type PathPoint = { t: string; lat: number; lon: number };
 type CrossingPath = {
@@ -127,6 +127,9 @@ export default function CrossingPathsMap({
                 position={[p.lat, p.lon]}
                 icon={triangleIcon(color, deg, 11)}
               >
+                <Tooltip>
+                  {ship.shipName} ({ship.shipId}) — {new Date(p.t).toUTCString()}
+                </Tooltip>
                 <Popup>
                   <div style={{ minWidth: 220 }}>
                     <div><strong>Name:</strong> {ship.shipName}</div>

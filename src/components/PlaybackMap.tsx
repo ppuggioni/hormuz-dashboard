@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polyline, TileLayer, Tooltip } from "react-leaflet";
 import { divIcon } from "leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
@@ -215,7 +215,9 @@ export default function PlaybackMap({
               iconSize: isFinal ? [10, 10] : [18, 18],
               iconAnchor: isFinal ? [5, 5] : [9, 9],
             })}
-          />
+          >
+            <Tooltip>{timestampShort(p.t)}</Tooltip>
+          </Marker>
         );
       })}
       {labeledTrailPoints.map((p, idx) => (
@@ -259,6 +261,9 @@ export default function PlaybackMap({
           position={[p.lat, p.lon]}
           icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 12), iconSize: [12, 14], iconAnchor: [6, 10] })}
         >
+          <Tooltip>
+            {p.shipName} ({p.shipId}) — {p.region}
+          </Tooltip>
           <Popup>
             <div style={{ minWidth: 200 }}>
               <div><strong>Linked region:</strong> {p.region}</div>
@@ -287,6 +292,9 @@ export default function PlaybackMap({
             icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 15), iconSize: [15, 18], iconAnchor: [7, 12] })}
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
+            <Tooltip>
+              {p.shipName} ({p.shipId}) — {isCrosser ? "crossing" : "non-crossing"}
+            </Tooltip>
             <Popup>
               <div style={{ minWidth: 180 }}>
                 <div><strong>Name:</strong> {p.shipName}</div>

@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
-import { MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
 
 function scoreToYellowGreen(score: number) {
   const t = Math.max(0, Math.min(1, (score - 30) / 20));
@@ -109,7 +109,11 @@ export default function CandidatePathsMap({
                 position={[p.lat, p.lon]}
                 icon={triangleIcon(baseColor, deg, isSelected ? 11 : 10)}
                 eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
-              />
+              >
+                <Tooltip>
+                  {c.shipName} ({c.shipId}) — {new Date(p.t).toUTCString()} — {c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "none"}
+                </Tooltip>
+              </Marker>
             )})}
             <Marker
               key={`cand-last-${c.shipId}`}

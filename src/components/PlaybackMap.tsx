@@ -115,6 +115,16 @@ export default function PlaybackMap({
     return out;
   }, [selectedTrail]);
 
+  const timestampLabelStep = useMemo(() => {
+    const n = selectedTrailWithDir.length;
+    if (n <= 40) return 1;
+    if (n <= 90) return 2;
+    if (n <= 180) return 3;
+    if (n <= 320) return 5;
+    if (n <= 600) return 8;
+    return 12;
+  }, [selectedTrailWithDir.length]);
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       {selectedShipMeta ? (
@@ -162,15 +172,17 @@ export default function PlaybackMap({
           radius={1.5}
           pathOptions={{ color: "#9ca3af", fillColor: "#9ca3af", fillOpacity: 0.65, weight: 1 }}
         >
-          <Tooltip
-            permanent
-            direction="top"
-            offset={[0, -7]}
-            opacity={0.4}
-            className="trail-ts-label"
-          >
-            <span style={{ fontSize: 9, color: "rgba(226, 232, 240, 0.72)" }}>{timestampShort(p.t)}</span>
-          </Tooltip>
+          {idx % timestampLabelStep === 0 ? (
+            <Tooltip
+              permanent
+              direction="top"
+              offset={[0, -7]}
+              opacity={0.38}
+              className="trail-ts-label"
+            >
+              <span style={{ fontSize: 9, color: "rgba(226, 232, 240, 0.66)" }}>{timestampShort(p.t)}</span>
+            </Tooltip>
+          ) : null}
         </CircleMarker>
       ))}
       {selectedTrailWithDir.map((p, idx) => (

@@ -11,6 +11,7 @@ type Candidate = {
   points: PathPoint[];
   lastSeenAt: string;
   score: number;
+  confidenceBand: "high" | "low" | "no";
   approachScore: number;
   proximityScore: number;
   directionScore: number;
@@ -58,7 +59,8 @@ export default function CandidatePathsMap({
         const polyline = c.points.map((p) => [p.lat, p.lon] as [number, number]);
         const last = c.points[c.points.length - 1];
         const isSelected = selectedSet.has(c.shipId);
-        const baseColor = isSelected ? "#000000" : "#f59e0b";
+        const bandColor = c.confidenceBand === "high" ? "#ef4444" : c.confidenceBand === "low" ? "#f59e0b" : "#64748b";
+        const baseColor = isSelected ? "#000000" : bandColor;
 
         return (
           <Fragment key={`cand-${c.shipId}`}>
@@ -93,6 +95,7 @@ export default function CandidatePathsMap({
                   <div><strong>Ship:</strong> {c.shipName} ({c.shipId})</div>
                   <div><strong>Last seen:</strong> {new Date(c.lastSeenAt).toUTCString()}</div>
                   <div><strong>Candidate score:</strong> {c.score.toFixed(1)}</div>
+                  <div><strong>Confidence:</strong> {c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</div>
                   <div style={{ marginTop: 8 }}><strong>Score components</strong></div>
                   <div>Approach score: {c.approachScore.toFixed(1)}</div>
                   <div>Proximity score: {c.proximityScore.toFixed(1)}</div>

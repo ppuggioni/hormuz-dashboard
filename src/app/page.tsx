@@ -60,6 +60,7 @@ type CandidateCrosser = {
   shipName: string;
   vesselType: string;
   score: number;
+  confidenceBand: "high" | "low" | "no";
   alignedPoints: number;
   speedQuality: number;
   approachConfidence: number;
@@ -545,11 +546,14 @@ export default function Page() {
 
       const score = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty;
 
+      const confidenceBand: "high" | "low" | "no" = score > 50 ? "high" : score >= 30 ? "low" : "no";
+
       out.push({
         shipId,
         shipName: v.shipName,
         vesselType: v.vesselType,
         score,
+        confidenceBand,
         alignedPoints,
         speedQuality: speedScore,
         approachConfidence,
@@ -577,8 +581,12 @@ export default function Page() {
   }, [candidateSnapshots, data?.metadata?.eastLon, data?.metadata?.westLon, crossingShipIds]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
-  const candidateLast48hAbove30Count = useMemo(
-    () => candidateCrossers.filter((c) => c.darkHours <= 48 && c.score > 30).length,
+  const candidateLast48hHighCount = useMemo(
+    () => candidateCrossers.filter((c) => c.darkHours <= 48 && c.score > 50).length,
+    [candidateCrossers],
+  );
+  const candidateLast48hLowCount = useMemo(
+    () => candidateCrossers.filter((c) => c.darkHours <= 48 && c.score >= 30 && c.score <= 50).length,
     [candidateCrossers],
   );
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
@@ -933,7 +941,7 @@ export default function Page() {
           <p className="mt-2 text-slate-400 text-sm">
             East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}, and latitude floor {data.metadata.minLat ?? 24}. Default selection is Cargo + Tanker.
           </p>
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
               <div className="text-xs text-slate-400">Crossing Tankers (last 48h | baseline pre-war: 30-40/day)</div>
@@ -946,12 +954,16 @@ export default function Page() {
               </button>
             </div>
             <Stat label="Crossing Cargo (last 48h)" value={String(last24hCrossingCounts.cargo)} />
-            <div className="rounded-xl border border-violet-300/60 bg-violet-500/10 p-3">
-              <div className="text-xs text-violet-200">High-confidence dark-transit tanker candidates (&gt;30 score, last 48h)</div>
-              <div className="text-lg font-semibold text-violet-100">{candidateLast48hAbove30Count}</div>
+            <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
+              <div className="text-xs text-rose-200">Dark-transit candidates — High confidence (&gt;50, last 48h)</div>
+              <div className="text-lg font-semibold text-rose-100">{candidateLast48hHighCount}</div>
+            </div>
+            <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
+              <div className="text-xs text-amber-200">Dark-transit candidates — Low confidence (30-50, last 48h)</div>
+              <div className="text-lg font-semibold text-amber-100">{candidateLast48hLowCount}</div>
               <button
                 onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-violet-300/60 px-2 py-1 text-[11px] text-violet-100"
+                className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
               >
                 Jump to candidate section
               </button>
@@ -1296,6 +1308,7 @@ export default function Page() {
                   points: c.points,
                   lastSeenAt: c.lastSeenAt,
                   score: c.score,
+                  confidenceBand: c.confidenceBand,
                   approachScore: c.approachScore,
                   proximityScore: c.proximityScore,
                   directionScore: c.directionScore,
@@ -1334,6 +1347,7 @@ export default function Page() {
                   <th className="text-left p-2">Speed quality</th>
                   <th className="text-left p-2">Approach confidence</th>
                   <th className="text-left p-2">Score</th>
+                  <th className="text-left p-2">Confidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -1357,6 +1371,7 @@ export default function Page() {
                     <td className="p-2">{c.speedQuality.toFixed(2)}</td>
                     <td className="p-2">{c.approachConfidence.toFixed(2)}</td>
                     <td className="p-2 font-medium">{c.score.toFixed(1)}</td>
+                    <td className="p-2">{c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</td>
                   </tr>
                 ))}
               </tbody>

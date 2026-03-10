@@ -60,7 +60,7 @@ function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: numb
 
 function triangleIcon(color: string, deg: number, size = 11) {
   const h = Math.round(size * 1.15);
-  const w = Math.round(size * 0.7);
+  const w = Math.round(size * 0.5);
   return divIcon({
     className: "",
     html: `<div style='transform: rotate(${deg}deg); width:0;height:0;border-left:${w / 2}px solid transparent;border-right:${w / 2}px solid transparent;border-bottom:${h}px solid ${color};'></div>`,
@@ -114,13 +114,27 @@ export default function CrossingPathsMap({
           <Fragment key={ship.shipId}>
             <Polyline positions={polyline} pathOptions={{ color, weight: 1.2, opacity: 0.82, dashArray: "4 6" }} />
             {ship.points.map((p, idx) => {
-              const prev = ship.points[idx - 1];
-              const next = ship.points[idx + 1];
-              const deg = next
-                ? headingDeg({ lat: p.lat, lon: p.lon }, { lat: next.lat, lon: next.lon })
-                : prev
-                  ? headingDeg({ lat: prev.lat, lon: prev.lon }, { lat: p.lat, lon: p.lon })
-                  : 0;
+              let deg = 0;
+              let found = false;
+              for (let j = idx + 1; j < ship.points.length; j++) {
+                const q = ship.points[j];
+                const dist = Math.hypot(q.lat - p.lat, q.lon - p.lon);
+                if (dist > 0.00005) {
+                  deg = headingDeg({ lat: p.lat, lon: p.lon }, { lat: q.lat, lon: q.lon });
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) {
+                for (let j = idx - 1; j >= 0; j--) {
+                  const q = ship.points[j];
+                  const dist = Math.hypot(p.lat - q.lat, p.lon - q.lon);
+                  if (dist > 0.00005) {
+                    deg = headingDeg({ lat: q.lat, lon: q.lon }, { lat: p.lat, lon: p.lon });
+                    break;
+                  }
+                }
+              }
               return (
               <Marker
                 key={`${ship.shipId}-pt-${idx}`}

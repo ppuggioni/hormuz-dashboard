@@ -19,7 +19,7 @@ const typeColor: Record<string, string> = {
 
 function triangleIconHtml(color: string, deg: number, size = 14, withCross = false) {
   const h = Math.round(size * 1.1);
-  const w = Math.round(size * 0.7);
+  const w = Math.round(size * 0.5);
   const tri = `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
   if (!withCross) return tri;
   return `<div style='position:relative;width:${size + 18}px;height:${size + 18}px;display:flex;align-items:center;justify-content:center;'>${tri}<div style='position:absolute;color:${color};opacity:0.98;font-size:${size + 22}px;font-weight:200;line-height:1;text-shadow:0 0 1px rgba(2,6,23,0.9);'>×</div></div>`;
@@ -146,9 +146,17 @@ export default function PlaybackMap({
     }
     for (const [shipId, arr] of byShip.entries()) {
       if (arr.length < 2) continue;
-      const a = arr[arr.length - 2];
-      const b = arr[arr.length - 1];
-      m.set(shipId, directionDegrees(a, b));
+      let deg = 0;
+      for (let i = arr.length - 1; i > 0; i--) {
+        const a = arr[i - 1];
+        const b = arr[i];
+        const dist = Math.hypot(b.lat - a.lat, b.lon - a.lon);
+        if (dist > 0.00005) {
+          deg = directionDegrees(a, b);
+          break;
+        }
+      }
+      m.set(shipId, deg);
     }
     return m;
   }, [snapshots]);

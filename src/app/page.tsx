@@ -70,6 +70,8 @@ type CandidateCrosser = {
   approachScore: number;
   darknessScore: number;
   directionScore: number;
+  tangentialPenalty: number;
+  cosineTowardness: number;
   readinessScore: number;
   onePointPostAnchoringPenalty: number;
   lastSegmentKnots: number;
@@ -171,6 +173,22 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+function cosineTowardMidpoint(
+  from: { lat: number; lon: number },
+  to: { lat: number; lon: number },
+  midpoint: { lat: number; lon: number },
+) {
+  const mvLat = to.lat - from.lat;
+  const mvLon = to.lon - from.lon;
+  const tvLat = midpoint.lat - from.lat;
+  const tvLon = midpoint.lon - from.lon;
+  const mNorm = Math.hypot(mvLat, mvLon);
+  const tNorm = Math.hypot(tvLat, tvLon);
+  if (mNorm === 0 || tNorm === 0) return 0;
+  const cos = (mvLat * tvLat + mvLon * tvLon) / (mNorm * tNorm);
+  return Math.max(-1, Math.min(1, cos));
+}
+
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -188,6 +206,7 @@ export default function Page() {
   const [playbackLoading, setPlaybackLoading] = useState(false);
   const [splitMode, setSplitMode] = useState(false);
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
+  const [candidateSnapshots, setCandidateSnapshots] = useState<Snapshot[]>([]);
   const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
@@ -225,6 +244,7 @@ export default function Page() {
         const core = await fetchJson(`${root}/processed_core.json`);
         const paths = await fetchJson(`${root}/processed_paths.json`);
         const playback24 = await fetchJson(`${root}/processed_playback_24h.json`);
+        const playback72 = await fetchJson(`${root}/processed_playback_72h.json`);
         const shipmeta24 = await fetchJson(`${root}/processed_shipmeta_24h.json`);
 
         const normalized: DataShape = {
@@ -250,6 +270,7 @@ export default function Page() {
 
         setSplitMode(true);
         setData(normalized);
+        setCandidateSnapshots(Array.isArray(playback72?.data?.snapshots) ? playback72.data.snapshots : normalized.snapshots);
         setExternalPoints([]);
         const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
         setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
@@ -293,6 +314,7 @@ export default function Page() {
 
       setSplitMode(false);
       setData(normalized);
+      setCandidateSnapshots(Array.isArray(normalized.snapshots) ? normalized.snapshots : []);
       setExternalPoints(Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : []);
       const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
       setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
@@ -429,12 +451,12 @@ export default function Page() {
   const crossingShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((p) => p.shipId)), [data]);
 
   const candidateCrossers = useMemo(() => {
-    if (!data?.snapshots?.length) return [] as CandidateCrosser[];
+    if (!candidateSnapshots?.length || !data) return [] as CandidateCrosser[];
 
-    const latestTs = +new Date(data.snapshots[data.snapshots.length - 1].t);
+    const latestTs = +new Date(candidateSnapshots[candidateSnapshots.length - 1].t);
     const byShip = new Map<string, { shipName: string; vesselType: string; points: PathPoint[] }>();
 
-    for (const s of data.snapshots) {
+    for (const s of candidateSnapshots) {
       for (const p of s.points) {
         if (p.vesselType !== "tanker") continue;
         if (!byShip.has(p.shipId)) byShip.set(p.shipId, { shipName: p.shipName, vesselType: p.vesselType, points: [] });
@@ -461,6 +483,7 @@ export default function Page() {
       let aligned = 0;
       let speedQuality = 0;
       let segCount = 0;
+      let towardCosineSum = 0;
       const segSpeeds: number[] = [];
 
       for (let i = 1; i < tail.length; i++) {
@@ -472,6 +495,8 @@ export default function Page() {
 
         const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
         const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
+        const cosToward = cosineTowardMidpoint(a, b, { lat: centerLat, lon: centerLon });
+        towardCosineSum += Math.max(0, cosToward);
         segSpeeds.push(speedKnots);
         if (speedKnots < 3) speedQuality += 0.2;
         else if (speedKnots <= 23) speedQuality += 1;
@@ -498,6 +523,8 @@ export default function Page() {
       const approachScore = approachConfidence * 55;
       const proximityScore = proximityRaw * 20;
       const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
+      const cosineTowardness = segCount ? towardCosineSum / segCount : 0;
+      const tangentialPenalty = approachDirectionRaw > 0 ? -(1 - cosineTowardness) * 12 : 0;
       const darknessScore = 0;
 
       const lastSegmentKnots = segSpeeds.length ? segSpeeds[segSpeeds.length - 1] : 0;
@@ -516,7 +543,7 @@ export default function Page() {
         if (hasAnchorLikeHistory && hasOnlyOnePostAnchorSegment) onePointPostAnchoringPenalty = -6;
       }
 
-      const score = approachScore + proximityScore + directionScore + readinessScore + onePointPostAnchoringPenalty;
+      const score = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty;
 
       out.push({
         shipId,
@@ -533,6 +560,8 @@ export default function Page() {
         approachScore,
         darknessScore,
         directionScore,
+        tangentialPenalty,
+        cosineTowardness,
         readinessScore,
         onePointPostAnchoringPenalty,
         lastSegmentKnots,
@@ -545,7 +574,7 @@ export default function Page() {
     }
 
     return out.sort((a, b) => b.score - a.score).slice(0, 80);
-  }, [data, crossingShipIds]);
+  }, [candidateSnapshots, data?.metadata?.eastLon, data?.metadata?.westLon, crossingShipIds]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
   const candidateLast48hAbove30Count = useMemo(
@@ -1268,6 +1297,8 @@ export default function Page() {
                   approachScore: c.approachScore,
                   proximityScore: c.proximityScore,
                   directionScore: c.directionScore,
+                  tangentialPenalty: c.tangentialPenalty,
+                  cosineTowardness: c.cosineTowardness,
                   darknessScore: c.darknessScore,
                   readinessScore: c.readinessScore,
                   alignedPoints: c.alignedPoints,
@@ -1332,7 +1363,7 @@ export default function Page() {
           <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
-              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + readinessScore + onePointPostAnchoringPenalty.</div>
+              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty.</div>
               <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
               <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
               <div><strong>Darkness filter gate:</strong> candidate must be dark for more than 6 hours (darkHours &gt; 6); darkness is not scored.</div>
@@ -1348,6 +1379,8 @@ export default function Page() {
               <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to midpoint between last two points.</div>
               <div>If positive, vessel disappeared while still moving toward the strait (boost). If negative, moving away (penalty).</div>
               <div><strong>directionScore</strong>: if approachDirectionRaw &gt; 0 then ×25; else ×20 (negative score).</div>
+              <div><strong>cosineTowardness</strong>: mean cos(theta) toward midpoint over tail segments (1 = directly toward, 0 = perpendicular).</div>
+              <div><strong>tangentialPenalty</strong>: applied when approachDirectionRaw is positive, = -(1 - cosineTowardness) × 12.</div>
               <div><strong>readinessScore</strong> (disappearance readiness):</div>
               <div>- if lastSegmentKnots &lt; 2 and direction not toward midpoint =&gt; -12 penalty.</div>
               <div>- if lastSegmentKnots &ge; 4 and accelerating vs previous segment and toward midpoint =&gt; +4 bonus.</div>

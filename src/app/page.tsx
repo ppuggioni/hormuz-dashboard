@@ -370,6 +370,7 @@ export default function Page() {
     }
 
     const centerLon = (data.metadata.eastLon + data.metadata.westLon) / 2;
+    const centerLat = 26.25;
     const out: CandidateCrosser[] = [];
 
     for (const [shipId, v] of byShip.entries()) {
@@ -391,8 +392,8 @@ export default function Page() {
       for (let i = 1; i < tail.length; i++) {
         const a = tail[i - 1];
         const b = tail[i];
-        const distPrev = Math.abs(a.lon - centerLon);
-        const distCur = Math.abs(b.lon - centerLon);
+        const distPrev = haversineKm(a.lat, a.lon, centerLat, centerLon);
+        const distCur = haversineKm(b.lat, b.lon, centerLat, centerLon);
         if (distCur < distPrev) aligned += 1;
 
         const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
@@ -408,14 +409,15 @@ export default function Page() {
 
       const speedScore = segCount ? speedQuality / segCount : 0;
       const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
-      const proximityRaw = 1 - Math.min(1, Math.abs(last.lon - centerLon) / 1.5);
+      const lastMidDistKm = haversineKm(last.lat, last.lon, centerLat, centerLon);
+      const proximityRaw = 1 - Math.min(1, lastMidDistKm / 160);
       const prev = tail[tail.length - 2];
-      const lastDist = Math.abs(last.lon - centerLon);
-      const prevDist = Math.abs(prev.lon - centerLon);
-      const towardDelta = prevDist - lastDist;
-      // Positive when disappearing while still moving toward the strait centerline.
+      const lastDist = haversineKm(last.lat, last.lon, centerLat, centerLon);
+      const prevDist = haversineKm(prev.lat, prev.lon, centerLat, centerLon);
+      const towardDeltaKm = prevDist - lastDist;
+      // Positive when disappearing while still moving toward the strait midpoint (lat+lon).
       // Negative when moving away at disappearance.
-      const approachDirectionRaw = Math.max(-1, Math.min(1, towardDelta / 0.06));
+      const approachDirectionRaw = Math.max(-1, Math.min(1, towardDeltaKm / 8));
 
       const approachScore = approachConfidence * 55;
       const proximityScore = proximityRaw * 20;
@@ -1181,15 +1183,15 @@ export default function Page() {
               <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
               <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
               <div><strong>Tail window:</strong> up to last 6 visible points before disappearance.</div>
-              <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait centerline (centerLon).</div>
+              <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait midpoint (centerLat + centerLon).</div>
               <div><strong>Segment speed estimation:</strong> haversine distance / time delta, converted to knots.</div>
               <div><strong>speedQuality per segment:</strong> ≤23 kn =&gt; 1.0; 23-30 kn =&gt; 0.5; &gt;30 kn =&gt; 0.1.</div>
               <div><strong>speedQuality</strong>: average of segment speedQuality over tail segments.</div>
               <div><strong>approachConfidence</strong> = min(1, (alignedPoints / max(3, tailLength)) × speedQuality).</div>
               <div><strong>approachScore</strong> = approachConfidence × 55.</div>
-              <div><strong>proximityRaw</strong> = 1 - min(1, |lastLon - centerLon| / 1.5).</div>
+              <div><strong>proximityRaw</strong> = 1 - min(1, distanceKm(lastPoint, midpoint) / 160).</div>
               <div><strong>proximityScore</strong> = proximityRaw × 20.</div>
-              <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to centerline between last two points.</div>
+              <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to midpoint between last two points.</div>
               <div>If positive, vessel disappeared while still moving toward the strait (boost). If negative, moving away (penalty).</div>
               <div><strong>directionScore</strong>: if approachDirectionRaw &gt; 0 then ×25; else ×20 (negative score).</div>
               <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time).</div>

@@ -125,7 +125,7 @@ export default function CrossingPathsMap({
               <Marker
                 key={`${ship.shipId}-pt-${idx}`}
                 position={[p.lat, p.lon]}
-                icon={triangleIcon(color, deg, 11)}
+                icon={triangleIcon(color, deg, 9)}
               >
                 <Tooltip>
                   {ship.shipName} ({ship.shipId}) — {new Date(p.t).toUTCString()}

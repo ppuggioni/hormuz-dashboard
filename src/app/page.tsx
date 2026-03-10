@@ -273,9 +273,9 @@ export default function Page() {
         setData(normalized);
         setCandidateSnapshots(Array.isArray(playback72?.data?.snapshots) ? playback72.data.snapshots : normalized.snapshots);
         setExternalPoints([]);
-        const defaults = ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
-        setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
-        setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults.length ? defaults : normalized.vesselTypes);
+        const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
+        setSelectedTypes(defaults);
+        setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
         return;
       } catch {
         // fallback to legacy monolith
@@ -317,11 +317,9 @@ export default function Page() {
       setData(normalized);
       setCandidateSnapshots(Array.isArray(normalized.snapshots) ? normalized.snapshots : []);
       setExternalPoints(Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : []);
-      const defaults = normalized.vesselTypes.includes("tanker")
-        ? ["tanker"]
-        : ["tanker", "cargo"].filter((t) => normalized.vesselTypes.includes(t));
-      setSelectedTypes(defaults.length ? defaults : normalized.vesselTypes);
-      setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults.length ? defaults : normalized.vesselTypes);
+      const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
+      setSelectedTypes(defaults);
+      setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
     };
 
     load();
@@ -1329,6 +1327,7 @@ export default function Page() {
                   prevSegmentKnots: c.prevSegmentKnots,
                 }))}
               selectedShipIds={selectedCandidateShipIds}
+              colorSelectedWhenFiltered={showOnlySelectedCandidates}
               onToggleShip={(shipId) =>
                 setSelectedCandidateShipIds((prev) =>
                   prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId],

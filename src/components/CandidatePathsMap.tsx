@@ -63,12 +63,14 @@ type Candidate = {
 export default function CandidatePathsMap({
   candidates,
   selectedShipIds,
+  colorSelectedWhenFiltered,
   onToggleShip,
   eastLon,
   westLon,
 }: {
   candidates: Candidate[];
   selectedShipIds?: string[];
+  colorSelectedWhenFiltered?: boolean;
   onToggleShip?: (shipId: string) => void;
   eastLon: number;
   westLon: number;
@@ -91,7 +93,7 @@ export default function CandidatePathsMap({
         const last = c.points[c.points.length - 1];
         const isSelected = selectedSet.has(c.shipId);
         const shipColor = colorForShip(c.shipId);
-        const baseColor = isSelected ? "#000000" : shipColor;
+        const baseColor = isSelected ? (colorSelectedWhenFiltered ? shipColor : "#000000") : shipColor;
 
         return (
           <Fragment key={`cand-${c.shipId}`}>

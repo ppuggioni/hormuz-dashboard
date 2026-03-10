@@ -165,6 +165,20 @@ function buildReadableTicks(hours: string[]) {
   return ticks;
 }
 
+function aggregateToSixHourBins(rows: CrossingHour[]) {
+  const out = new Map<string, CrossingHour>();
+  for (const r of rows) {
+    const d = new Date(r.hour);
+    d.setUTCMinutes(0, 0, 0);
+    d.setUTCHours(Math.floor(d.getUTCHours() / 6) * 6);
+    const key = d.toISOString();
+    if (!out.has(key)) out.set(key, { hour: key, east_to_west: 0, west_to_east: 0 });
+    out.get(key)!.east_to_west += r.east_to_west;
+    out.get(key)!.west_to_east += r.west_to_east;
+  }
+  return [...out.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
+}
+
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -626,7 +640,9 @@ export default function Page() {
 
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
-  const chartTicks = useMemo(() => buildReadableTicks(sharedHours), [sharedHours]);
+  const tankerSixHour = useMemo(() => aggregateToSixHourBins(tankerHourlyAligned), [tankerHourlyAligned]);
+  const cargoSixHour = useMemo(() => aggregateToSixHourBins(cargoHourlyAligned), [cargoHourlyAligned]);
+  const chartTicks = useMemo(() => buildReadableTicks(tankerSixHour.map((x) => x.hour)), [tankerSixHour]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string }[];
@@ -1120,11 +1136,11 @@ export default function Page() {
             <button onClick={() => setShowWestToEast((v) => !v)} className={`px-2 py-1 rounded border ${showWestToEast ? "border-orange-300 text-orange-200" : "border-slate-700 text-slate-500"}`}>West → East</button>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 className="text-lg font-medium mb-3">Hourly Crossings — Tanker</h2>
+            <h2 className="text-lg font-medium mb-3">Crossings in 6-hour bins — Tanker</h2>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={tankerHourlyAligned}
+                  data={tankerSixHour}
                   onClick={(state: any) => {
                     if (state?.activeLabel) setSelectedTankerHour(state.activeLabel as string);
                   }}
@@ -1187,11 +1203,11 @@ export default function Page() {
             </div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 className="text-lg font-medium mb-3">Hourly Crossings — Cargo</h2>
+            <h2 className="text-lg font-medium mb-3">Crossings in 6-hour bins — Cargo</h2>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={cargoHourlyAligned}
+                  data={cargoSixHour}
                   onClick={(state: any) => {
                     if (state?.activeLabel) setSelectedCargoHour(state.activeLabel as string);
                   }}

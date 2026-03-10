@@ -22,7 +22,7 @@ function triangleIconHtml(color: string, deg: number, size = 14, withCross = fal
   const w = Math.round(size * 0.7);
   const tri = `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
   if (!withCross) return tri;
-  return `<div style='position:relative;width:${size + 12}px;height:${size + 12}px;display:flex;align-items:center;justify-content:center;'>${tri}<div style='position:absolute;color:#e5e7eb;opacity:0.98;font-size:${size + 14}px;font-weight:300;line-height:1;text-shadow:0 0 1px rgba(2,6,23,0.9);'>×</div></div>`;
+  return `<div style='position:relative;width:${size + 18}px;height:${size + 18}px;display:flex;align-items:center;justify-content:center;'>${tri}<div style='position:absolute;color:${color};opacity:0.98;font-size:${size + 22}px;font-weight:200;line-height:1;text-shadow:0 0 1px rgba(2,6,23,0.9);'>×</div></div>`;
 }
 
 function directionDegrees(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {

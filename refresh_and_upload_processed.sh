@@ -77,11 +77,21 @@ API_BASE="${SUPABASE_URL%/}/storage/v1"
 
   if [[ -n "${RESEND_API_KEY:-}" && -n "${ALERTS_FROM_EMAIL:-}" ]]; then
     if node "$ROOT/scripts/dispatch-alerts.mjs"; then
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] alerts dispatch done"
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] email alerts dispatch done"
     else
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] alerts dispatch failed (non-fatal)"
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] email alerts dispatch failed (non-fatal)"
     fi
   else
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] alerts dispatch skipped (email env missing)"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] email alerts dispatch skipped (email env missing)"
+  fi
+
+  if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    if node "$ROOT/scripts/dispatch-telegram-alerts.mjs"; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] telegram alerts dispatch done"
+    else
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] telegram alerts dispatch failed (non-fatal)"
+    fi
+  else
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] telegram alerts dispatch skipped (TELEGRAM_BOT_TOKEN missing)"
   fi
 } >> "$LOG" 2>&1

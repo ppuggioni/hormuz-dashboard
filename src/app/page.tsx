@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import dynamic from "next/dynamic";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SnapshotPoint = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
 type Snapshot = { t: string; points: SnapshotPoint[] };
@@ -192,7 +192,8 @@ export default function Page() {
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
-  const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(false);
+  const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
+  const candidateDefaultsAppliedRef = useRef(false);
 
   useEffect(() => {
     const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
@@ -481,11 +482,17 @@ export default function Page() {
   }, [data, crossingShipIds]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
+  const candidateLast48hCount = useMemo(() => candidateCrossers.filter((c) => c.darkHours <= 48).length, [candidateCrossers]);
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
 
   useEffect(() => {
     const valid = new Set(candidateCrossers.map((c) => c.shipId));
     setSelectedCandidateShipIds((prev) => prev.filter((id) => valid.has(id)));
+
+    if (!candidateDefaultsAppliedRef.current && candidateCrossers.length) {
+      setSelectedCandidateShipIds(candidateCrossers.filter((c) => c.score > 30).map((c) => c.shipId));
+      candidateDefaultsAppliedRef.current = true;
+    }
   }, [candidateCrossers]);
 
   const hourlyFromEvents = (vesselType: string) => {
@@ -816,7 +823,26 @@ export default function Page() {
             <Stat label="Crossing Others (last 48h)" value={String(last24hCrossingCounts.other)} />
           </div>
           <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30-40 tanker crossings per day.</p>
+          <div className="mt-4 rounded-xl border border-violet-300/60 bg-violet-500/10 p-3">
+            <div className="text-xs text-violet-200">Potential dark-transit tankers (disappeared &gt;6h, last 48h)</div>
+            <div className="text-2xl font-semibold text-violet-100">{candidateLast48hCount}</div>
+            <button
+              onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="mt-2 rounded-md border border-violet-300/60 px-2 py-1 text-xs text-violet-100 hover:bg-violet-500/10"
+            >
+              Jump to candidate section
+            </button>
+          </div>
         </header>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <button onClick={() => document.getElementById("playback-map")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">Playback map</button>
+            <button onClick={() => document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">Crossing paths</button>
+            <button onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">Candidate dark crossers</button>
+            <button onClick={() => document.getElementById("linkage-table")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">From→To linkage</button>
+          </div>
+        </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <h2 className="text-lg font-medium mb-3">FAQ / Method Notes</h2>
@@ -883,7 +909,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
+        <section id="playback-map" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Playback Map (filtered vessels)</h2>
             <div className="flex items-center gap-2 text-sm">
@@ -1094,7 +1120,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+        <section id="linkage-table" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">Detected From → To Regions (anchored on Hormuz West)</h2>
           <p className="text-xs text-slate-400">Transit time is measured from Hormuz West in Dd:HHh:MMm. Positive means after Hormuz West; negative means before.</p>
           <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
@@ -1127,7 +1153,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+        <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">{crossingMapTitle}</h2>
           <div className="flex items-center gap-2 text-xs text-slate-300">
             <span className="text-slate-200 mr-2">Legend (click to toggle)</span>
@@ -1159,7 +1185,7 @@ export default function Page() {
           <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+        <section id="candidate-dark-crossers" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">Candidate Dark Crossers — Tankers</h2>
           <p className="text-xs text-slate-400">Heuristic shortlist: at least 3 aligned approach points, dark for &gt;6h, speed-plausibility weighted, excluding already observed crossers.</p>
           <div className="flex items-center gap-3 text-xs text-slate-300">

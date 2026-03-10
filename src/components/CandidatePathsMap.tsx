@@ -4,6 +4,14 @@ import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
 
+function scoreToYellowGreen(score: number) {
+  const t = Math.max(0, Math.min(1, (score - 30) / 20));
+  const r = Math.round(245 + (34 - 245) * t);
+  const g = Math.round(158 + (197 - 158) * t);
+  const b = Math.round(11 + (94 - 11) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 type PathPoint = { t: string; lat: number; lon: number };
 type Candidate = {
   shipId: string;
@@ -59,8 +67,8 @@ export default function CandidatePathsMap({
         const polyline = c.points.map((p) => [p.lat, p.lon] as [number, number]);
         const last = c.points[c.points.length - 1];
         const isSelected = selectedSet.has(c.shipId);
-        const bandColor = c.confidenceBand === "high" ? "#ef4444" : c.confidenceBand === "low" ? "#f59e0b" : "#64748b";
-        const baseColor = isSelected ? "#000000" : bandColor;
+        const scoreColor = scoreToYellowGreen(c.score);
+        const baseColor = isSelected ? "#000000" : scoreColor;
 
         return (
           <Fragment key={`cand-${c.shipId}`}>
@@ -121,18 +129,20 @@ export default function CandidatePathsMap({
         );
       })}
 
-      {selected.map((s) => (
+      {selected.map((s) => {
+        const labelColor = scoreToYellowGreen(s.score);
+        return (
         <Marker
           key={`selected-pill-${s.shipId}`}
           position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid #475569;border-radius:7px;padding:4px 6px;color:#e2e8f0;font-size:10px;white-space:nowrap;'>${s.shipName} — ${new Date(s.lastSeenAt).toUTCString()}</div>`,
+            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid ${labelColor};border-radius:7px;padding:4px 6px;color:${labelColor};font-size:10px;white-space:nowrap;'>${s.shipName} — ${new Date(s.lastSeenAt).toUTCString()}</div>`,
             iconSize: [380, 22],
             iconAnchor: [0, 30],
           })}
         />
-      ))}
+      )})}
     </MapContainer>
   );
 }

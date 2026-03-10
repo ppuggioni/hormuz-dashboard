@@ -961,42 +961,44 @@ export default function Page() {
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-          <h2 className="text-lg font-medium mb-3">FAQ / Method Notes</h2>
-          <div className="space-y-3">
-            <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-              <summary className="cursor-pointer select-none font-medium text-slate-100">
-                How do we detect a crossing if a vessel turns its transponder off?
-              </summary>
-              <p className="mt-3 leading-relaxed">
-                To detect a crossing, a vessel must report AIS at least once while inside the Gulf-side boundary logic. If it later goes dark,
-                the crossing can still be inferred when AIS returns in the Indian Ocean side, Cape of Good Hope route, Suez route, or Strait of
-                Malacca route, because the last known side and next known side imply a side change.
-              </p>
-            </details>
+          <details>
+            <summary className="cursor-pointer select-none text-lg font-medium">FAQ / Method Notes</summary>
+            <div className="space-y-3 mt-3">
+              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                <summary className="cursor-pointer select-none font-medium text-slate-100">
+                  How do we detect a crossing if a vessel turns its transponder off?
+                </summary>
+                <p className="mt-3 leading-relaxed">
+                  To detect a crossing, a vessel must report AIS at least once while inside the Gulf-side boundary logic. If it later goes dark,
+                  the crossing can still be inferred when AIS returns in the Indian Ocean side, Cape of Good Hope route, Suez route, or Strait of
+                  Malacca route, because the last known side and next known side imply a side change.
+                </p>
+              </details>
 
-            <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-              <summary className="cursor-pointer select-none font-medium text-slate-100">
-                How often is data refreshed?
-              </summary>
-              <p className="mt-3 leading-relaxed">
-                Data is refreshed continuously in the background and typically appears on the dashboard with an end-to-end delay of roughly
-                15-30 minutes (capture, sync, processing, and upload cadence combined).
-              </p>
-            </details>
+              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                <summary className="cursor-pointer select-none font-medium text-slate-100">
+                  How often is data refreshed?
+                </summary>
+                <p className="mt-3 leading-relaxed">
+                  Data is refreshed continuously in the background and typically appears on the dashboard with an end-to-end delay of roughly
+                  15-30 minutes (capture, sync, processing, and upload cadence combined).
+                </p>
+              </details>
 
-            <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-              <summary className="cursor-pointer select-none font-medium text-slate-100">
-                Where does the data come from, and what are the limitations?
-              </summary>
-              <p className="mt-3 leading-relaxed">
-                The dashboard uses publicly reported live AIS transponder data. Limitations include spoofing, delayed reporting, and intentional
-                AIS silence (especially in conflict or high-risk zones). The analysis is robust as long as a vessel switches AIS on at least once
-                inside the Gulf corridor or at linked chokepoints; in practice this captures normal tanker traffic, including known reported voyages
-                (for example the Greek tanker movement reported on the 4th would have been captured). The main blind spot is true ghost activity
-                where AIS stays consistently off.
-              </p>
-            </details>
-          </div>
+              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                <summary className="cursor-pointer select-none font-medium text-slate-100">
+                  Where does the data come from, and what are the limitations?
+                </summary>
+                <p className="mt-3 leading-relaxed">
+                  The dashboard uses publicly reported live AIS transponder data. Limitations include spoofing, delayed reporting, and intentional
+                  AIS silence (especially in conflict or high-risk zones). The analysis is robust as long as a vessel switches AIS on at least once
+                  inside the Gulf corridor or at linked chokepoints; in practice this captures normal tanker traffic, including known reported voyages
+                  (for example the Greek tanker movement reported on the 4th would have been captured). The main blind spot is true ghost activity
+                  where AIS stays consistently off.
+                </p>
+              </details>
+            </div>
+          </details>
         </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">

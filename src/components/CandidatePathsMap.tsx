@@ -13,10 +13,13 @@ type Candidate = {
   score: number;
   approachScore: number;
   proximityScore: number;
+  directionScore: number;
   darknessScore: number;
   alignedPoints: number;
   speedQuality: number;
   approachConfidence: number;
+  proximityRaw: number;
+  approachDirectionRaw: number;
 };
 
 export default function CandidatePathsMap({
@@ -87,10 +90,14 @@ export default function CandidatePathsMap({
                   <div style={{ marginTop: 8 }}><strong>Score components</strong></div>
                   <div>Approach score: {c.approachScore.toFixed(1)}</div>
                   <div>Proximity score: {c.proximityScore.toFixed(1)}</div>
+                  <div>Direction score: {c.directionScore.toFixed(1)}</div>
                   <div>Darkness score: {c.darknessScore.toFixed(1)}</div>
+                  <div style={{ marginTop: 6 }}><strong>Sub-parameters</strong></div>
                   <div>Aligned points: {c.alignedPoints}</div>
                   <div>Speed quality: {c.speedQuality.toFixed(2)}</div>
                   <div>Approach confidence: {c.approachConfidence.toFixed(2)}</div>
+                  <div>Proximity raw: {c.proximityRaw.toFixed(2)}</div>
+                  <div>Direction raw: {c.approachDirectionRaw.toFixed(2)}</div>
                   <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
                 </div>
               </Popup>

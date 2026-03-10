@@ -64,9 +64,12 @@ type CandidateCrosser = {
   speedQuality: number;
   approachConfidence: number;
   darkHours: number;
+  proximityRaw: number;
+  approachDirectionRaw: number;
   proximityScore: number;
   approachScore: number;
   darknessScore: number;
+  directionScore: number;
   lastSeenAt: string;
   lastLat: number;
   lastLon: number;
@@ -405,11 +408,20 @@ export default function Page() {
 
       const speedScore = segCount ? speedQuality / segCount : 0;
       const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
-      const proximity = 1 - Math.min(1, Math.abs(last.lon - centerLon) / 1.5);
-      const approachScore = approachConfidence * 60;
-      const proximityScore = proximity * 20;
+      const proximityRaw = 1 - Math.min(1, Math.abs(last.lon - centerLon) / 1.5);
+      const prev = tail[tail.length - 2];
+      const lastDist = Math.abs(last.lon - centerLon);
+      const prevDist = Math.abs(prev.lon - centerLon);
+      const towardDelta = prevDist - lastDist;
+      // Positive when disappearing while still moving toward the strait centerline.
+      // Negative when moving away at disappearance.
+      const approachDirectionRaw = Math.max(-1, Math.min(1, towardDelta / 0.06));
+
+      const approachScore = approachConfidence * 55;
+      const proximityScore = proximityRaw * 20;
+      const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
       const darknessScore = Math.max(0, darkHours - 6) * 2;
-      const score = approachScore + proximityScore + darknessScore;
+      const score = approachScore + proximityScore + directionScore + darknessScore;
 
       out.push({
         shipId,
@@ -420,9 +432,12 @@ export default function Page() {
         speedQuality: speedScore,
         approachConfidence,
         darkHours,
+        proximityRaw,
+        approachDirectionRaw,
         proximityScore,
         approachScore,
         darknessScore,
+        directionScore,
         lastSeenAt: last.t,
         lastLat: last.lat,
         lastLon: last.lon,
@@ -1119,10 +1134,13 @@ export default function Page() {
                 score: c.score,
                 approachScore: c.approachScore,
                 proximityScore: c.proximityScore,
+                directionScore: c.directionScore,
                 darknessScore: c.darknessScore,
                 alignedPoints: c.alignedPoints,
                 speedQuality: c.speedQuality,
                 approachConfidence: c.approachConfidence,
+                proximityRaw: c.proximityRaw,
+                approachDirectionRaw: c.approachDirectionRaw,
               }))}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
@@ -1159,14 +1177,23 @@ export default function Page() {
           <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
-              <div><strong>Total score</strong> = approachScore + proximityScore + darknessScore.</div>
-              <div><strong>approachScore</strong> = approachConfidence × 60.</div>
-              <div><strong>approachConfidence</strong> = min(1, aligned-approach factor × speedQuality).</div>
-              <div><strong>speedQuality</strong> is down-weighted when implied segment speeds are implausibly high.</div>
-              <div><strong>proximityScore</strong> = closeness to strait centerline at last seen × 20.</div>
+              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + darknessScore.</div>
+              <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
+              <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
+              <div><strong>Tail window:</strong> up to last 6 visible points before disappearance.</div>
+              <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait centerline (centerLon).</div>
+              <div><strong>Segment speed estimation:</strong> haversine distance / time delta, converted to knots.</div>
+              <div><strong>speedQuality per segment:</strong> ≤23 kn =&gt; 1.0; 23-30 kn =&gt; 0.5; &gt;30 kn =&gt; 0.1.</div>
+              <div><strong>speedQuality</strong>: average of segment speedQuality over tail segments.</div>
+              <div><strong>approachConfidence</strong> = min(1, (alignedPoints / max(3, tailLength)) × speedQuality).</div>
+              <div><strong>approachScore</strong> = approachConfidence × 55.</div>
+              <div><strong>proximityRaw</strong> = 1 - min(1, |lastLon - centerLon| / 1.5).</div>
+              <div><strong>proximityScore</strong> = proximityRaw × 20.</div>
+              <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to centerline between last two points.</div>
+              <div>If positive, vessel disappeared while still moving toward the strait (boost). If negative, moving away (penalty).</div>
+              <div><strong>directionScore</strong>: if approachDirectionRaw &gt; 0 then ×25; else ×20 (negative score).</div>
+              <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time).</div>
               <div><strong>darknessScore</strong> = max(0, darkHours - 6) × 2 (no cap).</div>
-              <div>Only <strong>tankers</strong> are included. Minimum <strong>3 aligned points</strong> required.</div>
-              <div>Already observed crossers are excluded from candidate list.</div>
             </div>
           </details>
         </section>

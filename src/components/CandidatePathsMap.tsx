@@ -15,11 +15,14 @@ type Candidate = {
   proximityScore: number;
   directionScore: number;
   darknessScore: number;
+  readinessScore: number;
   alignedPoints: number;
   speedQuality: number;
   approachConfidence: number;
   proximityRaw: number;
   approachDirectionRaw: number;
+  lastSegmentKnots: number;
+  prevSegmentKnots: number;
 };
 
 export default function CandidatePathsMap({
@@ -91,8 +94,11 @@ export default function CandidatePathsMap({
                   <div>Approach score: {c.approachScore.toFixed(1)}</div>
                   <div>Proximity score: {c.proximityScore.toFixed(1)}</div>
                   <div>Direction score: {c.directionScore.toFixed(1)}</div>
+                  <div>Readiness score: {c.readinessScore.toFixed(1)}</div>
                   <div style={{ marginTop: 6 }}><strong>Sub-parameters</strong></div>
                   <div>Dark hours (filter only): {((Date.now() - +new Date(c.lastSeenAt)) / (1000 * 60 * 60)).toFixed(1)}</div>
+                  <div>Last seg speed (kn): {c.lastSegmentKnots.toFixed(1)}</div>
+                  <div>Prev seg speed (kn): {c.prevSegmentKnots.toFixed(1)}</div>
                   <div>Aligned points: {c.alignedPoints}</div>
                   <div>Speed quality: {c.speedQuality.toFixed(2)}</div>
                   <div>Approach confidence: {c.approachConfidence.toFixed(2)}</div>

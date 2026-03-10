@@ -70,6 +70,9 @@ type CandidateCrosser = {
   approachScore: number;
   darknessScore: number;
   directionScore: number;
+  readinessScore: number;
+  lastSegmentKnots: number;
+  prevSegmentKnots: number;
   lastSeenAt: string;
   lastLat: number;
   lastLon: number;
@@ -390,6 +393,7 @@ export default function Page() {
       let aligned = 0;
       let speedQuality = 0;
       let segCount = 0;
+      const segSpeeds: number[] = [];
 
       for (let i = 1; i < tail.length; i++) {
         const a = tail[i - 1];
@@ -400,6 +404,7 @@ export default function Page() {
 
         const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
         const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
+        segSpeeds.push(speedKnots);
         if (speedKnots < 3) speedQuality += 0.2;
         else if (speedKnots <= 23) speedQuality += 1;
         else if (speedKnots <= 30) speedQuality += 0.5;
@@ -426,7 +431,14 @@ export default function Page() {
       const proximityScore = proximityRaw * 20;
       const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
       const darknessScore = 0;
-      const score = approachScore + proximityScore + directionScore;
+
+      const lastSegmentKnots = segSpeeds.length ? segSpeeds[segSpeeds.length - 1] : 0;
+      const prevSegmentKnots = segSpeeds.length > 1 ? segSpeeds[segSpeeds.length - 2] : lastSegmentKnots;
+      let readinessScore = 0;
+      if (lastSegmentKnots < 2 && approachDirectionRaw <= 0) readinessScore = -12;
+      if (lastSegmentKnots >= 4 && lastSegmentKnots > prevSegmentKnots && approachDirectionRaw > 0) readinessScore = 4;
+
+      const score = approachScore + proximityScore + directionScore + readinessScore;
 
       out.push({
         shipId,
@@ -443,6 +455,9 @@ export default function Page() {
         approachScore,
         darknessScore,
         directionScore,
+        readinessScore,
+        lastSegmentKnots,
+        prevSegmentKnots,
         lastSeenAt: last.t,
         lastLat: last.lat,
         lastLon: last.lon,
@@ -1158,11 +1173,14 @@ export default function Page() {
                   proximityScore: c.proximityScore,
                   directionScore: c.directionScore,
                   darknessScore: c.darknessScore,
+                  readinessScore: c.readinessScore,
                   alignedPoints: c.alignedPoints,
                   speedQuality: c.speedQuality,
                   approachConfidence: c.approachConfidence,
                   proximityRaw: c.proximityRaw,
                   approachDirectionRaw: c.approachDirectionRaw,
+                  lastSegmentKnots: c.lastSegmentKnots,
+                  prevSegmentKnots: c.prevSegmentKnots,
                 }))}
               selectedShipIds={selectedCandidateShipIds}
               onToggleShip={(shipId) =>
@@ -1217,14 +1235,14 @@ export default function Page() {
           <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
-              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore.</div>
+              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + readinessScore.</div>
               <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
               <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
               <div><strong>Darkness filter gate:</strong> candidate must be dark for more than 6 hours (darkHours &gt; 6); darkness is not scored.</div>
               <div><strong>Tail window:</strong> up to last 6 visible points before disappearance.</div>
               <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait midpoint (centerLat + centerLon).</div>
               <div><strong>Segment speed estimation:</strong> haversine distance / time delta, converted to knots.</div>
-              <div><strong>speedQuality per segment:</strong> &lt;3 kn =&gt; 0.2 (likely loiter/anchored); 3-23 kn =&gt; 1.0; 23-30 kn =&gt; 0.5; &gt;30 kn =&gt; 0.1.</div>
+              <div><strong>speedQuality per segment:</strong> &lt;3 kn =&gt; 0.2 (loiter/anchored candidate), 3-23 kn =&gt; 1.0, 23-30 kn =&gt; 0.5, &gt;30 kn =&gt; 0.1.</div>
               <div><strong>speedQuality</strong>: average of segment speedQuality over tail segments.</div>
               <div><strong>approachConfidence</strong> = min(1, (alignedPoints / max(3, tailLength)) × speedQuality).</div>
               <div><strong>approachScore</strong> = approachConfidence × 55.</div>
@@ -1233,6 +1251,10 @@ export default function Page() {
               <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to midpoint between last two points.</div>
               <div>If positive, vessel disappeared while still moving toward the strait (boost). If negative, moving away (penalty).</div>
               <div><strong>directionScore</strong>: if approachDirectionRaw &gt; 0 then ×25; else ×20 (negative score).</div>
+              <div><strong>readinessScore</strong> (disappearance readiness):</div>
+              <div>- if lastSegmentKnots &lt; 2 and direction not toward midpoint =&gt; -12 penalty.</div>
+              <div>- if lastSegmentKnots &ge; 4 and accelerating vs previous segment and toward midpoint =&gt; +4 bonus.</div>
+              <div><strong>lastSegmentKnots</strong> / <strong>prevSegmentKnots</strong>: speeds on the final two pre-disappearance segments.</div>
               <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time), used only as a strict filter (&gt; 6h).</div>
             </div>
           </details>

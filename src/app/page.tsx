@@ -777,6 +777,7 @@ export default function Page() {
           <div className="h-[460px] rounded-xl overflow-hidden border border-slate-800">
             <PlaybackMap
               points={filteredCurrentPoints}
+              snapshots={data.snapshots || []}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
               crossingShipIds={crossingShipIds}

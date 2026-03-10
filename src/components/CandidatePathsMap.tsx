@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer } from "react-leaflet";
 
@@ -24,19 +24,19 @@ type Candidate = {
 
 export default function CandidatePathsMap({
   candidates,
+  selectedShipIds,
+  onToggleShip,
   eastLon,
   westLon,
 }: {
   candidates: Candidate[];
+  selectedShipIds?: string[];
+  onToggleShip?: (shipId: string) => void;
   eastLon: number;
   westLon: number;
 }) {
-  const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
-
-  const selected = useMemo(
-    () => (selectedShipId ? candidates.find((c) => c.shipId === selectedShipId) || null : null),
-    [candidates, selectedShipId],
-  );
+  const selectedSet = useMemo(() => new Set(selectedShipIds || []), [selectedShipIds]);
+  const selected = useMemo(() => candidates.filter((c) => selectedSet.has(c.shipId)), [candidates, selectedSet]);
 
   return (
     <MapContainer center={[26.1, 56.2]} zoom={6} style={{ height: "100%", width: "100%" }}>
@@ -51,7 +51,7 @@ export default function CandidatePathsMap({
       {candidates.map((c) => {
         const polyline = c.points.map((p) => [p.lat, p.lon] as [number, number]);
         const last = c.points[c.points.length - 1];
-        const isSelected = selectedShipId === c.shipId;
+        const isSelected = selectedSet.has(c.shipId);
         const baseColor = isSelected ? "#000000" : "#f59e0b";
 
         return (
@@ -60,7 +60,7 @@ export default function CandidatePathsMap({
               key={`cand-line-${c.shipId}`}
               positions={polyline}
               pathOptions={{ color: baseColor, weight: isSelected ? 3.2 : 1.8, opacity: isSelected ? 0.98 : 0.75, dashArray: isSelected ? "" : "4 8" }}
-              eventHandlers={{ click: () => setSelectedShipId(c.shipId) }}
+              eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
             />
             {c.points.map((p, idx) => (
               <CircleMarker
@@ -68,13 +68,13 @@ export default function CandidatePathsMap({
                 center={[p.lat, p.lon]}
                 radius={isSelected ? 2.7 : 2}
                 pathOptions={{ color: baseColor, fillColor: baseColor, fillOpacity: isSelected ? 0.95 : 0.8, weight: 1 }}
-                eventHandlers={{ click: () => setSelectedShipId(c.shipId) }}
+                eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
               />
             ))}
             <Marker
               key={`cand-last-${c.shipId}`}
               position={[last.lat, last.lon]}
-              eventHandlers={{ click: () => setSelectedShipId(c.shipId) }}
+              eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
               icon={divIcon({
                 className: "",
                 html: `<div style='color:${isSelected ? "#111827" : "#f8fafc"};font-size:11px;font-weight:700;text-shadow:0 1px 2px rgba(2,6,23,.95);white-space:nowrap;transform:translate(8px,-8px);'>disappeared: ${new Date(c.lastSeenAt).toUTCString()} | score: ${c.score.toFixed(1)}</div>`,
@@ -106,17 +106,18 @@ export default function CandidatePathsMap({
         );
       })}
 
-      {selected ? (
+      {selected.map((s) => (
         <Marker
-          position={[selected.points[selected.points.length - 1].lat, selected.points[selected.points.length - 1].lon]}
+          key={`selected-pill-${s.shipId}`}
+          position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:rgba(2,6,23,0.88);border:1px solid #475569;border-radius:8px;padding:6px 8px;color:#e2e8f0;font-size:11px;white-space:nowrap;'>Selected: ${selected.shipName} (${selected.shipId})</div>`,
+            html: `<div style='background:rgba(2,6,23,0.88);border:1px solid #475569;border-radius:8px;padding:6px 8px;color:#e2e8f0;font-size:11px;white-space:nowrap;'>Selected: ${s.shipName} (${s.shipId})</div>`,
             iconSize: [260, 26],
             iconAnchor: [0, 30],
           })}
         />
-      ) : null}
+      ))}
     </MapContainer>
   );
 }

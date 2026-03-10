@@ -187,6 +187,8 @@ export default function Page() {
   const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
+  const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
+  const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(false);
 
   useEffect(() => {
     const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
@@ -398,7 +400,8 @@ export default function Page() {
 
         const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
         const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
-        if (speedKnots <= 23) speedQuality += 1;
+        if (speedKnots < 3) speedQuality += 0.2;
+        else if (speedKnots <= 23) speedQuality += 1;
         else if (speedKnots <= 30) speedQuality += 0.5;
         else speedQuality += 0.1;
         segCount += 1;
@@ -451,6 +454,12 @@ export default function Page() {
   }, [data, crossingShipIds]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
+  const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
+
+  useEffect(() => {
+    const valid = new Set(candidateCrossers.map((c) => c.shipId));
+    setSelectedCandidateShipIds((prev) => prev.filter((id) => valid.has(id)));
+  }, [candidateCrossers]);
 
   const hourlyFromEvents = (vesselType: string) => {
     if (!data?.crossingEvents?.length) return [] as CrossingHour[];
@@ -1126,24 +1135,41 @@ export default function Page() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">Candidate Dark Crossers — Tankers</h2>
           <p className="text-xs text-slate-400">Heuristic shortlist: at least 3 aligned approach points, dark for &gt;6h, speed-plausibility weighted, excluding already observed crossers.</p>
+          <div className="flex items-center gap-3 text-xs text-slate-300">
+            <button
+              className={`px-2 py-1 rounded border ${showOnlySelectedCandidates ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+              onClick={() => setShowOnlySelectedCandidates((v) => !v)}
+            >
+              display only selected: {showOnlySelectedCandidates ? "on" : "off"}
+            </button>
+            <span>Selected: {selectedCandidateShipIds.length}</span>
+          </div>
           <div className="h-[520px] rounded-xl overflow-hidden border border-slate-800">
             <CandidatePathsMap
-              candidates={candidateCrossers.map((c) => ({
-                shipId: c.shipId,
-                shipName: c.shipName,
-                points: c.points,
-                lastSeenAt: c.lastSeenAt,
-                score: c.score,
-                approachScore: c.approachScore,
-                proximityScore: c.proximityScore,
-                directionScore: c.directionScore,
-                darknessScore: c.darknessScore,
-                alignedPoints: c.alignedPoints,
-                speedQuality: c.speedQuality,
-                approachConfidence: c.approachConfidence,
-                proximityRaw: c.proximityRaw,
-                approachDirectionRaw: c.approachDirectionRaw,
-              }))}
+              candidates={candidateCrossers
+                .filter((c) => !showOnlySelectedCandidates || selectedCandidateShipIdSet.has(c.shipId))
+                .map((c) => ({
+                  shipId: c.shipId,
+                  shipName: c.shipName,
+                  points: c.points,
+                  lastSeenAt: c.lastSeenAt,
+                  score: c.score,
+                  approachScore: c.approachScore,
+                  proximityScore: c.proximityScore,
+                  directionScore: c.directionScore,
+                  darknessScore: c.darknessScore,
+                  alignedPoints: c.alignedPoints,
+                  speedQuality: c.speedQuality,
+                  approachConfidence: c.approachConfidence,
+                  proximityRaw: c.proximityRaw,
+                  approachDirectionRaw: c.approachDirectionRaw,
+                }))}
+              selectedShipIds={selectedCandidateShipIds}
+              onToggleShip={(shipId) =>
+                setSelectedCandidateShipIds((prev) =>
+                  prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId],
+                )
+              }
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
             />
@@ -1152,6 +1178,7 @@ export default function Page() {
             <table className="w-full text-xs">
               <thead className="bg-slate-900 sticky top-0">
                 <tr>
+                  <th className="text-left p-2">Sel</th>
                   <th className="text-left p-2">Ship</th>
                   <th className="text-left p-2">Last seen (UTC)</th>
                   <th className="text-left p-2">Dark hours</th>
@@ -1164,6 +1191,17 @@ export default function Page() {
               <tbody>
                 {candidateCrossers.map((c) => (
                   <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedCandidateShipIdSet.has(c.shipId)}
+                        onChange={() =>
+                          setSelectedCandidateShipIds((prev) =>
+                            prev.includes(c.shipId) ? prev.filter((id) => id !== c.shipId) : [...prev, c.shipId],
+                          )
+                        }
+                      />
+                    </td>
                     <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{c.shipName} ({c.shipId})</a></td>
                     <td className="p-2">{new Date(c.lastSeenAt).toUTCString()}</td>
                     <td className="p-2">{c.darkHours.toFixed(1)}</td>
@@ -1185,7 +1223,7 @@ export default function Page() {
               <div><strong>Tail window:</strong> up to last 6 visible points before disappearance.</div>
               <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait midpoint (centerLat + centerLon).</div>
               <div><strong>Segment speed estimation:</strong> haversine distance / time delta, converted to knots.</div>
-              <div><strong>speedQuality per segment:</strong> ≤23 kn =&gt; 1.0; 23-30 kn =&gt; 0.5; &gt;30 kn =&gt; 0.1.</div>
+              <div><strong>speedQuality per segment:</strong> &lt;3 kn =&gt; 0.2 (likely loiter/anchored); 3-23 kn =&gt; 1.0; 23-30 kn =&gt; 0.5; &gt;30 kn =&gt; 0.1.</div>
               <div><strong>speedQuality</strong>: average of segment speedQuality over tail segments.</div>
               <div><strong>approachConfidence</strong> = min(1, (alignedPoints / max(3, tailLength)) × speedQuality).</div>
               <div><strong>approachScore</strong> = approachConfidence × 55.</div>

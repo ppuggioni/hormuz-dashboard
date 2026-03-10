@@ -897,6 +897,24 @@ export default function Page() {
             >
               Data source: {splitMode ? "split-v2" : "legacy"}
             </button>
+
+          </div>
+          {newDataAvailable ? (
+            <div className="mb-3 rounded-lg border border-cyan-300/60 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 flex items-center justify-between gap-3">
+              <span>New dashboard data is available. Page will refresh automatically when idle.</span>
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-md border border-cyan-300/60 px-2 py-1"
+              >
+                Refresh now
+              </button>
+            </div>
+          ) : null}
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
+              BLK - SET team
+            </div>
             <button
               onClick={() => {
                 const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
@@ -919,30 +937,12 @@ export default function Page() {
 
                 window.open(`https://t.me/${bot}?start=hormuz_alerts`, '_blank');
               }}
-              className="inline-flex items-center rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-violet-200"
+              className="inline-flex items-center rounded-xl border border-violet-400/50 bg-violet-500/15 px-3 py-2 text-sm font-semibold text-violet-100"
               title="Subscribe via Telegram bot"
             >
-              Sign up for alerts (Telegram)
+              Telegram alerts — CLICK HERE to sign up
             </button>
           </div>
-          {newDataAvailable ? (
-            <div className="mb-3 rounded-lg border border-cyan-300/60 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 flex items-center justify-between gap-3">
-              <span>New dashboard data is available. Page will refresh automatically when idle.</span>
-              <button
-                onClick={() => window.location.reload()}
-                className="rounded-md border border-cyan-300/60 px-2 py-1"
-              >
-                Refresh now
-              </button>
-            </div>
-          ) : null}
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
-          <div className="mt-2 inline-flex items-center rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
-            BLK - SET team
-          </div>
-          <p className="mt-2 text-slate-400 text-sm">
-            East boundary {data.metadata.eastLon}, west boundary {data.metadata.westLon}, and latitude floor {data.metadata.minLat ?? 24}. Default selection is Cargo + Tanker.
-          </p>
           <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">

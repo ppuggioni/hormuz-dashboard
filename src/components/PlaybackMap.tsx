@@ -179,9 +179,9 @@ export default function PlaybackMap({
               className: "",
               html: isFinal
                 ? `<div style='width:10px;height:10px;background:#9ca3af;border:1px solid #e5e7eb;opacity:0.95;'></div>`
-                : `<div style='transform: rotate(${p.dirDeg}deg); color:#d1d5db; font-size:14px; line-height:14px; opacity:0.95;'>▲</div>`,
-              iconSize: isFinal ? [10, 10] : [14, 14],
-              iconAnchor: isFinal ? [5, 5] : [7, 7],
+                : `<div style='transform: rotate(${p.dirDeg}deg); color:#6b7280; font-size:18px; line-height:18px; opacity:0.98;'>▲</div>`,
+              iconSize: isFinal ? [10, 10] : [18, 18],
+              iconAnchor: isFinal ? [5, 5] : [9, 9],
             })}
           />
         );
@@ -206,7 +206,7 @@ export default function PlaybackMap({
           position={[p.lat, p.lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='transform: rotate(${p.dirDeg}deg); color:#e5e7eb; font-size:12px; line-height:12px; opacity:0.95;'>&gt;</div>`,
+            html: `<div style='transform: rotate(${p.dirDeg - 90}deg); color:#6b7280; font-size:12px; line-height:12px; opacity:0.98;'>&gt;</div>`,
             iconSize: [12, 12],
             iconAnchor: [6, 6],
           })}

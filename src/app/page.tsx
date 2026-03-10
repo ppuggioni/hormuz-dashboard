@@ -193,7 +193,11 @@ export default function Page() {
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
+  const [newDataAvailable, setNewDataAvailable] = useState(false);
   const candidateDefaultsAppliedRef = useRef(false);
+  const interactionAtRef = useRef<number>(Date.now());
+  const mountedAtRef = useRef<number>(Date.now());
+  const latestGeneratedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
     const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
@@ -297,6 +301,68 @@ export default function Page() {
 
     load();
   }, []);
+
+  useEffect(() => {
+    if (!data?.metadata?.generatedAt) return;
+    latestGeneratedAtRef.current = data.metadata.generatedAt;
+  }, [data?.metadata?.generatedAt]);
+
+  useEffect(() => {
+    const bump = () => {
+      interactionAtRef.current = Date.now();
+    };
+    window.addEventListener("mousemove", bump, { passive: true });
+    window.addEventListener("keydown", bump);
+    window.addEventListener("touchstart", bump, { passive: true });
+    window.addEventListener("scroll", bump, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", bump);
+      window.removeEventListener("keydown", bump);
+      window.removeEventListener("touchstart", bump);
+      window.removeEventListener("scroll", bump);
+    };
+  }, []);
+
+  useEffect(() => {
+    const isIdle = () => Date.now() - interactionAtRef.current > 120000;
+
+    const checkForFreshData = async () => {
+      const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
+      const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+      try {
+        const r = await fetch(`${root}/processed_core.json?t=${Date.now()}`);
+        if (r.ok) {
+          const j = await r.json();
+          const remoteGen = j?.metadata?.generatedAt as string | undefined;
+          const localGen = latestGeneratedAtRef.current;
+          if (remoteGen && localGen && +new Date(remoteGen) > +new Date(localGen)) {
+            setNewDataAvailable(true);
+            if (isIdle()) window.location.reload();
+          }
+        }
+      } catch {
+        // ignore polling errors
+      }
+
+      const elapsed = Date.now() - mountedAtRef.current;
+      if (elapsed > 45 * 60 * 1000 && isIdle()) {
+        window.location.reload();
+      }
+    };
+
+    const id = setInterval(checkForFreshData, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!newDataAvailable) return;
+    const id = setInterval(() => {
+      if (Date.now() - interactionAtRef.current > 120000) {
+        window.location.reload();
+      }
+    }, 30000);
+    return () => clearInterval(id);
+  }, [newDataAvailable]);
 
   useEffect(() => {
     if (!playing || !data?.snapshots?.length) return;
@@ -820,6 +886,17 @@ export default function Page() {
               Sign up for alerts (Telegram)
             </button>
           </div>
+          {newDataAvailable ? (
+            <div className="mb-3 rounded-lg border border-cyan-300/60 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 flex items-center justify-between gap-3">
+              <span>New dashboard data is available. Page will refresh automatically when idle.</span>
+              <button
+                onClick={() => window.location.reload()}
+                className="rounded-md border border-cyan-300/60 px-2 py-1"
+              >
+                Refresh now
+              </button>
+            </div>
+          ) : null}
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
           <div className="mt-2 inline-flex items-center rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
             BLK - SET team

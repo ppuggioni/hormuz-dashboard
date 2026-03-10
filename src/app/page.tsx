@@ -55,6 +55,21 @@ type LinkageEvent = {
   deltaDh: string;
 };
 
+type CandidateCrosser = {
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  score: number;
+  alignedPoints: number;
+  speedQuality: number;
+  approachConfidence: number;
+  darkHours: number;
+  lastSeenAt: string;
+  lastLat: number;
+  lastLon: number;
+  points: PathPoint[];
+};
+
 type DataShape = {
   metadata: {
     generatedAt: string;
@@ -80,6 +95,7 @@ type DataShape = {
 
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
+const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
 
 function alignHours(
   source: { hour: string; east_to_west: number; west_to_east: number }[],
@@ -134,6 +150,15 @@ function buildReadableTicks(hours: string[]) {
   if (ticks[0] !== hours[0]) ticks.unshift(hours[0]);
   if (ticks[ticks.length - 1] !== hours[hours.length - 1]) ticks.push(hours[hours.length - 1]);
   return ticks;
+}
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 export default function Page() {
@@ -323,6 +348,83 @@ export default function Page() {
   }, [data, selectedTypes]);
 
   const crossingShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((p) => p.shipId)), [data]);
+
+  const candidateCrossers = useMemo(() => {
+    if (!data?.snapshots?.length) return [] as CandidateCrosser[];
+
+    const latestTs = +new Date(data.snapshots[data.snapshots.length - 1].t);
+    const byShip = new Map<string, { shipName: string; vesselType: string; points: PathPoint[] }>();
+
+    for (const s of data.snapshots) {
+      for (const p of s.points) {
+        if (p.vesselType !== "tanker") continue;
+        if (!byShip.has(p.shipId)) byShip.set(p.shipId, { shipName: p.shipName, vesselType: p.vesselType, points: [] });
+        byShip.get(p.shipId)!.points.push({ t: s.t, lat: p.lat, lon: p.lon });
+      }
+    }
+
+    const centerLon = (data.metadata.eastLon + data.metadata.westLon) / 2;
+    const out: CandidateCrosser[] = [];
+
+    for (const [shipId, v] of byShip.entries()) {
+      const pts = v.points.sort((a, b) => +new Date(a.t) - +new Date(b.t));
+      if (pts.length < 3) continue;
+      if (crossingShipIds.has(shipId)) continue;
+
+      const last = pts[pts.length - 1];
+      const darkHours = (latestTs - +new Date(last.t)) / (1000 * 60 * 60);
+      if (darkHours <= 6) continue;
+
+      const tail = pts.slice(-Math.min(6, pts.length));
+      if (tail.length < 3) continue;
+
+      let aligned = 0;
+      let speedQuality = 0;
+      let segCount = 0;
+
+      for (let i = 1; i < tail.length; i++) {
+        const a = tail[i - 1];
+        const b = tail[i];
+        const distPrev = Math.abs(a.lon - centerLon);
+        const distCur = Math.abs(b.lon - centerLon);
+        if (distCur < distPrev) aligned += 1;
+
+        const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
+        const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
+        if (speedKnots <= 23) speedQuality += 1;
+        else if (speedKnots <= 30) speedQuality += 0.5;
+        else speedQuality += 0.1;
+        segCount += 1;
+      }
+
+      const alignedPoints = aligned + 1;
+      if (alignedPoints < 3) continue;
+
+      const speedScore = segCount ? speedQuality / segCount : 0;
+      const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
+      const proximity = 1 - Math.min(1, Math.abs(last.lon - centerLon) / 1.5);
+      const score = approachConfidence * 60 + proximity * 20 + Math.max(0, darkHours - 6) * 2;
+
+      out.push({
+        shipId,
+        shipName: v.shipName,
+        vesselType: v.vesselType,
+        score,
+        alignedPoints,
+        speedQuality: speedScore,
+        approachConfidence,
+        darkHours,
+        lastSeenAt: last.t,
+        lastLat: last.lat,
+        lastLon: last.lon,
+        points: pts,
+      });
+    }
+
+    return out.sort((a, b) => b.score - a.score).slice(0, 80);
+  }, [data, crossingShipIds]);
+
+  const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
 
   const hourlyFromEvents = (vesselType: string) => {
     if (!data?.crossingEvents?.length) return [] as CrossingHour[];
@@ -781,6 +883,7 @@ export default function Page() {
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
               crossingShipIds={crossingShipIds}
+              candidateShipIds={candidateShipIds}
               showCrossing={showCrossing}
               showNonCrossing={showNonCrossing}
               linkedPoints={playbackLinkedPoints}
@@ -992,6 +1095,52 @@ export default function Page() {
             />
           </div>
           <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+          <h2 className="text-lg font-medium">Candidate Dark Crossers — Tankers</h2>
+          <p className="text-xs text-slate-400">Heuristic shortlist: at least 3 aligned approach points, dark for &gt;6h, speed-plausibility weighted, excluding already observed crossers.</p>
+          <div className="h-[520px] rounded-xl overflow-hidden border border-slate-800">
+            <CandidatePathsMap
+              candidates={candidateCrossers.map((c) => ({
+                shipId: c.shipId,
+                shipName: c.shipName,
+                points: c.points,
+                lastSeenAt: c.lastSeenAt,
+                score: c.score,
+              }))}
+              eastLon={data.metadata.eastLon}
+              westLon={data.metadata.westLon}
+            />
+          </div>
+          <div className="max-h-[360px] overflow-auto border border-slate-800 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-900 sticky top-0">
+                <tr>
+                  <th className="text-left p-2">Ship</th>
+                  <th className="text-left p-2">Last seen (UTC)</th>
+                  <th className="text-left p-2">Dark hours</th>
+                  <th className="text-left p-2">Aligned points</th>
+                  <th className="text-left p-2">Speed quality</th>
+                  <th className="text-left p-2">Approach confidence</th>
+                  <th className="text-left p-2">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {candidateCrossers.map((c) => (
+                  <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
+                    <td className="p-2">{c.shipName} ({c.shipId})</td>
+                    <td className="p-2">{new Date(c.lastSeenAt).toUTCString()}</td>
+                    <td className="p-2">{c.darkHours.toFixed(1)}</td>
+                    <td className="p-2">{c.alignedPoints}</td>
+                    <td className="p-2">{c.speedQuality.toFixed(2)}</td>
+                    <td className="p-2">{c.approachConfidence.toFixed(2)}</td>
+                    <td className="p-2 font-medium">{c.score.toFixed(1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <details className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">

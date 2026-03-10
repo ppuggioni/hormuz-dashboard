@@ -48,6 +48,7 @@ export default function PlaybackMap({
   eastLon,
   westLon,
   crossingShipIds,
+  candidateShipIds,
   showCrossing,
   showNonCrossing,
   linkedPoints,
@@ -57,6 +58,7 @@ export default function PlaybackMap({
   eastLon: number;
   westLon: number;
   crossingShipIds: Set<string>;
+  candidateShipIds?: Set<string>;
   showCrossing: boolean;
   showNonCrossing: boolean;
   linkedPoints?: LinkedPoint[];
@@ -244,7 +246,9 @@ export default function PlaybackMap({
       )})}
 
       {points.map((p) => {
-        const color = typeColor[p.vesselType] || "#e5e7eb";
+        const baseColor = typeColor[p.vesselType] || "#e5e7eb";
+        const isCandidate = Boolean(candidateShipIds?.has(p.shipId));
+        const color = isCandidate ? "#f59e0b" : baseColor;
         const isCrosser = crossingShipIds.has(p.shipId);
 
         if (isCrosser) {
@@ -263,7 +267,7 @@ export default function PlaybackMap({
                     <div><strong>Name:</strong> {p.shipName}</div>
                     <div><strong>Ship ID:</strong> {p.shipId}</div>
                     <div><strong>Type:</strong> {p.vesselType}</div>
-                    <div><strong>Status:</strong> crossing vessel</div>
+                    <div><strong>Status:</strong> crossing vessel{isCandidate ? " (candidate dark crosser)" : ""}</div>
                     <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
                   </div>
                 </Popup>
@@ -292,7 +296,7 @@ export default function PlaybackMap({
                 <div><strong>Name:</strong> {p.shipName}</div>
                 <div><strong>Ship ID:</strong> {p.shipId}</div>
                 <div><strong>Type:</strong> {p.vesselType}</div>
-                <div><strong>Status:</strong> non-crossing</div>
+                <div><strong>Status:</strong> {isCandidate ? "candidate dark crosser" : "non-crossing"}</div>
                 <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
               </div>
             </Popup>

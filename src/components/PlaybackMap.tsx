@@ -171,7 +171,7 @@ export default function PlaybackMap({
           </div>
         </div>
       ) : null}
-      <MapContainer center={[26.15, 56.2]} zoom={7} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={[26.15, 56.2]} zoom={6} style={{ height: "100%", width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -425,8 +425,8 @@ export default function Page() {
       const approachScore = approachConfidence * 55;
       const proximityScore = proximityRaw * 20;
       const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
-      const darknessScore = Math.max(0, darkHours - 6) * 2;
-      const score = approachScore + proximityScore + directionScore + darknessScore;
+      const darknessScore = 0;
+      const score = approachScore + proximityScore + directionScore;
 
       out.push({
         shipId,
@@ -1217,9 +1217,10 @@ export default function Page() {
           <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
-              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + darknessScore.</div>
+              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore.</div>
               <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
               <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
+              <div><strong>Darkness filter gate:</strong> candidate must be dark for more than 6 hours (darkHours &gt; 6); darkness is not scored.</div>
               <div><strong>Tail window:</strong> up to last 6 visible points before disappearance.</div>
               <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait midpoint (centerLat + centerLon).</div>
               <div><strong>Segment speed estimation:</strong> haversine distance / time delta, converted to knots.</div>
@@ -1232,8 +1233,7 @@ export default function Page() {
               <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to midpoint between last two points.</div>
               <div>If positive, vessel disappeared while still moving toward the strait (boost). If negative, moving away (penalty).</div>
               <div><strong>directionScore</strong>: if approachDirectionRaw &gt; 0 then ×25; else ×20 (negative score).</div>
-              <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time).</div>
-              <div><strong>darknessScore</strong> = max(0, darkHours - 6) × 2 (no cap).</div>
+              <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time), used only as a strict filter (&gt; 6h).</div>
             </div>
           </details>
         </section>

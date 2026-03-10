@@ -91,8 +91,8 @@ export default function CandidatePathsMap({
                   <div>Approach score: {c.approachScore.toFixed(1)}</div>
                   <div>Proximity score: {c.proximityScore.toFixed(1)}</div>
                   <div>Direction score: {c.directionScore.toFixed(1)}</div>
-                  <div>Darkness score: {c.darknessScore.toFixed(1)}</div>
                   <div style={{ marginTop: 6 }}><strong>Sub-parameters</strong></div>
+                  <div>Dark hours (filter only): {((Date.now() - +new Date(c.lastSeenAt)) / (1000 * 60 * 60)).toFixed(1)}</div>
                   <div>Aligned points: {c.alignedPoints}</div>
                   <div>Speed quality: {c.speedQuality.toFixed(2)}</div>
                   <div>Approach confidence: {c.approachConfidence.toFixed(2)}</div>

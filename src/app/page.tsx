@@ -482,7 +482,10 @@ export default function Page() {
   }, [data, crossingShipIds]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
-  const candidateLast48hCount = useMemo(() => candidateCrossers.filter((c) => c.darkHours <= 48).length, [candidateCrossers]);
+  const candidateLast48hAbove30Count = useMemo(
+    () => candidateCrossers.filter((c) => c.darkHours <= 48 && c.score > 30).length,
+    [candidateCrossers],
+  );
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
 
   useEffect(() => {
@@ -653,6 +656,14 @@ export default function Page() {
     }));
   }, [externalLinkRows]);
 
+  const transitTimeByShip = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of linkageRows) {
+      if (!map.has(r.shipId)) map.set(r.shipId, r.deltaDh);
+    }
+    return map;
+  }, [linkageRows]);
+
   const playbackLinkedPoints = useMemo(() => {
     if (!externalPoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {
       return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
@@ -818,31 +829,30 @@ export default function Page() {
           </p>
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
-            <Stat label="Crossing Tankers (last 48h | baseline pre-war: 30-40/day)" value={String(last24hCrossingCounts.tanker)} />
+            <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
+              <div className="text-xs text-slate-400">Crossing Tankers (last 48h | baseline pre-war: 30-40/day)</div>
+              <div className="text-lg font-semibold">{String(last24hCrossingCounts.tanker)}</div>
+              <button
+                onClick={() => document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-slate-700 px-2 py-1 text-[11px]"
+              >
+                Jump to crossing tankers map
+              </button>
+            </div>
             <Stat label="Crossing Cargo (last 48h)" value={String(last24hCrossingCounts.cargo)} />
-            <Stat label="Crossing Others (last 48h)" value={String(last24hCrossingCounts.other)} />
+            <div className="rounded-xl border border-violet-300/60 bg-violet-500/10 p-3">
+              <div className="text-xs text-violet-200">High-confidence dark-transit tanker candidates (&gt;30 score, last 48h)</div>
+              <div className="text-lg font-semibold text-violet-100">{candidateLast48hAbove30Count}</div>
+              <button
+                onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-violet-300/60 px-2 py-1 text-[11px] text-violet-100"
+              >
+                Jump to candidate section
+              </button>
+            </div>
           </div>
           <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30-40 tanker crossings per day.</p>
-          <div className="mt-4 rounded-xl border border-violet-300/60 bg-violet-500/10 p-3">
-            <div className="text-xs text-violet-200">Potential dark-transit tankers (disappeared &gt;6h, last 48h)</div>
-            <div className="text-2xl font-semibold text-violet-100">{candidateLast48hCount}</div>
-            <button
-              onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="mt-2 rounded-md border border-violet-300/60 px-2 py-1 text-xs text-violet-100 hover:bg-violet-500/10"
-            >
-              Jump to candidate section
-            </button>
-          </div>
         </header>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-          <div className="flex flex-wrap gap-2 text-xs">
-            <button onClick={() => document.getElementById("playback-map")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">Playback map</button>
-            <button onClick={() => document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">Crossing paths</button>
-            <button onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">Candidate dark crossers</button>
-            <button onClick={() => document.getElementById("linkage-table")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="rounded-md border border-slate-700 px-2 py-1">From→To linkage</button>
-          </div>
-        </section>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <h2 className="text-lg font-medium mb-3">FAQ / Method Notes</h2>
@@ -1040,6 +1050,7 @@ export default function Page() {
                   <tr>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Tanker ship</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                    <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1047,6 +1058,7 @@ export default function Page() {
                     <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1105,6 +1117,7 @@ export default function Page() {
                   <tr>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Cargo ship</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                    <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1112,44 +1125,12 @@ export default function Page() {
                     <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-        </section>
-
-        <section id="linkage-table" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <h2 className="text-lg font-medium">Detected From → To Regions (anchored on Hormuz West)</h2>
-          <p className="text-xs text-slate-400">Transit time is measured from Hormuz West in Dd:HHh:MMm. Positive means after Hormuz West; negative means before.</p>
-          <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-900 sticky top-0">
-                <tr>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setLinkSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setLinkSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
-                  <th className="text-left p-2">From</th>
-                  <th className="text-left p-2">To</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setLinkSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Hormuz West (UTC)</th>
-                  <th className="text-left p-2">Other Region (UTC)</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setLinkSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linkageRows.map((r, idx) => (
-                  <tr key={`${r.shipId}-${r.hormuzWestTime}-${r.otherRegionTime}-${idx}`} className="border-t border-slate-800">
-                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
-                    <td className="p-2">{r.vesselType}</td>
-                    <td className="p-2">{r.fromRegion}</td>
-                    <td className="p-2">{r.toRegion}</td>
-                    <td className="p-2">{new Date(r.hormuzWestTime).toUTCString()}</td>
-                    <td className="p-2">{new Date(r.otherRegionTime).toUTCString()}</td>
-                    <td className="p-2 font-medium">{r.deltaDh}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </section>
 

@@ -64,6 +64,9 @@ type CandidateCrosser = {
   speedQuality: number;
   approachConfidence: number;
   darkHours: number;
+  proximityScore: number;
+  approachScore: number;
+  darknessScore: number;
   lastSeenAt: string;
   lastLat: number;
   lastLon: number;
@@ -403,7 +406,10 @@ export default function Page() {
       const speedScore = segCount ? speedQuality / segCount : 0;
       const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
       const proximity = 1 - Math.min(1, Math.abs(last.lon - centerLon) / 1.5);
-      const score = approachConfidence * 60 + proximity * 20 + Math.max(0, darkHours - 6) * 2;
+      const approachScore = approachConfidence * 60;
+      const proximityScore = proximity * 20;
+      const darknessScore = Math.max(0, darkHours - 6) * 2;
+      const score = approachScore + proximityScore + darknessScore;
 
       out.push({
         shipId,
@@ -414,6 +420,9 @@ export default function Page() {
         speedQuality: speedScore,
         approachConfidence,
         darkHours,
+        proximityScore,
+        approachScore,
+        darknessScore,
         lastSeenAt: last.t,
         lastLat: last.lat,
         lastLon: last.lon,
@@ -1108,6 +1117,12 @@ export default function Page() {
                 points: c.points,
                 lastSeenAt: c.lastSeenAt,
                 score: c.score,
+                approachScore: c.approachScore,
+                proximityScore: c.proximityScore,
+                darknessScore: c.darknessScore,
+                alignedPoints: c.alignedPoints,
+                speedQuality: c.speedQuality,
+                approachConfidence: c.approachConfidence,
               }))}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
@@ -1141,6 +1156,19 @@ export default function Page() {
               </tbody>
             </table>
           </div>
+          <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
+            <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
+            <div className="mt-2 space-y-1 leading-relaxed">
+              <div><strong>Total score</strong> = approachScore + proximityScore + darknessScore.</div>
+              <div><strong>approachScore</strong> = approachConfidence × 60.</div>
+              <div><strong>approachConfidence</strong> = min(1, aligned-approach factor × speedQuality).</div>
+              <div><strong>speedQuality</strong> is down-weighted when implied segment speeds are implausibly high.</div>
+              <div><strong>proximityScore</strong> = closeness to strait centerline at last seen × 20.</div>
+              <div><strong>darknessScore</strong> = max(0, darkHours - 6) × 2 (no cap).</div>
+              <div>Only <strong>tankers</strong> are included. Minimum <strong>3 aligned points</strong> required.</div>
+              <div>Already observed crossers are excluded from candidate list.</div>
+            </div>
+          </details>
         </section>
 
         <details className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">

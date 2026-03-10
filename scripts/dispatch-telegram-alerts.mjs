@@ -20,7 +20,9 @@ async function supa(path, init = {}) {
   });
   if (!r.ok) throw new Error(`Supabase ${r.status}: ${await r.text()}`);
   if (r.status === 204) return null;
-  return r.json();
+  const txt = await r.text();
+  if (!txt) return null;
+  return JSON.parse(txt);
 }
 
 async function tg(method, payload = {}) {

@@ -617,6 +617,19 @@ export default function Page() {
                   alert('Telegram bot username is not configured yet.');
                   return;
                 }
+
+                const proceed = window.confirm(
+                  [
+                    'How to subscribe to Telegram alerts:',
+                    '',
+                    '1) Click OK to open the bot.',
+                    '2) Open it on the phone where Telegram is installed (or Telegram Desktop/Web).',
+                    '3) Press Start in the bot chat.',
+                    '4) You are subscribed — no further action needed.',
+                  ].join('\n'),
+                );
+                if (!proceed) return;
+
                 window.open(`https://t.me/${bot}?start=hormuz_alerts`, '_blank');
               }}
               className="inline-flex items-center rounded-full border border-violet-400/40 bg-violet-500/10 px-3 py-1 text-violet-200"

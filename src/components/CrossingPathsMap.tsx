@@ -88,6 +88,7 @@ export default function CrossingPathsMap({
               <div><strong>Ship:</strong> {l.shipName} ({l.shipId})</div>
               <div><strong>Route:</strong> {l.fromRegion} → {l.toRegion}</div>
               <div><strong>Transit time from Hormuz West:</strong> {l.deltaDh}</div>
+              <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${l.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
             </div>
           </Popup>
         </Polyline>
@@ -117,6 +118,7 @@ export default function CrossingPathsMap({
                       <div><strong>Name:</strong> {ship.shipName}</div>
                       <div><strong>Ship ID:</strong> {ship.shipId}</div>
                       <div><strong>Type:</strong> {ship.vesselType} (square marker)</div>
+                      <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${ship.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
                       <div><strong>Timestamp:</strong> {new Date(p.t).toUTCString()}</div>
                       <div><strong>Position:</strong> {p.lat.toFixed(4)}, {p.lon.toFixed(4)}</div>
                       <div><strong>Direction:</strong> {ship.primaryDirection.replace("_to_", " → ")}</div>
@@ -136,6 +138,7 @@ export default function CrossingPathsMap({
                       <div><strong>Name:</strong> {ship.shipName}</div>
                       <div><strong>Ship ID:</strong> {ship.shipId}</div>
                       <div><strong>Type:</strong> {ship.vesselType} (circle marker)</div>
+                      <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${ship.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
                       <div><strong>Timestamp:</strong> {new Date(p.t).toUTCString()}</div>
                       <div><strong>Position:</strong> {p.lat.toFixed(4)}, {p.lon.toFixed(4)}</div>
                       <div><strong>Direction:</strong> {ship.primaryDirection.replace("_to_", " → ")}</div>

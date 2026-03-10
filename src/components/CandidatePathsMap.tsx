@@ -61,6 +61,7 @@ export default function CandidatePathsMap({
                   <div><strong>Ship:</strong> {c.shipName} ({c.shipId})</div>
                   <div><strong>Last seen:</strong> {new Date(c.lastSeenAt).toUTCString()}</div>
                   <div><strong>Candidate score:</strong> {c.score.toFixed(1)}</div>
+                  <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
                 </div>
               </Popup>
             </Marker>

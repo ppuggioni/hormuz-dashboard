@@ -938,7 +938,7 @@ export default function Page() {
                 tankerNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
                     {tankerNamesAtSelectedHour.map((r) => (
-                      <li key={`${r.shipId}-${r.direction}`}>{r.shipName} ({r.shipId}) — {r.direction.replace("_to_", " → ")}</li>
+                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
                     ))}
                   </ul>
                 ) : (
@@ -957,7 +957,7 @@ export default function Page() {
                 <tbody>
                   {tankerTableRows.map((r, idx) => (
                     <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                      <td className="p-2">{r.shipName} ({r.shipId})</td>
+                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
                     </tr>
                   ))}
@@ -1003,7 +1003,7 @@ export default function Page() {
                 cargoNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
                     {cargoNamesAtSelectedHour.map((r) => (
-                      <li key={`${r.shipId}-${r.direction}`}>{r.shipName} ({r.shipId}) — {r.direction.replace("_to_", " → ")}</li>
+                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
                     ))}
                   </ul>
                 ) : (
@@ -1022,7 +1022,7 @@ export default function Page() {
                 <tbody>
                   {cargoTableRows.map((r, idx) => (
                     <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                      <td className="p-2">{r.shipName} ({r.shipId})</td>
+                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
                     </tr>
                   ))}
@@ -1051,7 +1051,7 @@ export default function Page() {
               <tbody>
                 {linkageRows.map((r, idx) => (
                   <tr key={`${r.shipId}-${r.hormuzWestTime}-${r.otherRegionTime}-${idx}`} className="border-t border-slate-800">
-                    <td className="p-2">{r.shipName} ({r.shipId})</td>
+                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
                     <td className="p-2">{r.vesselType}</td>
                     <td className="p-2">{r.fromRegion}</td>
                     <td className="p-2">{r.toRegion}</td>
@@ -1129,7 +1129,7 @@ export default function Page() {
               <tbody>
                 {candidateCrossers.map((c) => (
                   <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
-                    <td className="p-2">{c.shipName} ({c.shipId})</td>
+                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{c.shipName} ({c.shipId})</a></td>
                     <td className="p-2">{new Date(c.lastSeenAt).toUTCString()}</td>
                     <td className="p-2">{c.darkHours.toFixed(1)}</td>
                     <td className="p-2">{c.alignedPoints}</td>

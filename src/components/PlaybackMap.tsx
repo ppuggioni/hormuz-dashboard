@@ -159,6 +159,16 @@ export default function PlaybackMap({
           <div><strong>Ship ID:</strong> {selectedShipMeta.shipId}</div>
           <div><strong>Type:</strong> {selectedShipMeta.vesselType}</div>
           <div><strong>Window pings:</strong> {selectedTrail.length}</div>
+          <div style={{ marginTop: 4 }}>
+            <a
+              href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${selectedShipMeta.shipId}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "#7dd3fc", textDecoration: "underline" }}
+            >
+              Open MarineTraffic
+            </a>
+          </div>
         </div>
       ) : null}
       <MapContainer center={[26.15, 56.2]} zoom={7} style={{ height: "100%", width: "100%" }}>
@@ -240,6 +250,7 @@ export default function PlaybackMap({
               <div><strong>Ship:</strong> {p.shipName} ({p.shipId})</div>
               <div><strong>Transit time from Hormuz West:</strong> {p.deltaDh}</div>
               <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
+              <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
             </div>
           </Popup>
         </CircleMarker>
@@ -269,6 +280,7 @@ export default function PlaybackMap({
                     <div><strong>Type:</strong> {p.vesselType}</div>
                     <div><strong>Status:</strong> crossing vessel{isCandidate ? " (candidate dark crosser)" : ""}</div>
                     <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
+                    <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
                   </div>
                 </Popup>
               </Polyline>
@@ -298,6 +310,7 @@ export default function PlaybackMap({
                 <div><strong>Type:</strong> {p.vesselType}</div>
                 <div><strong>Status:</strong> {isCandidate ? "candidate dark crosser" : "non-crossing"}</div>
                 <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
+                <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
               </div>
             </Popup>
           </CircleMarker>

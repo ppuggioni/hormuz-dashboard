@@ -10,6 +10,13 @@ function colorForShip(shipId: string) {
   for (let i = 0; i < shipId.length; i++) hash = (hash * 31 + shipId.charCodeAt(i)) | 0;
   return vesselPalette[Math.abs(hash) % vesselPalette.length];
 }
+function scoreToYellowGreen(score: number) {
+  const t = Math.max(0, Math.min(1, (score - 30) / 20));
+  const r = Math.round(245 + (34 - 245) * t);
+  const g = Math.round(158 + (197 - 158) * t);
+  const b = Math.round(11 + (94 - 11) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
 
 function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
   const dLon = b.lon - a.lon;
@@ -157,7 +164,7 @@ export default function CandidatePathsMap({
       })}
 
       {selected.map((s) => {
-        const labelColor = colorForShip(s.shipId);
+        const labelColor = scoreToYellowGreen(s.score);
         return (
         <Marker
           key={`selected-pill-${s.shipId}`}

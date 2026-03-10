@@ -291,7 +291,7 @@ export default function PlaybackMap({
           <Marker
             key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
             position={[p.lat, p.lon]}
-            icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 11, isCrosser), iconSize: isCrosser ? [19, 19] : [11, 13], iconAnchor: isCrosser ? [9, 10] : [5, 9] })}
+            icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 9, isCrosser), iconSize: isCrosser ? [17, 17] : [9, 11], iconAnchor: isCrosser ? [8, 9] : [4, 8] })}
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
             <Tooltip>

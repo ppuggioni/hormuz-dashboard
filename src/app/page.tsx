@@ -817,6 +817,7 @@ export default function Page() {
       const pick = frameRegionPick.get(`${currentSnapshot.t}|${region}`);
       if (!pick) continue;
       for (const p of pick.points) {
+        if (!selectedTypes.includes(p.vesselType)) continue;
         out.push({
           shipId: p.shipId,
           shipName: p.shipName,
@@ -830,7 +831,7 @@ export default function Page() {
     }
 
     return out.slice(0, 4000);
-  }, [data, currentSnapshot?.t, showOnlyLinkedExternal, externalPoints]);
+  }, [data, currentSnapshot?.t, showOnlyLinkedExternal, externalPoints, selectedTypes]);
 
   const freshness = useMemo(() => {
     if (!data) {

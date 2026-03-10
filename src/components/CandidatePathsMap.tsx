@@ -4,12 +4,11 @@ import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
 import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
 
-function scoreToYellowGreen(score: number) {
-  const t = Math.max(0, Math.min(1, (score - 30) / 20));
-  const r = Math.round(245 + (34 - 245) * t);
-  const g = Math.round(158 + (197 - 158) * t);
-  const b = Math.round(11 + (94 - 11) * t);
-  return `rgb(${r}, ${g}, ${b})`;
+const vesselPalette = ["#f59e0b", "#22c55e", "#38bdf8", "#e879f9", "#f43f5e", "#a3e635", "#2dd4bf", "#f97316", "#60a5fa", "#fb7185"];
+function colorForShip(shipId: string) {
+  let hash = 0;
+  for (let i = 0; i < shipId.length; i++) hash = (hash * 31 + shipId.charCodeAt(i)) | 0;
+  return vesselPalette[Math.abs(hash) % vesselPalette.length];
 }
 
 function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
@@ -84,8 +83,8 @@ export default function CandidatePathsMap({
         const polyline = c.points.map((p) => [p.lat, p.lon] as [number, number]);
         const last = c.points[c.points.length - 1];
         const isSelected = selectedSet.has(c.shipId);
-        const scoreColor = scoreToYellowGreen(c.score);
-        const baseColor = isSelected ? "#000000" : scoreColor;
+        const shipColor = colorForShip(c.shipId);
+        const baseColor = isSelected ? "#000000" : shipColor;
 
         return (
           <Fragment key={`cand-${c.shipId}`}>
@@ -158,7 +157,7 @@ export default function CandidatePathsMap({
       })}
 
       {selected.map((s) => {
-        const labelColor = scoreToYellowGreen(s.score);
+        const labelColor = colorForShip(s.shipId);
         return (
         <Marker
           key={`selected-pill-${s.shipId}`}

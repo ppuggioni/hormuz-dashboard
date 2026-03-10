@@ -17,10 +17,12 @@ const typeColor: Record<string, string> = {
   unknown: "#94a3b8",
 };
 
-function triangleIconHtml(color: string, deg: number, size = 14) {
+function triangleIconHtml(color: string, deg: number, size = 14, withCross = false) {
   const h = Math.round(size * 1.1);
   const w = Math.round(size * 0.7);
-  return `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
+  const tri = `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
+  if (!withCross) return tri;
+  return `<div style='position:relative;width:${size + 8}px;height:${size + 8}px;display:flex;align-items:center;justify-content:center;'>${tri}<div style='position:absolute;color:${color};opacity:0.95;font-size:${size + 8}px;font-weight:300;line-height:1;'>×</div></div>`;
 }
 
 function directionDegrees(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {
@@ -289,7 +291,7 @@ export default function PlaybackMap({
           <Marker
             key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
             position={[p.lat, p.lon]}
-            icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 15), iconSize: [15, 18], iconAnchor: [7, 12] })}
+            icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 11, isCrosser), iconSize: isCrosser ? [19, 19] : [11, 13], iconAnchor: isCrosser ? [9, 10] : [5, 9] })}
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
             <Tooltip>

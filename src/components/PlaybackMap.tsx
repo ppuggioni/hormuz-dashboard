@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, Tooltip } from "react-leaflet";
+import { CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer } from "react-leaflet";
 import { divIcon } from "leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
@@ -103,14 +103,18 @@ export default function PlaybackMap({
   const segmentArrows = useMemo(() => {
     if (selectedTrail.length < 2) return [] as Array<{ lat: number; lon: number; dirDeg: number }>;
     const out: Array<{ lat: number; lon: number; dirDeg: number }> = [];
+    const fractions = [0.25, 0.5, 0.75];
     for (let i = 0; i < selectedTrail.length - 1; i++) {
       const a = selectedTrail[i];
       const b = selectedTrail[i + 1];
-      out.push({
-        lat: (a.lat + b.lat) / 2,
-        lon: (a.lon + b.lon) / 2,
-        dirDeg: directionDegrees({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }),
-      });
+      const dirDeg = directionDegrees({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon });
+      for (const f of fractions) {
+        out.push({
+          lat: a.lat + (b.lat - a.lat) * f,
+          lon: a.lon + (b.lon - a.lon) * f,
+          dirDeg,
+        });
+      }
     }
     return out;
   }, [selectedTrail]);
@@ -162,48 +166,47 @@ export default function PlaybackMap({
       {selectedTrail.length > 1 ? (
         <Polyline
           positions={selectedTrail.map((p) => [p.lat, p.lon] as [number, number])}
-          pathOptions={{ color: "#9ca3af", weight: 1, opacity: 0.85, dashArray: "2 8" }}
+          pathOptions={{ color: "#9ca3af", weight: 2, opacity: 0.92, dashArray: "3 9" }}
         />
       ) : null}
-      {selectedTrailWithDir.map((p, idx) => (
-        <CircleMarker
-          key={`trail-dot-${selectedShipId}-${idx}`}
-          center={[p.lat, p.lon]}
-          radius={1.5}
-          pathOptions={{ color: "#9ca3af", fillColor: "#9ca3af", fillOpacity: 0.65, weight: 1 }}
-        >
-          {idx % timestampLabelStep === 0 ? (
-            <Tooltip
-              permanent
-              direction="top"
-              offset={[0, -7]}
-              opacity={0.38}
-              className="trail-ts-label"
-            >
-              <span style={{ fontSize: 9, color: "rgba(226, 232, 240, 0.66)" }}>{timestampShort(p.t)}</span>
-            </Tooltip>
-          ) : null}
-        </CircleMarker>
-      ))}
-      {selectedTrailWithDir.map((p, idx) => (
-        <Marker
-          key={`trail-arrow-dot-${selectedShipId}-${idx}`}
-          position={[p.lat, p.lon]}
-          icon={divIcon({
-            className: "",
-            html: `<div style='transform: rotate(${p.dirDeg}deg); color:#9ca3af; font-size:10px; line-height:10px; opacity:0.7;'>&gt;</div>`,
-            iconSize: [10, 10],
-            iconAnchor: [5, 5],
-          })}
-        />
-      ))}
+      {selectedTrailWithDir.map((p, idx) => {
+        const isFinal = idx === selectedTrailWithDir.length - 1;
+        return (
+          <Marker
+            key={`trail-point-shape-${selectedShipId}-${idx}`}
+            position={[p.lat, p.lon]}
+            icon={divIcon({
+              className: "",
+              html: isFinal
+                ? `<div style='width:10px;height:10px;background:#9ca3af;border:1px solid #e5e7eb;opacity:0.95;'></div>`
+                : `<div style='transform: rotate(${p.dirDeg}deg); color:#d1d5db; font-size:14px; line-height:14px; opacity:0.95;'>▲</div>`,
+              iconSize: isFinal ? [10, 10] : [14, 14],
+              iconAnchor: isFinal ? [5, 5] : [7, 7],
+            })}
+          />
+        );
+      })}
+      {selectedTrailWithDir
+        .filter((_, idx) => idx % timestampLabelStep === 0)
+        .map((p, idx) => (
+          <Marker
+            key={`trail-ts-${selectedShipId}-${idx}`}
+            position={[p.lat, p.lon]}
+            icon={divIcon({
+              className: "",
+              html: `<div style='color:#f1f5f9;font-size:11px;font-weight:600;text-shadow:0 1px 2px rgba(2,6,23,0.95);white-space:nowrap;transform:translate(-50%,-14px);'>${timestampShort(p.t)}</div>`,
+              iconSize: [120, 14],
+              iconAnchor: [60, 14],
+            })}
+          />
+        ))}
       {segmentArrows.map((p, idx) => (
         <Marker
           key={`trail-arrow-seg-${selectedShipId}-${idx}`}
           position={[p.lat, p.lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='transform: rotate(${p.dirDeg}deg); color:#d1d5db; font-size:12px; line-height:12px; opacity:0.9;'>&gt;</div>`,
+            html: `<div style='transform: rotate(${p.dirDeg}deg); color:#e5e7eb; font-size:12px; line-height:12px; opacity:0.95;'>&gt;</div>`,
             iconSize: [12, 12],
             iconAnchor: [6, 6],
           })}

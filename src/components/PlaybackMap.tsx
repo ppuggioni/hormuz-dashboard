@@ -129,6 +129,11 @@ export default function PlaybackMap({
     return 12;
   }, [selectedTrailWithDir.length]);
 
+  const labeledTrailPoints = useMemo(
+    () => selectedTrailWithDir.filter((_, idx) => idx % timestampLabelStep === 0),
+    [selectedTrailWithDir, timestampLabelStep],
+  );
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       {selectedShipMeta ? (
@@ -186,20 +191,25 @@ export default function PlaybackMap({
           />
         );
       })}
-      {selectedTrailWithDir
-        .filter((_, idx) => idx % timestampLabelStep === 0)
-        .map((p, idx) => (
-          <Marker
-            key={`trail-ts-${selectedShipId}-${idx}`}
-            position={[p.lat, p.lon]}
-            icon={divIcon({
-              className: "",
-              html: `<div style='color:#f1f5f9;font-size:11px;font-weight:600;text-shadow:0 1px 2px rgba(2,6,23,0.95);white-space:nowrap;transform:translate(-50%,-14px);'>${timestampShort(p.t)}</div>`,
-              iconSize: [120, 14],
-              iconAnchor: [60, 14],
-            })}
-          />
-        ))}
+      {labeledTrailPoints.map((p, idx) => (
+        <Polyline
+          key={`trail-ts-line-${selectedShipId}-${idx}`}
+          positions={[[p.lat, p.lon], [p.lat + 0.018, p.lon]]}
+          pathOptions={{ color: "#6b7280", weight: 1.5, opacity: 0.95 }}
+        />
+      ))}
+      {labeledTrailPoints.map((p, idx) => (
+        <Marker
+          key={`trail-ts-${selectedShipId}-${idx}`}
+          position={[p.lat + 0.018, p.lon]}
+          icon={divIcon({
+            className: "",
+            html: `<div style='color:#f1f5f9;font-size:11px;font-weight:600;text-shadow:0 1px 2px rgba(2,6,23,0.95);white-space:nowrap;transform:translate(-50%,-2px);'>${timestampShort(p.t)}</div>`,
+            iconSize: [120, 14],
+            iconAnchor: [60, 12],
+          })}
+        />
+      ))}
       {segmentArrows.map((p, idx) => (
         <Marker
           key={`trail-arrow-seg-${selectedShipId}-${idx}`}

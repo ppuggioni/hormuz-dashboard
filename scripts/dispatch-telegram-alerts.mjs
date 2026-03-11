@@ -137,7 +137,7 @@ function computeCandidateCrossers(snapshots, eastLon, westLon, crossingShipIds) 
     }
 
     const score = approachScore + proximityScore + directionScore + readinessScore + onePointPostAnchoringPenalty;
-    if (score <= 30) continue;
+    if (score <= 50) continue;
 
     out.push({ shipId, shipName: v.shipName, lastSeenAt: last.t, darkHours, score });
   }
@@ -265,7 +265,7 @@ async function dispatchAlerts() {
       `Hormuz tanker alert`,
       freshEvents.length ? `\nNew observed crossings: ${freshEvents.length}` : '',
       crossingLines.length ? crossingLines.join('\n') : '',
-      freshCandidates.length ? `\nDark-crossing candidates (>30 score, >6h dark, <=48h): ${freshCandidates.length}` : '',
+      freshCandidates.length ? `\nDark-crossing candidates (>50 score, >6h dark, <=48h): ${freshCandidates.length}` : '',
       candidateLines.length ? candidateLines.join('\n') : '',
       dashboardUrl ? `\nDashboard: ${dashboardUrl}` : '',
       dashboardUrl ? `${dashboardUrl}#candidate-dark-crossers` : '',

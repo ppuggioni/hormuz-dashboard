@@ -958,32 +958,31 @@ export default function Page() {
               Telegram alerts — CLICK HERE to sign up
             </button>
           </div>
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
-            <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-              <div className="text-xs text-slate-400">Crossing Tankers (last 48h | baseline pre-war: 30-40/day)</div>
-              <div className="text-lg font-semibold">{String(last24hCrossingCounts.tanker)}</div>
+            <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
+              <div className="text-xs text-emerald-200">Crossing Tankers (last 48h | baseline pre-war: 30-40/day)</div>
+              <div className="text-lg font-semibold text-emerald-100">{String(last24hCrossingCounts.tanker)}</div>
               <button
                 onClick={() => document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-slate-700 px-2 py-1 text-[11px]"
+                className="mt-2 rounded-md border border-emerald-300/60 px-2 py-1 text-[11px] text-emerald-100"
               >
                 Jump to crossing tankers map
               </button>
             </div>
-            <Stat label="Crossing Cargo (last 48h)" value={String(last24hCrossingCounts.cargo)} />
-            <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
-              <div className="text-xs text-rose-200">Dark-transit candidates — High confidence (&gt;50, last 48h)</div>
-              <div className="text-lg font-semibold text-rose-100">{candidateLast48hHighCount}</div>
-            </div>
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
-              <div className="text-xs text-amber-200">Dark-transit candidates — Low confidence (30-50, last 48h)</div>
-              <div className="text-lg font-semibold text-amber-100">{candidateLast48hLowCount}</div>
+              <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 48h)</div>
+              <div className="text-lg font-semibold text-amber-100">{candidateLast48hHighCount}</div>
               <button
                 onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
               >
                 Jump to candidate section
               </button>
+            </div>
+            <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
+              <div className="text-xs text-rose-200">Dark-transit candidates — Low confidence (30-50, last 48h)</div>
+              <div className="text-lg font-semibold text-rose-100">{candidateLast48hLowCount}</div>
             </div>
           </div>
           <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30-40 tanker crossings per day.</p>

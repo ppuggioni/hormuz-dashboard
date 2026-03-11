@@ -65,6 +65,7 @@ export default function PortAreaPathsMap({
   minLon,
   maxLon,
   title,
+  extraAreas,
 }: {
   paths: PortPath[];
   centerLat: number;
@@ -74,6 +75,7 @@ export default function PortAreaPathsMap({
   minLon: number;
   maxLon: number;
   title?: string;
+  extraAreas?: { minLat: number; maxLat: number; minLon: number; maxLon: number; title?: string; color?: string }[];
 }) {
   const bounds: [number, number][] = [
     [minLat, minLon],
@@ -100,6 +102,22 @@ export default function PortAreaPathsMap({
           </div>
         </Popup>
       </Polygon>
+
+      {(extraAreas || []).map((area, idx) => (
+        <Polygon
+          key={`extra-area-${idx}`}
+          positions={[[area.minLat, area.minLon], [area.minLat, area.maxLon], [area.maxLat, area.maxLon], [area.maxLat, area.minLon]]}
+          pathOptions={{ color: area.color || "#38bdf8", weight: 2, opacity: 0.95, fillColor: area.color || "#38bdf8", fillOpacity: 0.04 }}
+        >
+          <Popup>
+            <div style={{ minWidth: 220 }}>
+              <div><strong>{area.title || "Additional monitored area"}</strong></div>
+              <div>Lat {area.minLat.toFixed(4)} to {area.maxLat.toFixed(4)}</div>
+              <div>Lon {area.minLon.toFixed(4)} to {area.maxLon.toFixed(4)}</div>
+            </div>
+          </Popup>
+        </Polygon>
+      ))}
 
       {paths.map((ship) => {
         const color = colorForShip(ship.shipId);

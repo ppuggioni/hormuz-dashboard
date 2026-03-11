@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapContainer, Marker, Popup, Polyline, TileLayer, Tooltip } from "react-leaflet";
+import { MapContainer, Marker, Popup, Polygon, Polyline, TileLayer, Tooltip } from "react-leaflet";
 import { divIcon } from "leaflet";
 
 type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
 type Snapshot = { t: string; points: Point[] };
 type LinkedPoint = { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string };
+type MonitoredArea = { minLat: number; maxLat: number; minLon: number; maxLon: number; color?: string; label?: string };
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
@@ -51,6 +52,7 @@ export default function PlaybackMap({
   showCrossing,
   showNonCrossing,
   linkedPoints,
+  monitoredAreas,
 }: {
   points: Point[];
   snapshots: Snapshot[];
@@ -61,6 +63,7 @@ export default function PlaybackMap({
   showCrossing: boolean;
   showNonCrossing: boolean;
   linkedPoints?: LinkedPoint[];
+  monitoredAreas?: MonitoredArea[];
 }) {
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
 
@@ -204,6 +207,24 @@ export default function PlaybackMap({
 
       <Polyline positions={[[25.2, eastLon], [27.3, eastLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
       <Polyline positions={[[25.2, westLon], [27.3, westLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
+
+      {(monitoredAreas || []).map((area, idx) => (
+        <Polygon
+          key={`monitored-area-${idx}`}
+          positions={[[area.minLat, area.minLon], [area.minLat, area.maxLon], [area.maxLat, area.maxLon], [area.maxLat, area.minLon]]}
+          pathOptions={{ color: area.color || "#fbbf24", weight: 2, opacity: 0.95, fillColor: area.color || "#fbbf24", fillOpacity: 0.05 }}
+        >
+          {area.label ? (
+            <Popup>
+              <div style={{ minWidth: 180 }}>
+                <div><strong>{area.label}</strong></div>
+                <div>Lat {area.minLat.toFixed(4)} to {area.maxLat.toFixed(4)}</div>
+                <div>Lon {area.minLon.toFixed(4)} to {area.maxLon.toFixed(4)}</div>
+              </div>
+            </Popup>
+          ) : null}
+        </Polygon>
+      ))}
 
       {selectedTrail.length > 1 ? (
         <Polyline

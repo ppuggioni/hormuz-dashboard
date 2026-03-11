@@ -465,6 +465,56 @@ function computeAreaEntryAnalytics(
   return { bounds, events, paths };
 }
 
+function computeAreaUnionAnalytics(
+  analytics: { bounds: { minLat: number; maxLat: number; minLon: number; maxLon: number }; events: AreaEntryEvent[]; paths: AreaPath[] }[],
+  location = "monitored_area_union",
+) {
+  const nonEmpty = analytics.filter(Boolean);
+  if (!nonEmpty.length) {
+    return {
+      bounds: { minLat: 0, maxLat: 0, minLon: 0, maxLon: 0 },
+      events: [] as AreaEntryEvent[],
+      paths: [] as AreaPath[],
+    };
+  }
+
+  const bounds = {
+    minLat: Math.min(...nonEmpty.map((a) => a.bounds.minLat)),
+    maxLat: Math.max(...nonEmpty.map((a) => a.bounds.maxLat)),
+    minLon: Math.min(...nonEmpty.map((a) => a.bounds.minLon)),
+    maxLon: Math.max(...nonEmpty.map((a) => a.bounds.maxLon)),
+  };
+
+  const eventMap = new Map<string, AreaEntryEvent>();
+  for (const a of nonEmpty) {
+    for (const e of a.events) {
+      const key = `${e.shipId}|${e.t}|${e.location}`;
+      eventMap.set(key, { ...e, location });
+    }
+  }
+  const events = [...eventMap.values()].sort((a, b) => +new Date(a.t) - +new Date(b.t));
+
+  const pathMap = new Map<string, AreaPath>();
+  for (const a of nonEmpty) {
+    for (const p of a.paths) {
+      if (!pathMap.has(p.shipId)) {
+        pathMap.set(p.shipId, { ...p, points: [...p.points] });
+      } else {
+        const existing = pathMap.get(p.shipId)!;
+        const pts = [...existing.points, ...p.points];
+        const uniq = new Map(pts.map((pt) => [`${pt.t}|${pt.lat}|${pt.lon}`, pt]));
+        existing.points = [...uniq.values()].sort((x, y) => +new Date(x.t) - +new Date(y.t));
+      }
+    }
+  }
+
+  return {
+    bounds,
+    events,
+    paths: [...pathMap.values()].sort((a, b) => a.shipName.localeCompare(b.shipName)),
+  };
+}
+
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -739,9 +789,18 @@ export default function Page() {
   );
 
   const jaskCenter = useMemo(() => ({ lat: 25.65, lon: 57.78 }), []);
-  const jaskAnalytics = useMemo(
-    () => computeAreaEntryAnalytics(candidateSnapshots, jaskCenter.lat, jaskCenter.lon, 34.7, 36.7, ["tanker", "cargo"], "jask_port_area"),
+  const jaskFacilitiesCenter = useMemo(() => ({ lat: 25.82, lon: 57.28 }), []);
+  const jaskPortAnalytics = useMemo(
+    () => computeAreaEntryAnalytics(candidateSnapshots, jaskCenter.lat, jaskCenter.lon, 26.7, 26.7, ["tanker", "cargo"], "jask_port_area"),
     [candidateSnapshots, jaskCenter],
+  );
+  const jaskFacilitiesAnalytics = useMemo(
+    () => computeAreaEntryAnalytics(candidateSnapshots, jaskFacilitiesCenter.lat, jaskFacilitiesCenter.lon, 13, 20, ["tanker", "cargo"], "jask_port_facilities"),
+    [candidateSnapshots, jaskFacilitiesCenter],
+  );
+  const jaskAnalytics = useMemo(
+    () => computeAreaUnionAnalytics([jaskPortAnalytics, jaskFacilitiesAnalytics], "jask_combined_area"),
+    [jaskPortAnalytics, jaskFacilitiesAnalytics],
   );
 
   const jaskEvents = jaskAnalytics.events;
@@ -1490,6 +1549,10 @@ export default function Page() {
               showCrossing={showCrossing}
               showNonCrossing={showNonCrossing}
               linkedPoints={playbackLinkedPoints}
+              monitoredAreas={[
+                { ...jaskPortAnalytics.bounds, color: "#fbbf24", label: "Jask port area" },
+                { ...jaskFacilitiesAnalytics.bounds, color: "#38bdf8", label: "Jask facilities area" },
+              ]}
             />
           </div>
         </section>
@@ -1778,13 +1841,14 @@ export default function Page() {
           <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
             <PortAreaPathsMap
               paths={jaskPaths}
-              centerLat={jaskCenter.lat}
-              centerLon={jaskCenter.lon}
-              minLat={jaskAnalytics.bounds.minLat}
-              maxLat={jaskAnalytics.bounds.maxLat}
-              minLon={jaskAnalytics.bounds.minLon}
-              maxLon={jaskAnalytics.bounds.maxLon}
-              title="Jask port monitored square"
+              centerLat={(jaskPortAnalytics.bounds.minLat + jaskFacilitiesAnalytics.bounds.maxLat) / 2}
+              centerLon={(jaskPortAnalytics.bounds.maxLon + jaskFacilitiesAnalytics.bounds.minLon) / 2}
+              minLat={jaskPortAnalytics.bounds.minLat}
+              maxLat={jaskPortAnalytics.bounds.maxLat}
+              minLon={jaskPortAnalytics.bounds.minLon}
+              maxLon={jaskPortAnalytics.bounds.maxLon}
+              title="Jask port area"
+              extraAreas={[{ ...jaskFacilitiesAnalytics.bounds, title: "Jask facilities area", color: "#38bdf8" }]}
             />
           </div>
           <p className="text-xs text-slate-400">This map shows trajectories for vessels that entered the Jask monitored square within the loaded monitoring window.</p>

@@ -18,9 +18,9 @@ const typeColor: Record<string, string> = {
   unknown: "#94a3b8",
 };
 
-function triangleIconHtml(color: string, deg: number, size = 14, withCross = false) {
-  const h = Math.round(size * 1.1);
-  const w = Math.round(size * 0.5);
+function triangleIconHtml(color: string, deg: number, size = 14, withCross = false, equilateral = false) {
+  const h = equilateral ? Math.round(size * 0.95) : Math.round(size * 1.1);
+  const w = equilateral ? Math.round(size * 1.1) : Math.round(size * 0.5);
   const tri = `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
   if (!withCross) return tri;
   return `<div style='position:relative;width:${size + 18}px;height:${size + 18}px;display:flex;align-items:center;justify-content:center;'>${tri}<div style='position:absolute;color:${color};opacity:0.98;font-size:${size + 22}px;font-weight:200;line-height:1;text-shadow:0 0 1px rgba(2,6,23,0.9);'>×</div></div>`;
@@ -53,6 +53,7 @@ export default function PlaybackMap({
   showNonCrossing,
   linkedPoints,
   monitoredAreas,
+  currentTimestamp,
 }: {
   points: Point[];
   snapshots: Snapshot[];
@@ -64,6 +65,7 @@ export default function PlaybackMap({
   showNonCrossing: boolean;
   linkedPoints?: LinkedPoint[];
   monitoredAreas?: MonitoredArea[];
+  currentTimestamp?: string;
 }) {
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
 
@@ -138,31 +140,44 @@ export default function PlaybackMap({
     [selectedTrailWithDir, timestampLabelStep],
   );
 
-  const pointHeadingByShip = useMemo(() => {
-    const m = new Map<string, number>();
-    const byShip = new Map<string, Array<{ lat: number; lon: number }>>();
-    for (const s of snapshots) {
-      for (const p of s.points) {
-        if (!byShip.has(p.shipId)) byShip.set(p.shipId, []);
-        byShip.get(p.shipId)!.push({ lat: p.lat, lon: p.lon });
+  const currentFrameHeadingByShip = useMemo(() => {
+    const m = new Map<string, { deg: number; lowMovement: boolean }>();
+    const currentIndex = currentTimestamp ? snapshots.findIndex((s) => s.t === currentTimestamp) : -1;
+    const currentByShip = new Map(points.map((p) => [p.shipId, p]));
+
+    for (const [shipId, current] of currentByShip.entries()) {
+      let prev: Point | null = null;
+      let next: Point | null = null;
+
+      for (let sIdx = currentIndex - 1; sIdx >= 0; sIdx--) {
+        const hit = snapshots[sIdx].points.find((p) => p.shipId === shipId);
+        if (!hit) continue;
+        prev = hit;
+        if (Math.hypot(current.lat - hit.lat, current.lon - hit.lon) > 0.00005) break;
       }
-    }
-    for (const [shipId, arr] of byShip.entries()) {
-      if (arr.length < 2) continue;
-      let deg = 0;
-      for (let i = arr.length - 1; i > 0; i--) {
-        const a = arr[i - 1];
-        const b = arr[i];
-        const dist = Math.hypot(b.lat - a.lat, b.lon - a.lon);
-        if (dist > 0.00005) {
-          deg = directionDegrees(a, b);
-          break;
-        }
+
+      for (let sIdx = currentIndex + 1; sIdx < snapshots.length; sIdx++) {
+        const hit = snapshots[sIdx].points.find((p) => p.shipId === shipId);
+        if (!hit) continue;
+        next = hit;
+        if (Math.hypot(current.lat - hit.lat, current.lon - hit.lon) > 0.00005) break;
       }
-      m.set(shipId, deg);
+
+      const ref = prev && Math.hypot(current.lat - prev.lat, current.lon - prev.lon) > 0.00005 ? prev : next;
+      if (!ref) {
+        m.set(shipId, { deg: 0, lowMovement: true });
+        continue;
+      }
+
+      const deg = ref === prev
+        ? directionDegrees({ lat: prev!.lat, lon: prev!.lon }, { lat: current.lat, lon: current.lon })
+        : directionDegrees({ lat: current.lat, lon: current.lon }, { lat: next!.lat, lon: next!.lon });
+      const dist = Math.hypot(current.lat - ref.lat, current.lon - ref.lon);
+      m.set(shipId, { deg, lowMovement: dist <= 0.01 });
     }
+
     return m;
-  }, [snapshots]);
+  }, [points, snapshots, currentTimestamp]);
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
@@ -285,12 +300,12 @@ export default function PlaybackMap({
 
       {(linkedPoints || []).map((p, idx) => {
         const color = typeColor[p.vesselType] || '#e5e7eb';
-        const deg = pointHeadingByShip.get(p.shipId) || 0;
+        const heading = currentFrameHeadingByShip.get(p.shipId) || { deg: 0, lowMovement: true };
         return (
         <Marker
           key={`linked-${p.shipId}-${p.region}-${idx}`}
           position={[p.lat, p.lon]}
-          icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 12), iconSize: [12, 14], iconAnchor: [6, 10] })}
+          icon={divIcon({ className: "", html: triangleIconHtml(color, heading.deg, 12, false, heading.lowMovement), iconSize: [12, 14], iconAnchor: [6, 10] })}
         >
           <Tooltip>
             {p.shipName} ({p.shipId}) — {p.region}
@@ -315,12 +330,12 @@ export default function PlaybackMap({
         if (isCrosser && !showCrossing) return null;
         if (!isCrosser && !showNonCrossing) return null;
 
-        const deg = pointHeadingByShip.get(p.shipId) || 0;
+        const heading = currentFrameHeadingByShip.get(p.shipId) || { deg: 0, lowMovement: true };
         return (
           <Marker
             key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
             position={[p.lat, p.lon]}
-            icon={divIcon({ className: "", html: triangleIconHtml(color, deg, 8, isCrosser), iconSize: isCrosser ? [16, 16] : [8, 10], iconAnchor: isCrosser ? [8, 8] : [4, 7] })}
+            icon={divIcon({ className: "", html: triangleIconHtml(color, heading.deg, 8, isCrosser, heading.lowMovement), iconSize: isCrosser ? [16, 16] : [8, 10], iconAnchor: isCrosser ? [8, 8] : [4, 7] })}
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
             <Tooltip>

@@ -1549,6 +1549,7 @@ export default function Page() {
               showCrossing={showCrossing}
               showNonCrossing={showNonCrossing}
               linkedPoints={playbackLinkedPoints}
+              currentTimestamp={currentSnapshot?.t}
               monitoredAreas={[
                 { ...jaskPortAnalytics.bounds, color: "#fbbf24", label: "Jask port area" },
                 { ...jaskFacilitiesAnalytics.bounds, color: "#38bdf8", label: "Jask facilities area" },

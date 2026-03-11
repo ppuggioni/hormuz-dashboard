@@ -187,9 +187,9 @@ export default function CandidatePathsMap({
           position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid ${labelColor};border-radius:7px;padding:4px 6px;color:${labelColor};font-size:10px;white-space:nowrap;'>${s.shipName} — ${new Date(s.lastSeenAt).toUTCString()} — confidence: ${s.confidenceBand === "high" ? "high" : s.confidenceBand === "low" ? "low" : "none"}</div>`,
-            iconSize: [380, 22],
-            iconAnchor: [0, 30],
+            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid ${labelColor};border-radius:6px;padding:2px 5px;color:${labelColor};font-size:10px;line-height:1.1;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;'>${s.shipName}</div>`,
+            iconSize: [140, 18],
+            iconAnchor: [0, 24],
           })}
         />
       )})}

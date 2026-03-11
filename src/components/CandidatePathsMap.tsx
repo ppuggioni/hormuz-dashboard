@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
-import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
 
 const vesselPalette = ["#f59e0b", "#22c55e", "#38bdf8", "#e879f9", "#f43f5e", "#a3e635", "#2dd4bf", "#f97316", "#60a5fa", "#fb7185"];
 function colorForShip(shipId: string) {
@@ -60,11 +60,21 @@ type Candidate = {
   prevSegmentKnots: number;
 };
 
+function MapResetHandler({ onReset }: { onReset?: () => void }) {
+  useMapEvents({
+    click() {
+      onReset?.();
+    },
+  });
+  return null;
+}
+
 export default function CandidatePathsMap({
   candidates,
   selectedShipIds,
   colorSelectedWhenFiltered,
   onToggleShip,
+  onResetSelection,
   eastLon,
   westLon,
 }: {
@@ -72,14 +82,17 @@ export default function CandidatePathsMap({
   selectedShipIds?: string[];
   colorSelectedWhenFiltered?: boolean;
   onToggleShip?: (shipId: string) => void;
+  onResetSelection?: () => void;
   eastLon: number;
   westLon: number;
 }) {
   const selectedSet = useMemo(() => new Set(selectedShipIds || []), [selectedShipIds]);
   const selected = useMemo(() => candidates.filter((c) => selectedSet.has(c.shipId)), [candidates, selectedSet]);
+  const hasSelection = selected.length > 0;
 
   return (
     <MapContainer center={[26.1, 56.2]} zoom={6} style={{ height: "100%", width: "100%" }}>
+      <MapResetHandler onReset={onResetSelection} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -94,15 +107,18 @@ export default function CandidatePathsMap({
         const isSelected = selectedSet.has(c.shipId);
         const shipColor = colorForShip(c.shipId);
         const baseColor = isSelected ? (colorSelectedWhenFiltered ? shipColor : "#000000") : shipColor;
+        const showTrace = !hasSelection || isSelected;
 
         return (
           <Fragment key={`cand-${c.shipId}`}>
-            <Polyline
-              key={`cand-line-${c.shipId}`}
-              positions={polyline}
-              pathOptions={{ color: baseColor, weight: isSelected ? 1.2 : 1.1, opacity: isSelected ? 0.95 : 0.72, dashArray: isSelected ? "3 6" : "4 8" }}
-              eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
-            />
+            {showTrace ? (
+              <Polyline
+                key={`cand-line-${c.shipId}`}
+                positions={polyline}
+                pathOptions={{ color: baseColor, weight: isSelected ? 1.2 : 1.1, opacity: isSelected ? 0.95 : 0.72, dashArray: isSelected ? "3 6" : "4 8" }}
+                eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
+              />
+            ) : null}
             {c.points.map((p, idx) => {
               let deg = 0;
               let found = false;
@@ -187,9 +203,9 @@ export default function CandidatePathsMap({
           position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:rgba(2,6,23,0.82);border:1px solid ${labelColor};border-radius:6px;padding:2px 5px;color:${labelColor};font-size:10px;line-height:1.1;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;'>${s.shipName}</div>`,
-            iconSize: [140, 18],
-            iconAnchor: [0, 24],
+            html: `<div style='background:transparent;border:none;padding:0;color:${labelColor};font-size:10px;line-height:1.1;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(2,6,23,0.95);'>${s.shipName}</div>`,
+            iconSize: [140, 14],
+            iconAnchor: [0, 20],
           })}
         />
       )})}

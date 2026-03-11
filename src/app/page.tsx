@@ -1781,6 +1781,9 @@ export default function Page() {
                   prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId],
                 )
               }
+              onResetSelection={() =>
+                setSelectedCandidateShipIds(candidateCrossers.filter((c) => c.score > 30).map((c) => c.shipId))
+              }
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
             />

@@ -737,7 +737,7 @@ export default function Page() {
 
   const jaskCenter = useMemo(() => ({ lat: 25.65, lon: 57.78 }), []);
   const jaskAnalytics = useMemo(
-    () => computeAreaEntryAnalytics(candidateSnapshots, jaskCenter.lat, jaskCenter.lon, 40, ["tanker", "cargo"]),
+    () => computeAreaEntryAnalytics(candidateSnapshots, jaskCenter.lat, jaskCenter.lon, 26.7, ["tanker", "cargo"]),
     [candidateSnapshots, jaskCenter],
   );
 
@@ -1279,20 +1279,6 @@ export default function Page() {
                 Jump to crossing tankers map
               </button>
             </div>
-            <div className="rounded-xl border border-cyan-300/60 bg-cyan-500/10 p-3">
-              <div className="text-xs text-cyan-200">Tankers in the Jask port area (last 48h)</div>
-              <div className="text-lg font-semibold text-cyan-100">{String(jaskLast48hCounts.tanker)}</div>
-              <button
-                onClick={() => document.getElementById("jask-port")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-cyan-300/60 px-2 py-1 text-[11px] text-cyan-100"
-              >
-                Jump to Jask section
-              </button>
-            </div>
-            <div className="rounded-xl border border-sky-300/60 bg-sky-500/10 p-3">
-              <div className="text-xs text-sky-200">Cargo vessels in the Jask port area (last 48h)</div>
-              <div className="text-lg font-semibold text-sky-100">{String(jaskLast48hCounts.cargo)}</div>
-            </div>
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
               <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 48h)</div>
               <div className="text-lg font-semibold text-amber-100">{candidateLast48hHighCount}</div>
@@ -1306,6 +1292,23 @@ export default function Page() {
             <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
               <div className="text-xs text-rose-200">Dark-transit candidates — Low confidence (30-50, last 48h)</div>
               <div className="text-lg font-semibold text-rose-100">{candidateLast48hLowCount}</div>
+            </div>
+            <div className="rounded-xl border border-cyan-300/60 bg-cyan-500/10 p-3">
+              <div className="text-xs text-cyan-200">Tankers in the Jask port area (last 48h)*</div>
+              <div className="text-lg font-semibold text-cyan-100">{String(jaskLast48hCounts.tanker)}</div>
+              <div className="mt-1 text-[10px] leading-relaxed text-cyan-100/80">
+                * Important because Iran may resume oil operations there, so we monitor this area closely.
+              </div>
+              <button
+                onClick={() => document.getElementById("jask-port")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-cyan-300/60 px-2 py-1 text-[11px] text-cyan-100"
+              >
+                Jump to Jask section
+              </button>
+            </div>
+            <div className="rounded-xl border border-sky-300/60 bg-sky-500/10 p-3">
+              <div className="text-xs text-sky-200">Cargo vessels in the Jask port area (last 48h)</div>
+              <div className="text-lg font-semibold text-sky-100">{String(jaskLast48hCounts.cargo)}</div>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -1363,6 +1366,16 @@ export default function Page() {
                 <p className="mt-3 leading-relaxed">
                   No. We mainly focus on tankers because they are the vessels most directly tied to oil and gas flows. Cargo vessels are more frequent,
                   but they also create a noisier signal, so they are shown for context and comparison rather than being reviewed with the same level of attention.
+                </p>
+              </details>
+
+              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                <summary className="cursor-pointer select-none font-medium text-slate-100">
+                  Why are we monitoring the Jask port area?
+                </summary>
+                <p className="mt-3 leading-relaxed">
+                  Jask matters because Iran may resume or expand oil operations there, so we monitor the area closely as a possible signal of changing export activity.
+                  The dashboard tracks unique tankers and cargo vessels entering the monitored Jask box to help spot early movement.
                 </p>
               </details>
 

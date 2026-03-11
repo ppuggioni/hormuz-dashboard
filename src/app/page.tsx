@@ -229,6 +229,135 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
   URL.revokeObjectURL(url);
 }
 
+function computeLikelyDarkCrossers(
+  candidateSnapshots: Snapshot[],
+  data: DataShape | null,
+  crossingShipIds: Set<string>,
+  allowedTypes: string[] = ["tanker"],
+) {
+  if (!candidateSnapshots?.length || !data) return [] as CandidateCrosser[];
+
+  const latestTs = +new Date(candidateSnapshots[candidateSnapshots.length - 1].t);
+  const byShip = new Map<string, { shipName: string; vesselType: string; points: PathPoint[] }>();
+
+  for (const s of candidateSnapshots) {
+    for (const p of s.points) {
+      if (!allowedTypes.includes(p.vesselType)) continue;
+      if (!byShip.has(p.shipId)) byShip.set(p.shipId, { shipName: p.shipName, vesselType: p.vesselType, points: [] });
+      byShip.get(p.shipId)!.points.push({ t: s.t, lat: p.lat, lon: p.lon });
+    }
+  }
+
+  const centerLon = (data.metadata.eastLon + data.metadata.westLon) / 2;
+  const centerLat = 26.25;
+  const out: CandidateCrosser[] = [];
+
+  for (const [shipId, v] of byShip.entries()) {
+    const pts = v.points.sort((a, b) => +new Date(a.t) - +new Date(b.t));
+    if (pts.length < 3) continue;
+    if (crossingShipIds.has(shipId)) continue;
+
+    const last = pts[pts.length - 1];
+    const darkHours = (latestTs - +new Date(last.t)) / (1000 * 60 * 60);
+    if (darkHours <= 6) continue;
+
+    const tail = pts.slice(-Math.min(6, pts.length));
+    if (tail.length < 3) continue;
+
+    let aligned = 0;
+    let speedQuality = 0;
+    let segCount = 0;
+    let towardCosineSum = 0;
+    const segSpeeds: number[] = [];
+
+    for (let i = 1; i < tail.length; i++) {
+      const a = tail[i - 1];
+      const b = tail[i];
+      const distPrev = haversineKm(a.lat, a.lon, centerLat, centerLon);
+      const distCur = haversineKm(b.lat, b.lon, centerLat, centerLon);
+      if (distCur < distPrev) aligned += 1;
+
+      const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
+      const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
+      const cosToward = cosineTowardMidpoint(a, b, { lat: centerLat, lon: centerLon });
+      towardCosineSum += Math.max(0, cosToward);
+      segSpeeds.push(speedKnots);
+      if (speedKnots < 3) speedQuality += 0.2;
+      else if (speedKnots <= 23) speedQuality += 1;
+      else if (speedKnots <= 30) speedQuality += 0.5;
+      else speedQuality += 0.1;
+      segCount += 1;
+    }
+
+    const alignedPoints = aligned + 1;
+    if (alignedPoints < 3) continue;
+
+    const speedScore = segCount ? speedQuality / segCount : 0;
+    const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
+    const lastMidDistKm = haversineKm(last.lat, last.lon, centerLat, centerLon);
+    const proximityRaw = 1 - Math.min(1, lastMidDistKm / 160);
+    const prev = tail[tail.length - 2];
+    const lastDist = haversineKm(last.lat, last.lon, centerLat, centerLon);
+    const prevDist = haversineKm(prev.lat, prev.lon, centerLat, centerLon);
+    const towardDeltaKm = prevDist - lastDist;
+    const approachDirectionRaw = Math.max(-1, Math.min(1, towardDeltaKm / 8));
+
+    const approachScore = approachConfidence * 55;
+    const proximityScore = proximityRaw * 20;
+    const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
+    const cosineTowardness = segCount ? towardCosineSum / segCount : 0;
+    const tangentialPenalty = approachDirectionRaw > 0 ? -(1 - cosineTowardness) * 5 : 0;
+    const darknessScore = 0;
+
+    const lastSegmentKnots = segSpeeds.length ? segSpeeds[segSpeeds.length - 1] : 0;
+    const prevSegmentKnots = segSpeeds.length > 1 ? segSpeeds[segSpeeds.length - 2] : lastSegmentKnots;
+    let readinessScore = 0;
+    if (lastSegmentKnots < 2 && approachDirectionRaw <= 0) readinessScore = -12;
+    if (lastSegmentKnots >= 4 && lastSegmentKnots > prevSegmentKnots && approachDirectionRaw > 0) readinessScore = 4;
+
+    let onePointPostAnchoringPenalty = 0;
+    if (segSpeeds.length >= 2) {
+      const anchorLikeCount = segSpeeds.slice(0, -1).filter((v) => v < 2).length;
+      const hasAnchorLikeHistory = anchorLikeCount >= 1;
+      const hasOnlyOnePostAnchorSegment = segSpeeds[segSpeeds.length - 1] >= 2 && segSpeeds[segSpeeds.length - 2] < 2;
+      if (hasAnchorLikeHistory && hasOnlyOnePostAnchorSegment) onePointPostAnchoringPenalty = -6;
+    }
+
+    const score = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty;
+    const confidenceBand: "high" | "low" | "no" = score > 50 ? "high" : score >= 30 ? "low" : "no";
+
+    out.push({
+      shipId,
+      shipName: v.shipName,
+      vesselType: v.vesselType,
+      score,
+      confidenceBand,
+      alignedPoints,
+      speedQuality: speedScore,
+      approachConfidence,
+      darkHours,
+      proximityRaw,
+      approachDirectionRaw,
+      proximityScore,
+      approachScore,
+      darknessScore,
+      directionScore,
+      tangentialPenalty,
+      cosineTowardness,
+      readinessScore,
+      onePointPostAnchoringPenalty,
+      lastSegmentKnots,
+      prevSegmentKnots,
+      lastSeenAt: last.t,
+      lastLat: last.lat,
+      lastLon: last.lon,
+      points: pts,
+    });
+  }
+
+  return out.sort((a, b) => b.score - a.score).slice(0, 80);
+}
+
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -490,134 +619,15 @@ export default function Page() {
 
   const crossingShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((p) => p.shipId)), [data]);
 
-  const candidateCrossers = useMemo(() => {
-    if (!candidateSnapshots?.length || !data) return [] as CandidateCrosser[];
+  const candidateCrossers = useMemo(
+    () => computeLikelyDarkCrossers(candidateSnapshots, data, crossingShipIds, ["tanker"]),
+    [candidateSnapshots, data, crossingShipIds],
+  );
 
-    const latestTs = +new Date(candidateSnapshots[candidateSnapshots.length - 1].t);
-    const byShip = new Map<string, { shipName: string; vesselType: string; points: PathPoint[] }>();
-
-    for (const s of candidateSnapshots) {
-      for (const p of s.points) {
-        if (p.vesselType !== "tanker") continue;
-        if (!byShip.has(p.shipId)) byShip.set(p.shipId, { shipName: p.shipName, vesselType: p.vesselType, points: [] });
-        byShip.get(p.shipId)!.points.push({ t: s.t, lat: p.lat, lon: p.lon });
-      }
-    }
-
-    const centerLon = (data.metadata.eastLon + data.metadata.westLon) / 2;
-    const centerLat = 26.25;
-    const out: CandidateCrosser[] = [];
-
-    for (const [shipId, v] of byShip.entries()) {
-      const pts = v.points.sort((a, b) => +new Date(a.t) - +new Date(b.t));
-      if (pts.length < 3) continue;
-      if (crossingShipIds.has(shipId)) continue;
-
-      const last = pts[pts.length - 1];
-      const darkHours = (latestTs - +new Date(last.t)) / (1000 * 60 * 60);
-      if (darkHours <= 6) continue;
-
-      const tail = pts.slice(-Math.min(6, pts.length));
-      if (tail.length < 3) continue;
-
-      let aligned = 0;
-      let speedQuality = 0;
-      let segCount = 0;
-      let towardCosineSum = 0;
-      const segSpeeds: number[] = [];
-
-      for (let i = 1; i < tail.length; i++) {
-        const a = tail[i - 1];
-        const b = tail[i];
-        const distPrev = haversineKm(a.lat, a.lon, centerLat, centerLon);
-        const distCur = haversineKm(b.lat, b.lon, centerLat, centerLon);
-        if (distCur < distPrev) aligned += 1;
-
-        const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
-        const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
-        const cosToward = cosineTowardMidpoint(a, b, { lat: centerLat, lon: centerLon });
-        towardCosineSum += Math.max(0, cosToward);
-        segSpeeds.push(speedKnots);
-        if (speedKnots < 3) speedQuality += 0.2;
-        else if (speedKnots <= 23) speedQuality += 1;
-        else if (speedKnots <= 30) speedQuality += 0.5;
-        else speedQuality += 0.1;
-        segCount += 1;
-      }
-
-      const alignedPoints = aligned + 1;
-      if (alignedPoints < 3) continue;
-
-      const speedScore = segCount ? speedQuality / segCount : 0;
-      const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
-      const lastMidDistKm = haversineKm(last.lat, last.lon, centerLat, centerLon);
-      const proximityRaw = 1 - Math.min(1, lastMidDistKm / 160);
-      const prev = tail[tail.length - 2];
-      const lastDist = haversineKm(last.lat, last.lon, centerLat, centerLon);
-      const prevDist = haversineKm(prev.lat, prev.lon, centerLat, centerLon);
-      const towardDeltaKm = prevDist - lastDist;
-      // Positive when disappearing while still moving toward the strait midpoint (lat+lon).
-      // Negative when moving away at disappearance.
-      const approachDirectionRaw = Math.max(-1, Math.min(1, towardDeltaKm / 8));
-
-      const approachScore = approachConfidence * 55;
-      const proximityScore = proximityRaw * 20;
-      const directionScore = approachDirectionRaw > 0 ? approachDirectionRaw * 25 : approachDirectionRaw * 20;
-      const cosineTowardness = segCount ? towardCosineSum / segCount : 0;
-      const tangentialPenalty = approachDirectionRaw > 0 ? -(1 - cosineTowardness) * 5 : 0;
-      const darknessScore = 0;
-
-      const lastSegmentKnots = segSpeeds.length ? segSpeeds[segSpeeds.length - 1] : 0;
-      const prevSegmentKnots = segSpeeds.length > 1 ? segSpeeds[segSpeeds.length - 2] : lastSegmentKnots;
-      let readinessScore = 0;
-      if (lastSegmentKnots < 2 && approachDirectionRaw <= 0) readinessScore = -12;
-      if (lastSegmentKnots >= 4 && lastSegmentKnots > prevSegmentKnots && approachDirectionRaw > 0) readinessScore = 4;
-
-      // If vessel appears to come off anchoring but has only one post-anchoring segment before disappearing,
-      // reduce confidence (insufficient sustained underway evidence).
-      let onePointPostAnchoringPenalty = 0;
-      if (segSpeeds.length >= 2) {
-        const anchorLikeCount = segSpeeds.slice(0, -1).filter((v) => v < 2).length;
-        const hasAnchorLikeHistory = anchorLikeCount >= 1;
-        const hasOnlyOnePostAnchorSegment = segSpeeds[segSpeeds.length - 1] >= 2 && segSpeeds[segSpeeds.length - 2] < 2;
-        if (hasAnchorLikeHistory && hasOnlyOnePostAnchorSegment) onePointPostAnchoringPenalty = -6;
-      }
-
-      const score = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty;
-
-      const confidenceBand: "high" | "low" | "no" = score > 50 ? "high" : score >= 30 ? "low" : "no";
-
-      out.push({
-        shipId,
-        shipName: v.shipName,
-        vesselType: v.vesselType,
-        score,
-        confidenceBand,
-        alignedPoints,
-        speedQuality: speedScore,
-        approachConfidence,
-        darkHours,
-        proximityRaw,
-        approachDirectionRaw,
-        proximityScore,
-        approachScore,
-        darknessScore,
-        directionScore,
-        tangentialPenalty,
-        cosineTowardness,
-        readinessScore,
-        onePointPostAnchoringPenalty,
-        lastSegmentKnots,
-        prevSegmentKnots,
-        lastSeenAt: last.t,
-        lastLat: last.lat,
-        lastLon: last.lon,
-        points: pts,
-      });
-    }
-
-    return out.sort((a, b) => b.score - a.score).slice(0, 80);
-  }, [candidateSnapshots, data?.metadata?.eastLon, data?.metadata?.westLon, crossingShipIds]);
+  const cargoCandidateCrossers = useMemo(
+    () => computeLikelyDarkCrossers(candidateSnapshots, data, crossingShipIds, ["cargo"]),
+    [candidateSnapshots, data, crossingShipIds],
+  );
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
   const candidateLast48hHighCount = useMemo(
@@ -917,6 +927,7 @@ export default function Page() {
     if (!data) return;
 
     const confirmedRows = data.crossingEvents.map((e) => ({
+      sort_date_utc: e.t,
       record_type: "confirmed_crossing",
       confidence: "confirmed",
       ship_type: e.vesselType,
@@ -937,9 +948,10 @@ export default function Page() {
       notes: "Observed AIS crossing event",
     }));
 
-    const candidateRows = candidateCrossers
+    const candidateRows = [...candidateCrossers, ...cargoCandidateCrossers]
       .filter((c) => c.confidenceBand === "high")
       .map((c) => ({
+        sort_date_utc: c.lastSeenAt,
         record_type: "likely_dark_crossing_candidate",
         confidence: "high",
         ship_type: c.vesselType,
@@ -960,11 +972,19 @@ export default function Page() {
         notes: "High-confidence heuristic candidate: approaching strait, dark >6h, no detected U-turn",
       }));
 
+    const rows = [...confirmedRows, ...candidateRows].sort((a, b) => {
+      const typeCmp = String(a.ship_type).localeCompare(String(b.ship_type));
+      if (typeCmp !== 0) return typeCmp;
+      const recordCmp = String(a.record_type).localeCompare(String(b.record_type));
+      if (recordCmp !== 0) return recordCmp;
+      return +new Date(String(b.sort_date_utc)) - +new Date(String(a.sort_date_utc));
+    });
+
     const generatedAtCompact = new Date().toISOString().replace(/[:.]/g, "-");
-    downloadCsv(`hormuz-crossings-and-high-confidence-candidates-${generatedAtCompact}.csv`, [
-      ...confirmedRows,
-      ...candidateRows,
-    ]);
+    downloadCsv(
+      `hormuz-crossings-and-high-confidence-candidates-${generatedAtCompact}.csv`,
+      rows.map(({ sort_date_utc, ...row }) => row),
+    );
   };
 
   if (!data) {

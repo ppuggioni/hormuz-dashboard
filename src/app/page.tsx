@@ -809,7 +809,7 @@ export default function Page() {
     () => (candidateSnapshots?.length ? +new Date(candidateSnapshots[candidateSnapshots.length - 1].t) : +new Date(data?.metadata?.generatedAt || 0)),
     [candidateSnapshots, data?.metadata?.generatedAt],
   );
-  const jaskCutoffTs = latestCandidateSnapshotTs - 48 * 60 * 60 * 1000;
+  const jaskCutoffTs = latestCandidateSnapshotTs - 24 * 60 * 60 * 1000;
   const jaskLast48hCounts = useMemo(() => {
     const tankerIds = new Set<string>();
     const cargoIds = new Set<string>();
@@ -980,7 +980,7 @@ export default function Page() {
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const cutoff = latestTs - 48 * 60 * 60 * 1000;
+    const cutoff = latestTs - 24 * 60 * 60 * 1000;
 
     const tankerIds = new Set<string>();
     const cargoIds = new Set<string>();
@@ -1332,7 +1332,7 @@ export default function Page() {
           <div className="mt-4 grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
-              <div className="text-xs text-emerald-200">Crossing Tankers (last 48h | baseline pre-war: 30-40/day)</div>
+              <div className="text-xs text-emerald-200">Crossing Tankers (last 24h | baseline pre-war: 30-40/day)</div>
               <div className="text-lg font-semibold text-emerald-100">{String(last24hCrossingCounts.tanker)}</div>
               <button
                 onClick={() => document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" })}
@@ -1342,7 +1342,7 @@ export default function Page() {
               </button>
             </div>
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
-              <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 48h)</div>
+              <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
               <div className="text-lg font-semibold text-amber-100">{candidateLast48hHighCount}</div>
               <button
                 onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
@@ -1352,11 +1352,11 @@ export default function Page() {
               </button>
             </div>
             <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
-              <div className="text-xs text-rose-200">Dark-transit candidates — Low confidence (30-50, last 48h)</div>
+              <div className="text-xs text-rose-200">Dark-transit candidates — Low confidence (30-50, last 24h)</div>
               <div className="text-lg font-semibold text-rose-100">{candidateLast48hLowCount}</div>
             </div>
             <div className="rounded-xl border border-cyan-300/60 bg-cyan-500/10 p-3">
-              <div className="text-xs text-cyan-200">Tankers in the Jask port area (last 48h)*</div>
+              <div className="text-xs text-cyan-200">Tankers in the Jask port area (last 24h)*</div>
               <div className="text-lg font-semibold text-cyan-100">{String(jaskLast48hCounts.tanker)}</div>
               <div className="mt-1 text-[10px] leading-relaxed text-cyan-100/80">
                 * Important because Iran may resume oil operations there, so we monitor this area closely.
@@ -1369,7 +1369,7 @@ export default function Page() {
               </button>
             </div>
             <div className="rounded-xl border border-sky-300/60 bg-sky-500/10 p-3">
-              <div className="text-xs text-sky-200">Cargo vessels in the Jask port area (last 48h)</div>
+              <div className="text-xs text-sky-200">Cargo vessels in the Jask port area (last 24h)</div>
               <div className="text-lg font-semibold text-sky-100">{String(jaskLast48hCounts.cargo)}</div>
             </div>
           </div>
@@ -1702,159 +1702,6 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="jask-port" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
-          <h2 className="text-lg font-medium">Jask Port Area Monitoring</h2>
-          <p className="text-xs text-slate-400">We count unique tanker and cargo vessels that enter the combined Jask monitoring area. This starts from the main Jask port box and is expanded by an extra 10 km north, 3 km west, and 5 km east to also cover the nearby port facilities area. Bounds used: lat {jaskAnalytics.bounds.minLat.toFixed(4)} to {jaskAnalytics.bounds.maxLat.toFixed(4)}, lon {jaskAnalytics.bounds.minLon.toFixed(4)} to {jaskAnalytics.bounds.maxLon.toFixed(4)}.</p>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-              <h3 className="text-lg font-medium mb-3">Jask entries in 6-hour bins — Tanker</h3>
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={jaskTankerSixHour}
-                    onClick={(state: any) => {
-                      if (state?.activeLabel) setSelectedJaskTankerHour(state.activeLabel as string);
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis
-                      dataKey="hour"
-                      ticks={jaskChartTicks}
-                      tickFormatter={(v) => formatHourTick(v as string)}
-                      minTickGap={40}
-                      angle={-35}
-                      textAnchor="end"
-                      height={56}
-                      tick={{ fontSize: 11 }}
-                      stroke="#94a3b8"
-                    />
-                    <YAxis stroke="#94a3b8" allowDecimals={false} />
-                    <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
-                    <Legend />
-                    <Bar dataKey="east_to_west" fill="#06b6d4" name="Entries" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-3 text-xs text-slate-300">
-                <div className="font-medium text-slate-200">
-                  {selectedJaskTankerHour ? `Clicked hour: ${new Date(selectedJaskTankerHour).toUTCString()}` : "Click a Jask tanker bar to list ship names"}
-                </div>
-                {selectedJaskTankerHour ? (
-                  jaskTankerNamesAtSelectedHour.length ? (
-                    <ul className="mt-2 space-y-1">
-                      {jaskTankerNamesAtSelectedHour.map((r) => (
-                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-2 text-slate-400">No tanker entries in this 6-hour window.</div>
-                  )
-                ) : null}
-              </div>
-              <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-900 sticky top-0">
-                    <tr>
-                      <th className="text-left p-2">Tanker ship</th>
-                      <th className="text-left p-2">Entry timestamp (UTC)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jaskTankerTableRows.map((r, idx) => (
-                      <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
-                        <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-              <h3 className="text-lg font-medium mb-3">Jask entries in 6-hour bins — Cargo</h3>
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={jaskCargoSixHour}
-                    onClick={(state: any) => {
-                      if (state?.activeLabel) setSelectedJaskCargoHour(state.activeLabel as string);
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis
-                      dataKey="hour"
-                      ticks={jaskChartTicks}
-                      tickFormatter={(v) => formatHourTick(v as string)}
-                      minTickGap={40}
-                      angle={-35}
-                      textAnchor="end"
-                      height={56}
-                      tick={{ fontSize: 11 }}
-                      stroke="#94a3b8"
-                    />
-                    <YAxis stroke="#94a3b8" allowDecimals={false} />
-                    <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
-                    <Legend />
-                    <Bar dataKey="east_to_west" fill="#38bdf8" name="Entries" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-3 text-xs text-slate-300">
-                <div className="font-medium text-slate-200">
-                  {selectedJaskCargoHour ? `Clicked hour: ${new Date(selectedJaskCargoHour).toUTCString()}` : "Click a Jask cargo bar to list ship names"}
-                </div>
-                {selectedJaskCargoHour ? (
-                  jaskCargoNamesAtSelectedHour.length ? (
-                    <ul className="mt-2 space-y-1">
-                      {jaskCargoNamesAtSelectedHour.map((r) => (
-                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-2 text-slate-400">No cargo entries in this 6-hour window.</div>
-                  )
-                ) : null}
-              </div>
-              <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-900 sticky top-0">
-                    <tr>
-                      <th className="text-left p-2">Cargo ship</th>
-                      <th className="text-left p-2">Entry timestamp (UTC)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jaskCargoTableRows.map((r, idx) => (
-                      <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
-                        <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
-            <PortAreaPathsMap
-              paths={jaskPaths}
-              centerLat={(jaskPortAnalytics.bounds.minLat + jaskFacilitiesAnalytics.bounds.maxLat) / 2}
-              centerLon={(jaskPortAnalytics.bounds.maxLon + jaskFacilitiesAnalytics.bounds.minLon) / 2}
-              minLat={jaskPortAnalytics.bounds.minLat}
-              maxLat={jaskPortAnalytics.bounds.maxLat}
-              minLon={jaskPortAnalytics.bounds.minLon}
-              maxLon={jaskPortAnalytics.bounds.maxLon}
-              title="Jask port area"
-              extraAreas={[{ ...jaskFacilitiesAnalytics.bounds, title: "Jask facilities area", color: "#38bdf8" }]}
-            />
-          </div>
-          <p className="text-xs text-slate-400">This map shows trajectories for vessels that entered the Jask monitored square within the loaded monitoring window.</p>
-
-        </section>
-
         <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">{crossingMapTitle}</h2>
           <div className="flex items-center gap-2 text-xs text-slate-300">
@@ -2008,6 +1855,158 @@ export default function Page() {
               <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time), used only as a strict filter (&gt; 6h).</div>
             </div>
           </details>
+        </section>
+
+        <section id="jask-port" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
+          <h2 className="text-lg font-medium">Jask Port Area Monitoring</h2>
+          <p className="text-xs text-slate-400">We count unique tanker and cargo vessels that enter the combined Jask monitoring area. This starts from the main Jask port box and also includes the nearby facilities area. Bounds used: lat {jaskAnalytics.bounds.minLat.toFixed(4)} to {jaskAnalytics.bounds.maxLat.toFixed(4)}, lon {jaskAnalytics.bounds.minLon.toFixed(4)} to {jaskAnalytics.bounds.maxLon.toFixed(4)}.</p>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+              <h3 className="text-lg font-medium mb-3">Jask entries in 6-hour bins — Tanker</h3>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={jaskTankerSixHour}
+                    onClick={(state: any) => {
+                      if (state?.activeLabel) setSelectedJaskTankerHour(state.activeLabel as string);
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis
+                      dataKey="hour"
+                      ticks={jaskChartTicks}
+                      tickFormatter={(v) => formatHourTick(v as string)}
+                      minTickGap={40}
+                      angle={-35}
+                      textAnchor="end"
+                      height={56}
+                      tick={{ fontSize: 11 }}
+                      stroke="#94a3b8"
+                    />
+                    <YAxis stroke="#94a3b8" allowDecimals={false} />
+                    <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
+                    <Legend />
+                    <Bar dataKey="east_to_west" fill="#06b6d4" name="Entries" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 text-xs text-slate-300">
+                <div className="font-medium text-slate-200">
+                  {selectedJaskTankerHour ? `Clicked hour: ${new Date(selectedJaskTankerHour).toUTCString()}` : "Click a Jask tanker bar to list ship names"}
+                </div>
+                {selectedJaskTankerHour ? (
+                  jaskTankerNamesAtSelectedHour.length ? (
+                    <ul className="mt-2 space-y-1">
+                      {jaskTankerNamesAtSelectedHour.map((r) => (
+                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-2 text-slate-400">No tanker entries in this 6-hour window.</div>
+                  )
+                ) : null}
+              </div>
+              <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-900 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Tanker ship</th>
+                      <th className="text-left p-2">Entry timestamp (UTC)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jaskTankerTableRows.map((r, idx) => (
+                      <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
+                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
+                        <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+              <h3 className="text-lg font-medium mb-3">Jask entries in 6-hour bins — Cargo</h3>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={jaskCargoSixHour}
+                    onClick={(state: any) => {
+                      if (state?.activeLabel) setSelectedJaskCargoHour(state.activeLabel as string);
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                    <XAxis
+                      dataKey="hour"
+                      ticks={jaskChartTicks}
+                      tickFormatter={(v) => formatHourTick(v as string)}
+                      minTickGap={40}
+                      angle={-35}
+                      textAnchor="end"
+                      height={56}
+                      tick={{ fontSize: 11 }}
+                      stroke="#94a3b8"
+                    />
+                    <YAxis stroke="#94a3b8" allowDecimals={false} />
+                    <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
+                    <Legend />
+                    <Bar dataKey="east_to_west" fill="#38bdf8" name="Entries" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 text-xs text-slate-300">
+                <div className="font-medium text-slate-200">
+                  {selectedJaskCargoHour ? `Clicked hour: ${new Date(selectedJaskCargoHour).toUTCString()}` : "Click a Jask cargo bar to list ship names"}
+                </div>
+                {selectedJaskCargoHour ? (
+                  jaskCargoNamesAtSelectedHour.length ? (
+                    <ul className="mt-2 space-y-1">
+                      {jaskCargoNamesAtSelectedHour.map((r) => (
+                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-2 text-slate-400">No cargo entries in this 6-hour window.</div>
+                  )
+                ) : null}
+              </div>
+              <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-900 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Cargo ship</th>
+                      <th className="text-left p-2">Entry timestamp (UTC)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jaskCargoTableRows.map((r, idx) => (
+                      <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
+                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
+                        <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
+            <PortAreaPathsMap
+              paths={jaskPaths}
+              centerLat={(jaskPortAnalytics.bounds.minLat + jaskFacilitiesAnalytics.bounds.maxLat) / 2}
+              centerLon={(jaskPortAnalytics.bounds.maxLon + jaskFacilitiesAnalytics.bounds.minLon) / 2}
+              minLat={jaskPortAnalytics.bounds.minLat}
+              maxLat={jaskPortAnalytics.bounds.maxLat}
+              minLon={jaskPortAnalytics.bounds.minLon}
+              maxLon={jaskPortAnalytics.bounds.maxLon}
+              title="Jask port area"
+              extraAreas={[{ ...jaskFacilitiesAnalytics.bounds, title: "Jask facilities area", color: "#38bdf8" }]}
+            />
+          </div>
+          <p className="text-xs text-slate-400">This map shows trajectories for vessels that entered either Jask monitored area within the loaded monitoring window.</p>
         </section>
 
         <details className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">

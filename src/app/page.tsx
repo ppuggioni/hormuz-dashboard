@@ -204,6 +204,31 @@ function cosineTowardMidpoint(
   return Math.max(-1, Math.min(1, cos));
 }
 
+function csvEscape(value: unknown) {
+  const s = value == null ? "" : String(value);
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csv = [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(",")),
+  ].join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -888,6 +913,60 @@ export default function Page() {
     };
   }, [data, externalPoints]);
 
+  const downloadCrossingsCsv = () => {
+    if (!data) return;
+
+    const confirmedRows = data.crossingEvents.map((e) => ({
+      record_type: "confirmed_crossing",
+      confidence: "confirmed",
+      ship_type: e.vesselType,
+      ship_name: e.shipName,
+      ship_id: e.shipId,
+      ship_url: `https://www.marinetraffic.com/en/ais/details/ships/shipid:${e.shipId}`,
+      event_time_utc: e.t,
+      hour_bucket_utc: e.hour,
+      direction: e.direction,
+      dark_hours: "",
+      score: "",
+      last_seen_utc: "",
+      last_lat: "",
+      last_lon: "",
+      aligned_points: "",
+      speed_quality: "",
+      approach_confidence: "",
+      notes: "Observed AIS crossing event",
+    }));
+
+    const candidateRows = candidateCrossers
+      .filter((c) => c.confidenceBand === "high")
+      .map((c) => ({
+        record_type: "likely_dark_crossing_candidate",
+        confidence: "high",
+        ship_type: c.vesselType,
+        ship_name: c.shipName,
+        ship_id: c.shipId,
+        ship_url: `https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`,
+        event_time_utc: "",
+        hour_bucket_utc: "",
+        direction: "likely_through_hormuz_dark",
+        dark_hours: c.darkHours.toFixed(1),
+        score: c.score.toFixed(1),
+        last_seen_utc: c.lastSeenAt,
+        last_lat: c.lastLat.toFixed(5),
+        last_lon: c.lastLon.toFixed(5),
+        aligned_points: c.alignedPoints,
+        speed_quality: c.speedQuality.toFixed(2),
+        approach_confidence: c.approachConfidence.toFixed(2),
+        notes: "High-confidence heuristic candidate: approaching strait, dark >6h, no detected U-turn",
+      }));
+
+    const generatedAtCompact = new Date().toISOString().replace(/[:.]/g, "-");
+    downloadCsv(`hormuz-crossings-and-high-confidence-candidates-${generatedAtCompact}.csv`, [
+      ...confirmedRows,
+      ...candidateRows,
+    ]);
+  };
+
   if (!data) {
     return <main className="min-h-screen bg-slate-950 text-slate-100 p-8">Loading dashboard data...</main>;
   }
@@ -958,6 +1037,9 @@ export default function Page() {
               Telegram alerts — CLICK HERE to sign up
             </button>
           </div>
+          <p className="mt-3 text-xs text-slate-300">
+            Tanker data is generally more reliable for our purposes because tankers are the vessels most likely to carry oil and gas. Cargo traffic is more frequent, but also a noisier signal.
+          </p>
           <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
@@ -985,6 +1067,15 @@ export default function Page() {
               <div className="text-lg font-semibold text-rose-100">{candidateLast48hLowCount}</div>
             </div>
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              onClick={downloadCrossingsCsv}
+              className="inline-flex items-center rounded-xl border border-cyan-400/50 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100"
+              title="Download CSV of confirmed crossings and high-confidence likely dark crossings"
+            >
+              Download CSV — crossings + high-confidence likely crossings
+            </button>
+          </div>
           <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30-40 tanker crossings per day.</p>
         </header>
 
@@ -1010,6 +1101,27 @@ export default function Page() {
                 <p className="mt-3 leading-relaxed">
                   Data is refreshed continuously in the background and typically appears on the dashboard with an end-to-end delay of roughly
                   15-30 minutes (capture, sync, processing, and upload cadence combined).
+                </p>
+              </details>
+
+              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                <summary className="cursor-pointer select-none font-medium text-slate-100">
+                  What are the likely candidate dark crossers?
+                </summary>
+                <p className="mt-3 leading-relaxed">
+                  These are vessels that appear to be approaching the strait, then switch off their transponder for more than 6 hours, and do not
+                  show evidence of a U-turn before disappearing. In those cases, we cannot prove the transit directly, but the pattern is consistent
+                  with a likely passage through the Strait of Hormuz while dark.
+                </p>
+              </details>
+
+              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+                <summary className="cursor-pointer select-none font-medium text-slate-100">
+                  Are tankers and cargo vessels equally important?
+                </summary>
+                <p className="mt-3 leading-relaxed">
+                  No. We mainly focus on tankers because they are the vessels most directly tied to oil and gas flows. Cargo vessels are more frequent,
+                  but they also create a noisier signal, so they are shown for context and comparison rather than being reviewed with the same level of attention.
                 </p>
               </details>
 

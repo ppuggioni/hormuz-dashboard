@@ -1,55 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hormuz Dashboard
 
-## Auto-refresh (every 15 min) via GitHub Actions
+Multi-region maritime dashboard focused on Hormuz crossings, dark-crosser candidate review, and related regional linkage analysis.
 
-A scheduled GitHub Actions workflow rebuilds `public/data/processed.json` every 15 minutes and commits changes to `main`.
-Vercel then redeploys automatically from GitHub.
+## What the deployed app actually uses
 
-Workflow file:
+The deployed Vercel app is designed to load **split processed JSON artifacts** from Supabase Storage first, not giant Git-tracked data blobs.
 
-- `.github/workflows/refresh-data.yml`
+Primary runtime artifacts:
+- `processed_core.json`
+- `processed_paths.json`
+- `processed_playback_24h.json`
+- `processed_playback_48h.json`
+- `processed_playback_72h.json`
+- `processed_playback_all.json`
+- `processed_external_24h.json`
+- `processed_external_48h.json`
+- `processed_external_72h.json`
+- `processed_external_all.json`
+- `processed_shipmeta_24h.json`
+- `processed_shipmeta_48h.json`
+- `processed_shipmeta_72h.json`
+- `processed_shipmeta_all.json`
 
-Required behavior:
+The frontend loads split files first and only falls back to legacy `processed.json` if needed.
 
-- Vercel project connected to this repo
-- Auto-deploy on `main` enabled in Vercel
+## Production data flow
 
-Data source env in workflow:
+1. Regional capture jobs write fresh CSV snapshots.
+2. Regional sync jobs upload source CSVs to Supabase Storage.
+3. `refresh_and_upload_processed.sh` runs `npm run build:data`.
+4. Processed artifacts are uploaded to Supabase Storage under:
+   - `x-scrapes-public/multi_region/*`
+5. Vercel fetches those artifacts at runtime.
 
-- `HORMUZ_INDEX_URL` = `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/index.json`
+## Scheduler / refresh cadence
 
+Production refresh is handled locally via `launchd`, not just GitHub Actions.
 
-## Getting Started
+Important job:
+- `com.ppbot.hormuz.dashboard.refresh`
+- `StartInterval = 295` seconds
 
-First, run the development server:
+That job runs:
+- `refresh_and_upload_processed.sh`
+- rebuilds the processed artifacts
+- uploads them to Supabase Storage
+- optionally dispatches alerts
+
+## Legacy monolith status
+
+`processed.json` is still generated and uploaded for backward compatibility.
+
+Important:
+- It is large.
+- It should not be committed to Git.
+- The preferred production path is the split artifact set above.
+- Do not assume the monolith is the primary runtime payload.
+
+## Git hygiene
+
+Generated processed artifacts are ignored via `.gitignore`:
+- `/public/data/processed*.json`
+- `/public/data/processed*.json.gz`
+
+Do not commit regenerated data files to GitHub. Some exceed GitHub's 100 MB object limit.
+
+## Useful scripts
+
+- Build processed data locally:
+```bash
+npm run build:data
+```
+
+- Rebuild + upload processed artifacts to Supabase:
+```bash
+./refresh_and_upload_processed.sh
+```
+
+## Environment / runtime assumption
+
+The app uses `NEXT_PUBLIC_HORMUZ_PROCESSED_URL` as the base URL for processed artifacts. The code then derives the split-file root from that base and attempts split-file loading first.
+
+## Local development
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Notes for future maintainers
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you change the processed data model:
+- preserve backward compatibility where practical
+- prefer adding new fields over renaming/removing existing ones
+- keep split artifacts as the main deployment path
+- treat `processed.json` as legacy compatibility, not the default design target

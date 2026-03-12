@@ -13,6 +13,7 @@ type CrossingPath = {
   shipId: string;
   shipName: string;
   vesselType: string;
+  flag?: string;
   primaryDirection: "east_to_west" | "west_to_east" | "mixed";
   directionCounts: { east_to_west: number; west_to_east: number };
   points: PathPoint[];
@@ -42,6 +43,7 @@ type LinkageEvent = {
   shipId: string;
   shipName: string;
   vesselType: string;
+  flag?: string;
   fromRegion: string;
   toRegion: string;
   hormuzWestTime: string;
@@ -101,6 +103,19 @@ type AreaPath = {
   points: PathPoint[];
 };
 
+type ShipMeta = {
+  shipName: string;
+  vesselType: string;
+  flag?: string;
+  destination?: string;
+  rawShipType?: string;
+  rawGtShipType?: string;
+  latestElapsedMinutes?: string | null;
+  latestSeenEstimatedUtc?: string | null;
+  latestSpeedRaw?: string | null;
+  latestCourseRaw?: string | null;
+};
+
 type DataShape = {
   metadata: {
     generatedAt: string;
@@ -115,7 +130,7 @@ type DataShape = {
     linkageEventCount?: number;
   };
   vesselTypes: string[];
-  shipMeta: Record<string, { shipName: string; vesselType: string }>;
+  shipMeta: Record<string, ShipMeta>;
   snapshots: Snapshot[];
   crossingsByHour: CrossingHour[];
   crossingEvents: CrossingEvent[];
@@ -128,6 +143,13 @@ const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: fal
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
 const PortAreaPathsMap = dynamic(() => import("@/components/PortAreaPathsMap"), { ssr: false });
+
+function formatShipDisplayName(shipName: string, flag?: string | null) {
+  const cleanName = String(shipName || "Unknown").trim() || "Unknown";
+  const cleanFlag = String(flag || "").trim();
+  return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
+}
+
 
 function alignHours(
   source: { hour: string; east_to_west: number; west_to_east: number }[],
@@ -530,16 +552,21 @@ export default function Page() {
   const [showNonCrossing, setShowNonCrossing] = useState(true);
   const [showOnlyLinkedExternal, setShowOnlyLinkedExternal] = useState(false);
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
+  const [crossingDirectionFilter, setCrossingDirectionFilter] = useState<"all" | "east_to_west" | "west_to_east">("all");
+  const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h" | "72h" | "all">("all");
+  const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
   const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h" | "72h" | "all">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
   const [splitMode, setSplitMode] = useState(false);
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
   const [candidateSnapshots, setCandidateSnapshots] = useState<Snapshot[]>([]);
-  const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
-  const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
+  const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
+  const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
+  const [crossingDetailSort, setCrossingDetailSort] = useState<{ key: "ship" | "type" | "direction" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
+  const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "score", dir: "desc" });
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const candidateDefaultsAppliedRef = useRef(false);
   const interactionAtRef = useRef<number>(Date.now());
@@ -838,7 +865,7 @@ export default function Page() {
     setSelectedCandidateShipIds((prev) => prev.filter((id) => valid.has(id)));
 
     if (!candidateDefaultsAppliedRef.current && candidateCrossers.length) {
-      setSelectedCandidateShipIds(candidateCrossers.filter((c) => c.score > 30).map((c) => c.shipId));
+      setSelectedCandidateShipIds(candidateCrossers.filter((c) => c.confidenceBand === "high").map((c) => c.shipId));
       candidateDefaultsAppliedRef.current = true;
     }
   }, [candidateCrossers]);
@@ -936,31 +963,67 @@ export default function Page() {
 
   const tankerTableRows = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
-    const rows = data.crossingEvents.filter((e) => e.vesselType === "tanker");
+    const latestTs = data.snapshots?.length
+      ? +new Date(data.snapshots[data.snapshots.length - 1].t)
+      : +new Date(data.metadata.generatedAt);
+    const tableWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
+    const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
+    const rows = (data.crossingEvents || []).filter((e) => {
+      if (e.vesselType !== "tanker") return false;
+      if (!crossingMapTypes.includes(e.vesselType)) return false;
+      if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
+      if (cutoff != null) {
+        const ts = +new Date(e.t);
+        if (ts < cutoff || ts > latestTs) return false;
+      }
+      return true;
+    });
     const filtered = selectedTankerHour ? rows.filter((e) => e.hour === selectedTankerHour) : rows;
     return [...filtered].sort((a, b) => {
       if (tankerSort.key === "ship") {
         const cmp = a.shipName.localeCompare(b.shipName);
         return tankerSort.dir === "asc" ? cmp : -cmp;
       }
+      if (tankerSort.key === "direction") {
+        const cmp = a.direction.localeCompare(b.direction);
+        return tankerSort.dir === "asc" ? cmp : -cmp;
+      }
       const cmp = +new Date(a.t) - +new Date(b.t);
       return tankerSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [data, selectedTankerHour, tankerSort]);
+  }, [data, selectedTankerHour, tankerSort, crossingWindow, crossingMapTypes, crossingDirectionFilter]);
 
   const cargoTableRows = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
-    const rows = data.crossingEvents.filter((e) => e.vesselType === "cargo");
+    const latestTs = data.snapshots?.length
+      ? +new Date(data.snapshots[data.snapshots.length - 1].t)
+      : +new Date(data.metadata.generatedAt);
+    const tableWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
+    const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
+    const rows = (data.crossingEvents || []).filter((e) => {
+      if (e.vesselType !== "cargo") return false;
+      if (!crossingMapTypes.includes(e.vesselType)) return false;
+      if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
+      if (cutoff != null) {
+        const ts = +new Date(e.t);
+        if (ts < cutoff || ts > latestTs) return false;
+      }
+      return true;
+    });
     const filtered = selectedCargoHour ? rows.filter((e) => e.hour === selectedCargoHour) : rows;
     return [...filtered].sort((a, b) => {
       if (cargoSort.key === "ship") {
         const cmp = a.shipName.localeCompare(b.shipName);
         return cargoSort.dir === "asc" ? cmp : -cmp;
       }
+      if (cargoSort.key === "direction") {
+        const cmp = a.direction.localeCompare(b.direction);
+        return cargoSort.dir === "asc" ? cmp : -cmp;
+      }
       const cmp = +new Date(a.t) - +new Date(b.t);
       return cargoSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [data, selectedCargoHour, cargoSort]);
+  }, [data, selectedCargoHour, cargoSort, crossingWindow, crossingMapTypes, crossingDirectionFilter]);
 
   const jaskTankerTableRows = useMemo(() => {
     const rows = jaskEvents.filter((e) => e.vesselType === "tanker");
@@ -1001,10 +1064,42 @@ export default function Page() {
     };
   }, [data]);
 
+  const crossingWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
+
+  const filteredCrossingEvents = useMemo(() => {
+    if (!data) return [] as CrossingEvent[];
+    const latestTs = data.snapshots?.length
+      ? +new Date(data.snapshots[data.snapshots.length - 1].t)
+      : +new Date(data.metadata.generatedAt);
+    const cutoff = crossingWindowHours == null ? null : latestTs - crossingWindowHours * 60 * 60 * 1000;
+    return (data.crossingEvents || []).filter((e) => {
+      if (!crossingMapTypes.includes(e.vesselType)) return false;
+      if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
+      if (cutoff != null) {
+        const ts = +new Date(e.t);
+        if (ts < cutoff || ts > latestTs) return false;
+      }
+      return true;
+    });
+  }, [data, crossingMapTypes, crossingDirectionFilter, crossingWindowHours]);
+
   const filteredCrossingPathsForMap = useMemo(() => {
     if (!data) return [] as CrossingPath[];
-    return (data.crossingPaths || []).filter((p) => crossingMapTypes.includes(p.vesselType));
-  }, [data, crossingMapTypes]);
+    const eventsByShip = new Map<string, CrossingEvent[]>();
+    for (const e of filteredCrossingEvents) {
+      if (!eventsByShip.has(e.shipId)) eventsByShip.set(e.shipId, []);
+      eventsByShip.get(e.shipId)!.push(e);
+    }
+    return (data.crossingPaths || [])
+      .filter((p) => crossingMapTypes.includes(p.vesselType) && eventsByShip.has(p.shipId))
+      .map((p) => {
+        const shipEvents = eventsByShip.get(p.shipId) || [];
+        if (crossingWindowHours == null) return { ...p, flag: data.shipMeta?.[p.shipId]?.flag || p.flag || "" };
+        const minTs = Math.min(...shipEvents.map((e) => +new Date(e.t)));
+        const pts = (p.points || []).filter((pt) => +new Date(pt.t) >= minTs);
+        return { ...p, flag: data.shipMeta?.[p.shipId]?.flag || p.flag || "", points: pts.length ? pts : p.points };
+      });
+  }, [data, crossingMapTypes, filteredCrossingEvents, crossingWindowHours]);
 
   const crossingMapTitle = useMemo(() => {
     if (crossingMapTypes.length === 1 && crossingMapTypes[0] === "tanker") {
@@ -1043,19 +1138,33 @@ export default function Page() {
     [linkageRows],
   );
 
+  const crossingVisibleShipIds = useMemo(() => new Set(filteredCrossingPathsForMap.map((p) => p.shipId)), [filteredCrossingPathsForMap]);
+
   const crossingMapLinkLines = useMemo(() => {
-    return externalLinkRows.slice(0, 300).map((r) => ({
-      shipId: r.shipId,
-      shipName: r.shipName,
-      fromRegion: r.fromRegion,
-      toRegion: r.toRegion,
-      fromLat: r.hormuzWestLat,
-      fromLon: r.hormuzWestLon,
-      toLat: r.otherLat,
-      toLon: r.otherLon,
-      deltaDh: r.deltaDh,
-    }));
-  }, [externalLinkRows]);
+    return externalLinkRows
+      .filter((r) => crossingVisibleShipIds.has(r.shipId))
+      .slice(0, 300)
+      .map((r) => ({
+        shipId: r.shipId,
+        shipName: r.shipName,
+        flag: data?.shipMeta?.[r.shipId]?.flag || r.flag || "",
+        fromRegion: r.fromRegion,
+        toRegion: r.toRegion,
+        fromLat: r.hormuzWestLat,
+        fromLon: r.hormuzWestLon,
+        toLat: r.otherLat,
+        toLon: r.otherLon,
+        deltaDh: r.deltaDh,
+      }));
+  }, [externalLinkRows, crossingVisibleShipIds, data]);
+
+  const crossingSummary = useMemo(() => {
+    const uniqueShipIds = new Set(filteredCrossingEvents.map((e) => e.shipId));
+    return {
+      crossings: filteredCrossingEvents.length,
+      ships: uniqueShipIds.size,
+    };
+  }, [filteredCrossingEvents]);
 
   const transitTimeByShip = useMemo(() => {
     const map = new Map<string, string>();
@@ -1064,6 +1173,65 @@ export default function Page() {
     }
     return map;
   }, [linkageRows]);
+
+  const crossingDetailRows = useMemo(() => {
+    return [...filteredCrossingEvents].sort((a, b) => {
+      let cmp = 0;
+      switch (crossingDetailSort.key) {
+        case "ship":
+          cmp = a.shipName.localeCompare(b.shipName);
+          break;
+        case "type":
+          cmp = a.vesselType.localeCompare(b.vesselType);
+          break;
+        case "direction":
+          cmp = a.direction.localeCompare(b.direction);
+          break;
+        case "transit":
+          cmp = (transitTimeByShip.get(a.shipId) || "").localeCompare(transitTimeByShip.get(b.shipId) || "");
+          break;
+        case "timestamp":
+        default:
+          cmp = +new Date(a.t) - +new Date(b.t);
+          break;
+      }
+      return crossingDetailSort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredCrossingEvents, crossingDetailSort, transitTimeByShip]);
+
+  const candidateTableRows = useMemo(() => {
+    const rank = { high: 2, low: 1, no: 0 } as const;
+    return [...candidateCrossers].sort((a, b) => {
+      let cmp = 0;
+      switch (candidateSort.key) {
+        case "ship":
+          cmp = a.shipName.localeCompare(b.shipName);
+          break;
+        case "lastSeen":
+          cmp = +new Date(a.lastSeenAt) - +new Date(b.lastSeenAt);
+          break;
+        case "darkHours":
+          cmp = a.darkHours - b.darkHours;
+          break;
+        case "alignedPoints":
+          cmp = a.alignedPoints - b.alignedPoints;
+          break;
+        case "speedQuality":
+          cmp = a.speedQuality - b.speedQuality;
+          break;
+        case "approachConfidence":
+          cmp = a.approachConfidence - b.approachConfidence;
+          break;
+        case "score":
+          cmp = a.score - b.score;
+          break;
+        case "confidence":
+          cmp = rank[a.confidenceBand] - rank[b.confidenceBand];
+          break;
+      }
+      return candidateSort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [candidateCrossers, candidateSort]);
 
   const playbackLinkedPoints = useMemo(() => {
     if (!externalPoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {
@@ -1605,7 +1773,7 @@ export default function Page() {
                 tankerNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
                     {tankerNamesAtSelectedHour.map((r) => (
-                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
+                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
                     ))}
                   </ul>
                 ) : (
@@ -1617,19 +1785,32 @@ export default function Page() {
               <table className="w-full text-xs">
                 <thead className="bg-slate-900 sticky top-0">
                   <tr>
+                    <th className="text-left p-2">Sel</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Tanker ship</th>
+                    <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
                     <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tankerTableRows.map((r, idx) => (
-                    <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
+                  {tankerTableRows.map((r, idx) => {
+                    const selected = selectedCrossingShipIds.includes(r.shipId);
+                    return (
+                    <tr
+                      key={`${r.shipId}-${r.t}-${idx}`}
+                      className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
+                      onClick={() => {
+                        setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId]);
+                        document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                    >
+                      <td className="p-2">{selected ? "●" : "○"}</td>
+                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
+                      <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -1672,7 +1853,7 @@ export default function Page() {
                 cargoNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
                     {cargoNamesAtSelectedHour.map((r) => (
-                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
+                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
                     ))}
                   </ul>
                 ) : (
@@ -1684,19 +1865,32 @@ export default function Page() {
               <table className="w-full text-xs">
                 <thead className="bg-slate-900 sticky top-0">
                   <tr>
+                    <th className="text-left p-2">Sel</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Cargo ship</th>
+                    <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
                     <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cargoTableRows.map((r, idx) => (
-                    <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
+                  {cargoTableRows.map((r, idx) => {
+                    const selected = selectedCrossingShipIds.includes(r.shipId);
+                    return (
+                    <tr
+                      key={`${r.shipId}-${r.t}-${idx}`}
+                      className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
+                      onClick={() => {
+                        setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId]);
+                        document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                    >
+                      <td className="p-2">{selected ? "●" : "○"}</td>
+                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
+                      <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -1705,7 +1899,7 @@ export default function Page() {
 
         <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">{crossingMapTitle}</h2>
-          <div className="flex items-center gap-2 text-xs text-slate-300">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
             <span className="text-slate-200 mr-2">Legend (click to toggle)</span>
             {data.vesselTypes.map((type) => {
               const active = crossingMapTypes.includes(type);
@@ -1723,6 +1917,17 @@ export default function Page() {
                 </button>
               );
             })}
+            <button onClick={() => setCrossingDirectionFilter("all")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "all" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>all crossings</button>
+            <button onClick={() => setCrossingDirectionFilter("east_to_west")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "east_to_west" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>east → west</button>
+            <button onClick={() => setCrossingDirectionFilter("west_to_east")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "west_to_east" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>west → east</button>
+            {(["24h", "48h", "72h", "all"] as const).map((w) => (
+              <button key={w} onClick={() => setCrossingWindow(w)} className={`px-2 py-1 rounded border ${crossingWindow === w ? "border-emerald-300 text-emerald-200" : "border-slate-700 text-slate-400"}`}>{w}</button>
+            ))}
+            <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>
+            {selectedCrossingShipIds.length ? <button onClick={() => setSelectedCrossingShipIds([])} className="px-2 py-1 rounded border border-slate-600 text-slate-300">reset selection</button> : null}
+          </div>
+          <div className="text-xs text-slate-300">
+            Showing {crossingSummary.crossings} crossings across {crossingSummary.ships} ships under the current filters.
           </div>
           <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
             <CrossingPathsMap
@@ -1730,9 +1935,46 @@ export default function Page() {
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
               linkLines={crossingMapLinkLines}
+              selectedShipIds={selectedCrossingShipIds}
+              onToggleShip={(shipId) => setSelectedCrossingShipIds((prev) => prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId])}
+              onResetSelection={() => setSelectedCrossingShipIds([])}
             />
           </div>
           <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
+
+          <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-900 sticky top-0">
+                <tr>
+                  <th className="text-left p-2">Sel</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {crossingDetailRows.map((r, idx) => {
+                  const selected = selectedCrossingShipIds.includes(r.shipId);
+                  return (
+                    <tr
+                      key={`cross-detail-${r.shipId}-${r.t}-${idx}`}
+                      className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
+                      onClick={() => setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId])}
+                    >
+                      <td className="p-2">{selected ? "●" : "○"}</td>
+                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
+                      <td className="p-2">{r.vesselType}</td>
+                      <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
+                      <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section id="candidate-dark-crossers" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
@@ -1754,6 +1996,7 @@ export default function Page() {
                 .map((c) => ({
                   shipId: c.shipId,
                   shipName: c.shipName,
+                  flag: data?.shipMeta?.[c.shipId]?.flag,
                   points: c.points,
                   lastSeenAt: c.lastSeenAt,
                   score: c.score,
@@ -1782,7 +2025,7 @@ export default function Page() {
                 )
               }
               onResetSelection={() =>
-                setSelectedCandidateShipIds(candidateCrossers.filter((c) => c.score > 30).map((c) => c.shipId))
+                setSelectedCandidateShipIds(candidateCrossers.filter((c) => c.confidenceBand === "high").map((c) => c.shipId))
               }
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
@@ -1793,18 +2036,18 @@ export default function Page() {
               <thead className="bg-slate-900 sticky top-0">
                 <tr>
                   <th className="text-left p-2">Sel</th>
-                  <th className="text-left p-2">Ship</th>
-                  <th className="text-left p-2">Last seen (UTC)</th>
-                  <th className="text-left p-2">Dark hours</th>
-                  <th className="text-left p-2">Aligned points</th>
-                  <th className="text-left p-2">Speed quality</th>
-                  <th className="text-left p-2">Approach confidence</th>
-                  <th className="text-left p-2">Score</th>
-                  <th className="text-left p-2">Confidence</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "lastSeen", dir: s.key === "lastSeen" && s.dir === "asc" ? "desc" : "asc" }))}>Last seen (UTC)</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "darkHours", dir: s.key === "darkHours" && s.dir === "asc" ? "desc" : "asc" }))}>Dark hours</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "alignedPoints", dir: s.key === "alignedPoints" && s.dir === "asc" ? "desc" : "asc" }))}>Aligned points</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "speedQuality", dir: s.key === "speedQuality" && s.dir === "asc" ? "desc" : "asc" }))}>Speed quality</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "approachConfidence", dir: s.key === "approachConfidence" && s.dir === "asc" ? "desc" : "asc" }))}>Approach confidence</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "score", dir: s.key === "score" && s.dir === "asc" ? "desc" : "asc" }))}>Score</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "confidence", dir: s.key === "confidence" && s.dir === "asc" ? "desc" : "asc" }))}>Confidence</th>
                 </tr>
               </thead>
               <tbody>
-                {candidateCrossers.map((c) => (
+                {candidateTableRows.map((c) => (
                   <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
                     <td className="p-2">
                       <input
@@ -1817,7 +2060,7 @@ export default function Page() {
                         }
                       />
                     </td>
-                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{c.shipName} ({c.shipId})</a></td>
+                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(c.shipName, data?.shipMeta?.[c.shipId]?.flag)} ({c.shipId})</a></td>
                     <td className="p-2">{new Date(c.lastSeenAt).toUTCString()}</td>
                     <td className="p-2">{c.darkHours.toFixed(1)}</td>
                     <td className="p-2">{c.alignedPoints}</td>
@@ -1903,7 +2146,7 @@ export default function Page() {
                   jaskTankerNamesAtSelectedHour.length ? (
                     <ul className="mt-2 space-y-1">
                       {jaskTankerNamesAtSelectedHour.map((r) => (
-                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></li>
+                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></li>
                       ))}
                     </ul>
                   ) : (
@@ -1922,7 +2165,7 @@ export default function Page() {
                   <tbody>
                     {jaskTankerTableRows.map((r, idx) => (
                       <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
+                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                         <td className="p-2">{new Date(r.t).toUTCString()}</td>
                       </tr>
                     ))}
@@ -1968,7 +2211,7 @@ export default function Page() {
                   jaskCargoNamesAtSelectedHour.length ? (
                     <ul className="mt-2 space-y-1">
                       {jaskCargoNamesAtSelectedHour.map((r) => (
-                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></li>
+                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></li>
                       ))}
                     </ul>
                   ) : (
@@ -1987,7 +2230,7 @@ export default function Page() {
                   <tbody>
                     {jaskCargoTableRows.map((r, idx) => (
                       <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{r.shipName} ({r.shipId})</a></td>
+                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                         <td className="p-2">{new Date(r.t).toUTCString()}</td>
                       </tr>
                     ))}

@@ -24,6 +24,12 @@ function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: numb
   return (Math.atan2(dLon, dLat) * 180) / Math.PI;
 }
 
+function formatShipDisplayName(shipName: string, flag?: string | null) {
+  const cleanName = String(shipName || "Unknown").trim() || "Unknown";
+  const cleanFlag = String(flag || "").trim();
+  return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
+}
+
 function triangleIcon(color: string, deg: number, size = 10) {
   const h = Math.round(size * 1.15);
   const w = Math.round(size * 0.5);
@@ -39,6 +45,7 @@ type PathPoint = { t: string; lat: number; lon: number };
 type Candidate = {
   shipId: string;
   shipName: string;
+  flag?: string;
   points: PathPoint[];
   lastSeenAt: string;
   score: number;
@@ -149,7 +156,7 @@ export default function CandidatePathsMap({
                 eventHandlers={{ click: () => onToggleShip?.(c.shipId) }}
               >
                 <Tooltip>
-                  {c.shipName} ({c.shipId}) — {new Date(p.t).toUTCString()} — {c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "none"}
+                  {formatShipDisplayName(c.shipName, c.flag)} ({c.shipId}) — {new Date(p.t).toUTCString()} — {c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "none"}
                 </Tooltip>
               </Marker>
             )})}
@@ -166,7 +173,7 @@ export default function CandidatePathsMap({
             >
               <Popup>
                 <div style={{ minWidth: 260 }}>
-                  <div><strong>Ship:</strong> {c.shipName} ({c.shipId})</div>
+                  <div><strong>Ship:</strong> {formatShipDisplayName(c.shipName, c.flag)} ({c.shipId})</div>
                   <div><strong>Last seen:</strong> {new Date(c.lastSeenAt).toUTCString()}</div>
                   <div><strong>Candidate score:</strong> {c.score.toFixed(1)}</div>
                   <div><strong>Confidence:</strong> {c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</div>
@@ -203,7 +210,7 @@ export default function CandidatePathsMap({
           position={[s.points[s.points.length - 1].lat, s.points[s.points.length - 1].lon]}
           icon={divIcon({
             className: "",
-            html: `<div style='background:transparent;border:none;padding:0;color:${labelColor};font-size:10px;line-height:1.1;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(2,6,23,0.95);'>${s.shipName}</div>`,
+            html: `<div style='background:transparent;border:none;padding:0;color:${labelColor};font-size:10px;line-height:1.1;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(2,6,23,0.95);'>${formatShipDisplayName(s.shipName, s.flag)}</div>`,
             iconSize: [140, 14],
             iconAnchor: [0, 20],
           })}

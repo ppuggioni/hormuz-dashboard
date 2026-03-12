@@ -1,14 +1,15 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 import { divIcon } from "leaflet";
-import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
 
 type PathPoint = { t: string; lat: number; lon: number };
 type CrossingPath = {
   shipId: string;
   shipName: string;
   vesselType: string;
+  flag?: string;
   primaryDirection: "east_to_west" | "west_to_east" | "mixed";
   directionCounts: { east_to_west: number; west_to_east: number };
   points: PathPoint[];
@@ -16,6 +17,7 @@ type CrossingPath = {
 type LinkLine = {
   shipId: string;
   shipName: string;
+  flag?: string;
   fromRegion: string;
   toRegion: string;
   fromLat: number;
@@ -58,6 +60,12 @@ function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: numb
   return (Math.atan2(dLon, dLat) * 180) / Math.PI;
 }
 
+function formatShipDisplayName(shipName: string, flag?: string | null) {
+  const cleanName = String(shipName || "Unknown").trim() || "Unknown";
+  const cleanFlag = String(flag || "").trim();
+  return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
+}
+
 function triangleIcon(color: string, deg: number, size = 11) {
   const h = Math.round(size * 1.15);
   const w = Math.round(size * 0.5);
@@ -69,19 +77,38 @@ function triangleIcon(color: string, deg: number, size = 11) {
   });
 }
 
+function MapResetHandler({ onReset }: { onReset?: () => void }) {
+  useMapEvents({
+    click() {
+      onReset?.();
+    },
+  });
+  return null;
+}
+
 export default function CrossingPathsMap({
   paths,
   eastLon,
   westLon,
   linkLines,
+  selectedShipIds,
+  onToggleShip,
+  onResetSelection,
 }: {
   paths: CrossingPath[];
   eastLon: number;
   westLon: number;
   linkLines?: LinkLine[];
+  selectedShipIds?: string[];
+  onToggleShip?: (shipId: string) => void;
+  onResetSelection?: () => void;
 }) {
+  const selectedSet = useMemo(() => new Set(selectedShipIds || []), [selectedShipIds]);
+  const hasSelection = selectedSet.size > 0;
+
   return (
     <MapContainer center={[26.1, 56.2]} zoom={6} style={{ height: "100%", width: "100%" }}>
+      <MapResetHandler onReset={onResetSelection} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -90,29 +117,35 @@ export default function CrossingPathsMap({
       <Polyline positions={[[25.4, eastLon], [27.1, eastLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
       <Polyline positions={[[25.4, westLon], [27.1, westLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
 
-      {(linkLines || []).map((l, idx) => (
+      {(linkLines || []).map((l, idx) => {
+        const isSelected = selectedSet.has(l.shipId);
+        const dimmed = hasSelection && !isSelected;
+        return (
         <Polyline
           key={`linkline-${l.shipId}-${idx}`}
           positions={[[l.fromLat, l.fromLon], [l.toLat, l.toLon]]}
-          pathOptions={{ color: '#94a3b8', weight: 1, opacity: 0.75, dashArray: '3 8' }}
+          pathOptions={{ color: dimmed ? '#475569' : '#94a3b8', weight: isSelected ? 1.8 : 1, opacity: dimmed ? 0.25 : 0.75, dashArray: '3 8' }}
+          eventHandlers={{ click: () => onToggleShip?.(l.shipId) }}
         >
           <Popup>
             <div style={{ minWidth: 220 }}>
-              <div><strong>Ship:</strong> {l.shipName} ({l.shipId})</div>
+              <div><strong>Ship:</strong> {formatShipDisplayName(l.shipName, l.flag)} ({l.shipId})</div>
               <div><strong>Route:</strong> {l.fromRegion} → {l.toRegion}</div>
               <div><strong>Transit time from Hormuz West:</strong> {l.deltaDh}</div>
               <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${l.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
             </div>
           </Popup>
         </Polyline>
-      ))}
+      )})}
 
       {paths.map((ship) => {
-        const color = colorForShip(ship.shipId);
+        const isSelected = selectedSet.has(ship.shipId);
+        const dimmed = hasSelection && !isSelected;
+        const color = dimmed ? "#64748b" : colorForShip(ship.shipId);
         const polyline = ship.points.map((p) => [p.lat, p.lon] as [number, number]);
         return (
           <Fragment key={ship.shipId}>
-            <Polyline positions={polyline} pathOptions={{ color, weight: 1.2, opacity: 0.82, dashArray: "4 6" }} />
+            <Polyline positions={polyline} pathOptions={{ color, weight: isSelected ? 2 : 1.2, opacity: dimmed ? 0.22 : 0.82, dashArray: "4 6" }} eventHandlers={{ click: () => onToggleShip?.(ship.shipId) }} />
             {ship.points.map((p, idx) => {
               let deg = 0;
               let found = false;
@@ -139,14 +172,15 @@ export default function CrossingPathsMap({
               <Marker
                 key={`${ship.shipId}-pt-${idx}`}
                 position={[p.lat, p.lon]}
-                icon={triangleIcon(color, deg, 9)}
+                icon={triangleIcon(color, deg, isSelected ? 11 : 9)}
+                eventHandlers={{ click: () => onToggleShip?.(ship.shipId) }}
               >
                 <Tooltip>
-                  {ship.shipName} ({ship.shipId}) — {new Date(p.t).toUTCString()}
+                  {formatShipDisplayName(ship.shipName, ship.flag)} ({ship.shipId}) — {new Date(p.t).toUTCString()}
                 </Tooltip>
                 <Popup>
                   <div style={{ minWidth: 220 }}>
-                    <div><strong>Name:</strong> {ship.shipName}</div>
+                    <div><strong>Name:</strong> {formatShipDisplayName(ship.shipName, ship.flag)}</div>
                     <div><strong>Ship ID:</strong> {ship.shipId}</div>
                     <div><strong>Type:</strong> {ship.vesselType}</div>
                     <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${ship.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>

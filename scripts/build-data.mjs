@@ -119,7 +119,12 @@ async function main() {
   }
 
   const shipTypeVotes = new Map();
+  const rawShipTypeVotes = new Map();
+  const rawGtShipTypeVotes = new Map();
   const shipNameVotes = new Map();
+  const flagVotes = new Map();
+  const destinationVotes = new Map();
+  const latestMetaByShip = new Map();
   const observationsByShip = new Map();
   const hormuzObservationsByShip = new Map();
   const snapshots = [];
@@ -143,13 +148,41 @@ async function main() {
 
         const vesselType = classifyVesselType(row.gt_shiptype, row.ship_type);
         const shipName = normalizeShipName(row.ship_name);
+        const rawShipType = String(row.ship_type || '').trim();
+        const rawGtShipType = String(row.gt_shiptype || '').trim();
+        const flag = String(row.flag || '').trim();
+        const destination = String(row.destination || '').trim();
+        const elapsedMinutes = String(row.elapsed_minutes || '').trim();
+        const lastSeenEstimatedUtc = String(row.last_seen_estimated_utc || '').trim();
+        const speedRaw = String(row.speed_raw || '').trim();
+        const courseRaw = String(row.course_raw || '').trim();
 
-        if (String(row.ship_type || '').trim() !== '') {
+        if (rawShipType !== '') {
           if (!shipTypeVotes.has(shipId)) shipTypeVotes.set(shipId, []);
           shipTypeVotes.get(shipId).push(vesselType);
+          if (!rawShipTypeVotes.has(shipId)) rawShipTypeVotes.set(shipId, []);
+          rawShipTypeVotes.get(shipId).push(rawShipType);
+        }
+        if (rawGtShipType !== '') {
+          if (!rawGtShipTypeVotes.has(shipId)) rawGtShipTypeVotes.set(shipId, []);
+          rawGtShipTypeVotes.get(shipId).push(rawGtShipType);
         }
         if (!shipNameVotes.has(shipId)) shipNameVotes.set(shipId, []);
         shipNameVotes.get(shipId).push(shipName);
+        if (flag) {
+          if (!flagVotes.has(shipId)) flagVotes.set(shipId, []);
+          flagVotes.get(shipId).push(flag);
+        }
+        if (destination) {
+          if (!destinationVotes.has(shipId)) destinationVotes.set(shipId, []);
+          destinationVotes.get(shipId).push(destination);
+        }
+        latestMetaByShip.set(shipId, {
+          elapsedMinutes: elapsedMinutes === '' ? null : elapsedMinutes,
+          lastSeenEstimatedUtc: lastSeenEstimatedUtc || null,
+          speedRaw: speedRaw === '' ? null : speedRaw,
+          courseRaw: courseRaw === '' ? null : courseRaw,
+        });
 
         const obs = {
           t: capture,
@@ -169,6 +202,8 @@ async function main() {
             shipId,
             shipName,
             vesselType,
+            flag,
+            destination,
             lat: obs.lat,
             lon: obs.lon,
           });
@@ -186,11 +221,27 @@ async function main() {
   }
 
   const shipMeta = {};
-  const allShipIds = new Set([...observationsByShip.keys(), ...shipNameVotes.keys(), ...shipTypeVotes.keys()]);
+  const allShipIds = new Set([
+    ...observationsByShip.keys(),
+    ...shipNameVotes.keys(),
+    ...shipTypeVotes.keys(),
+    ...flagVotes.keys(),
+    ...destinationVotes.keys(),
+    ...latestMetaByShip.keys(),
+  ]);
   for (const shipId of allShipIds) {
+    const latestMeta = latestMetaByShip.get(shipId) || {};
     shipMeta[shipId] = {
       vesselType: modal(shipTypeVotes.get(shipId) || [], 'other'),
       shipName: modal((shipNameVotes.get(shipId) || []).filter((n) => n !== 'Unknown'), 'Unknown'),
+      flag: modal(flagVotes.get(shipId) || [], ''),
+      destination: modal(destinationVotes.get(shipId) || [], ''),
+      rawShipType: modal(rawShipTypeVotes.get(shipId) || [], ''),
+      rawGtShipType: modal(rawGtShipTypeVotes.get(shipId) || [], ''),
+      latestElapsedMinutes: latestMeta.elapsedMinutes ?? null,
+      latestSeenEstimatedUtc: latestMeta.lastSeenEstimatedUtc ?? null,
+      latestSpeedRaw: latestMeta.speedRaw ?? null,
+      latestCourseRaw: latestMeta.courseRaw ?? null,
     };
   }
 
@@ -200,6 +251,8 @@ async function main() {
       if (!meta) continue;
       p.vesselType = meta.vesselType;
       if (!p.shipName || p.shipName === 'Unknown') p.shipName = meta.shipName;
+      if (!p.flag) p.flag = meta.flag || '';
+      if (!p.destination) p.destination = meta.destination || '';
     }
   }
 
@@ -243,6 +296,7 @@ async function main() {
           shipId,
           shipName: shipMeta[shipId]?.shipName || 'Unknown',
           vesselType: shipMeta[shipId]?.vesselType || 'other',
+          flag: shipMeta[shipId]?.flag || '',
           direction,
         });
         directionCounts[direction] += 1;
@@ -261,6 +315,7 @@ async function main() {
         shipId,
         shipName: shipMeta[shipId]?.shipName || 'Unknown',
         vesselType: shipMeta[shipId]?.vesselType || 'other',
+        flag: shipMeta[shipId]?.flag || '',
         primaryDirection,
         directionCounts,
         points: obs.map((x) => ({ t: x.t, lat: x.lat, lon: x.lon })),
@@ -328,6 +383,7 @@ async function main() {
             shipId,
             shipName: shipMeta[shipId]?.shipName || 'Unknown',
             vesselType: shipMeta[shipId]?.vesselType || 'other',
+            flag: shipMeta[shipId]?.flag || '',
             fromRegion,
             toRegion,
             hormuzWestTime: anchor.t,
@@ -366,6 +422,7 @@ async function main() {
         shipId,
         shipName: shipMeta[shipId]?.shipName || 'Unknown',
         vesselType: shipMeta[shipId]?.vesselType || 'other',
+        flag: shipMeta[shipId]?.flag || '',
         region: o.sourceRegion,
         t: o.t,
         lat: o.lat,
@@ -413,6 +470,7 @@ async function main() {
         shipId: p.shipId,
         shipName: p.shipName,
         vesselType: p.vesselType,
+        flag: p.flag || '',
         primaryDirection: p.primaryDirection,
         directionCounts: { east_to_west: p.directionCounts?.east_to_west || 0, west_to_east: p.directionCounts?.west_to_east || 0 },
         points: [],
@@ -421,6 +479,7 @@ async function main() {
     const cur = mergedPathsByShip.get(p.shipId);
     if (p.shipName) cur.shipName = p.shipName;
     if (p.vesselType) cur.vesselType = p.vesselType;
+    if (p.flag) cur.flag = p.flag;
     if (p.primaryDirection) cur.primaryDirection = p.primaryDirection;
     cur.directionCounts.east_to_west = Math.max(cur.directionCounts.east_to_west, p.directionCounts?.east_to_west || 0);
     cur.directionCounts.west_to_east = Math.max(cur.directionCounts.west_to_east, p.directionCounts?.west_to_east || 0);

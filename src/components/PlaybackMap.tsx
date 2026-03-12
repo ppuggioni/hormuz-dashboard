@@ -4,9 +4,9 @@ import { useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, Polygon, Polyline, TileLayer, Tooltip } from "react-leaflet";
 import { divIcon } from "leaflet";
 
-type Point = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
+type Point = { shipId: string; shipName: string; vesselType: string; flag?: string; destination?: string; lat: number; lon: number };
 type Snapshot = { t: string; points: Point[] };
-type LinkedPoint = { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string };
+type LinkedPoint = { shipId: string; shipName: string; vesselType: string; flag?: string; region: string; lat: number; lon: number; deltaDh: string };
 type MonitoredArea = { minLat: number; maxLat: number; minLon: number; maxLon: number; color?: string; label?: string };
 
 const typeColor: Record<string, string> = {
@@ -17,6 +17,12 @@ const typeColor: Record<string, string> = {
   other: "#f59e0b",
   unknown: "#94a3b8",
 };
+
+function formatShipDisplayName(shipName: string, flag?: string | null) {
+  const cleanName = String(shipName || "Unknown").trim() || "Unknown";
+  const cleanFlag = String(flag || "").trim();
+  return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
+}
 
 function triangleIconHtml(color: string, deg: number, size = 14, withCross = false, equilateral = false) {
   const h = equilateral ? Math.round(size * 0.95) : Math.round(size * 1.1);
@@ -198,7 +204,7 @@ export default function PlaybackMap({
             maxWidth: 320,
           }}
         >
-          <div><strong>Name:</strong> {selectedShipMeta.shipName}</div>
+          <div><strong>Name:</strong> {formatShipDisplayName(selectedShipMeta.shipName, selectedShipMeta.flag)}</div>
           <div><strong>Ship ID:</strong> {selectedShipMeta.shipId}</div>
           <div><strong>Type:</strong> {selectedShipMeta.vesselType}</div>
           <div><strong>Window pings:</strong> {selectedTrail.length}</div>
@@ -308,12 +314,12 @@ export default function PlaybackMap({
           icon={divIcon({ className: "", html: triangleIconHtml(color, heading.deg, 12, false, heading.lowMovement), iconSize: [12, 14], iconAnchor: [6, 10] })}
         >
           <Tooltip>
-            {p.shipName} ({p.shipId}) — {p.region}
+            {formatShipDisplayName(p.shipName, p.flag)} ({p.shipId}) — {p.region}
           </Tooltip>
           <Popup>
             <div style={{ minWidth: 200 }}>
               <div><strong>Linked region:</strong> {p.region}</div>
-              <div><strong>Ship:</strong> {p.shipName} ({p.shipId})</div>
+              <div><strong>Ship:</strong> {formatShipDisplayName(p.shipName, p.flag)} ({p.shipId})</div>
               <div><strong>Transit time from Hormuz West:</strong> {p.deltaDh}</div>
               <div><strong>Lat/Lon:</strong> {p.lat}, {p.lon}</div>
               <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${p.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
@@ -339,11 +345,11 @@ export default function PlaybackMap({
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
             <Tooltip>
-              {p.shipName} ({p.shipId}) — {isCrosser ? "crossing" : "non-crossing"}
+              {formatShipDisplayName(p.shipName, p.flag)} ({p.shipId}) — {isCrosser ? "crossing" : "non-crossing"}
             </Tooltip>
             <Popup>
               <div style={{ minWidth: 180 }}>
-                <div><strong>Name:</strong> {p.shipName}</div>
+                <div><strong>Name:</strong> {formatShipDisplayName(p.shipName, p.flag)}</div>
                 <div><strong>Ship ID:</strong> {p.shipId}</div>
                 <div><strong>Type:</strong> {p.vesselType}</div>
                 <div><strong>Status:</strong> {isCrosser ? `crossing vessel${isCandidate ? " (candidate dark crosser)" : ""}` : isCandidate ? "candidate dark crosser" : "non-crossing"}</div>

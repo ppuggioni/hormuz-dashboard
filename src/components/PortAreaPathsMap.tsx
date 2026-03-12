@@ -9,6 +9,7 @@ type PortPath = {
   shipId: string;
   shipName: string;
   vesselType: string;
+  flag?: string;
   points: PathPoint[];
 };
 
@@ -43,6 +44,12 @@ function headingDeg(a: { lat: number; lon: number }, b: { lat: number; lon: numb
   const dLon = b.lon - a.lon;
   const dLat = b.lat - a.lat;
   return (Math.atan2(dLon, dLat) * 180) / Math.PI;
+}
+
+function formatShipDisplayName(shipName: string, flag?: string | null) {
+  const cleanName = String(shipName || "Unknown").trim() || "Unknown";
+  const cleanFlag = String(flag || "").trim();
+  return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
 }
 
 function triangleIcon(color: string, deg: number, size = 10) {
@@ -150,11 +157,11 @@ export default function PortAreaPathsMap({
               return (
                 <Marker key={`${ship.shipId}-pt-${idx}`} position={[p.lat, p.lon]} icon={triangleIcon(color, deg, 9)}>
                   <Tooltip>
-                    {ship.shipName} ({ship.shipId}) — {new Date(p.t).toUTCString()}
+                    {formatShipDisplayName(ship.shipName, ship.flag)} ({ship.shipId}) — {new Date(p.t).toUTCString()}
                   </Tooltip>
                   <Popup>
                     <div style={{ minWidth: 220 }}>
-                      <div><strong>Name:</strong> {ship.shipName}</div>
+                      <div><strong>Name:</strong> {formatShipDisplayName(ship.shipName, ship.flag)}</div>
                       <div><strong>Ship ID:</strong> {ship.shipId}</div>
                       <div><strong>Type:</strong> {ship.vesselType}</div>
                       <div><strong>Timestamp:</strong> {new Date(p.t).toUTCString()}</div>

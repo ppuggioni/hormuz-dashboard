@@ -1522,7 +1522,7 @@ export default function Page() {
           <div className="mt-4 grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
-              <div className="text-xs text-emerald-200">Crossing Tankers (last 24h | baseline pre-war: 30-40/day)</div>
+              <div className="text-xs text-emerald-200">Crossing Tankers (last 24h | baseline pre-war: 30/day each way)</div>
               <div className="text-lg font-semibold text-emerald-100">{String(last24hCrossingCounts.tanker)}</div>
               <button
                 onClick={() => document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" })}
@@ -1564,7 +1564,7 @@ export default function Page() {
               Download CSV — crossings + likely crossings + Jask entries
             </button>
           </div>
-          <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30-40 tanker crossings per day.</p>
+          <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30 tanker crossings per day in each direction.</p>
         </header>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
@@ -1743,7 +1743,7 @@ export default function Page() {
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div className="xl:col-span-2 rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-3 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
             <strong>Tankers</strong> are the vessels most likely to carry oil and gas. <strong>Cargo vessels</strong> are far less likely to be energy carriers.
-            <div className="mt-2 text-amber-50"><strong>BASELINE (pre-war):</strong> about <strong>30-40 tankers/day</strong>.</div>
+            <div className="mt-2 text-amber-50"><strong>BASELINE (pre-war):</strong> about <strong>30 tankers/day each way</strong>.</div>
           </div>
           <div className="xl:col-span-2 flex flex-wrap gap-2 text-xs">
             <button onClick={() => setShowEastToWest((v) => !v)} className={`px-2 py-1 rounded border ${showEastToWest ? "border-sky-300 text-sky-200" : "border-slate-700 text-slate-500"}`}>East → West</button>

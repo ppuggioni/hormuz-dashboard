@@ -336,6 +336,7 @@ function computeLikelyDarkCrossers(
     const speedScore = segCount ? speedQuality / segCount : 0;
     const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
     const lastMidDistKm = haversineKm(last.lat, last.lon, centerLat, centerLon);
+    if (lastMidDistKm > 300) continue;
     const proximityRaw = 1 - Math.min(1, lastMidDistKm / 160);
     const prev = tail[tail.length - 2];
     const lastDist = haversineKm(last.lat, last.lon, centerLat, centerLon);
@@ -365,7 +366,8 @@ function computeLikelyDarkCrossers(
     }
 
     const score = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty;
-    const confidenceBand: "high" | "low" | "no" = score > 50 ? "high" : score >= 30 ? "low" : "no";
+    let confidenceBand: "high" | "low" | "no" = score > 50 ? "high" : score >= 30 ? "low" : "no";
+    if (lastMidDistKm > 150 && confidenceBand === "high") confidenceBand = "low";
 
     out.push({
       shipId,
@@ -2106,6 +2108,11 @@ export default function Page() {
           <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
+              <div><strong>Quick confidence guide:</strong></div>
+              <div>- <strong>High confidence</strong>: strong recent approach behavior, physically near Hormuz, and total score above 50.</div>
+              <div>- <strong>Low confidence</strong>: some approach evidence, but weaker score, weaker geometry, or farther from the strait.</div>
+              <div>- <strong>No confidence</strong>: does not clear the scoring threshold, despite passing the basic dark/evidence gates.</div>
+              <div>- <strong>Distance guardrail</strong>: vessels more than 300 km from the strait midpoint are excluded entirely; vessels beyond 150 km cannot be labeled high confidence.</div>
               <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty.</div>
               <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
               <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>

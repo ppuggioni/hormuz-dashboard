@@ -367,7 +367,7 @@ function computeLikelyDarkCrossers(
 
     const score = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty;
     let confidenceBand: "high" | "low" | "no" = score > 50 ? "high" : score >= 30 ? "low" : "no";
-    if (lastMidDistKm > 150 && confidenceBand === "high") confidenceBand = "low";
+    if (lastMidDistKm > 90 && confidenceBand === "high") confidenceBand = "low";
 
     out.push({
       shipId,
@@ -1147,7 +1147,7 @@ export default function Page() {
       .slice(0, 800);
   }, [data, selectedTypes, linkSort]);
 
-  const externalRegions = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka"];
+  const externalRegions = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai"];
 
   const externalLinkRows = useMemo(
     () => linkageRows.filter((r) => externalRegions.includes(r.otherRegion)),
@@ -1330,6 +1330,7 @@ export default function Page() {
           cape_good_hope: null,
           yemen_channel: null,
           south_sri_lanka: null,
+          mumbai: null,
         } as Record<string, string | null>,
         regionFileCounts: {},
       };
@@ -1342,6 +1343,7 @@ export default function Page() {
       cape_good_hope: null,
       yemen_channel: null,
       south_sri_lanka: null,
+      mumbai: null,
       ...(data.metadata as any)?.latestByRegion,
     };
 
@@ -2232,6 +2234,7 @@ export default function Page() {
               ["cape_good_hope", "Cape of Good Hope"],
               ["yemen_channel", "Yemen Channel"],
               ["south_sri_lanka", "South Sri Lanka"],
+              ["mumbai", "Mumbai"],
             ].map(([key, label]) => (
               <div key={key}>Latest {label}: {freshness.latestByRegion[key] ? new Date(freshness.latestByRegion[key] as string).toUTCString() : "-"}</div>
             ))}

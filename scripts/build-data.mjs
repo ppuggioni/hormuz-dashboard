@@ -21,6 +21,9 @@ const INDEX_URLS = {
   south_sri_lanka:
     process.env.SOUTH_SRI_LANKA_INDEX_URL ||
     'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/south_sri_lanka/index.json',
+  mumbai:
+    process.env.MUMBAI_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/mumbai/index.json',
 };
 
 const EAST_LON = 56.4;
@@ -323,6 +326,85 @@ async function main() {
     }
   }
 
+  // --- Inferred crossings from zone presence ---
+  // If a vessel is seen in hormuz_west and then in ANY eastern region (or vice versa),
+  // that confirms a strait crossing even if direct boundary observations were missed.
+  const EASTERN_REGIONS = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'];
+  const inferredCrossingKeys = new Set();
+
+  // Build zone timeline per ship across ALL regions for inference
+  const zoneTimelineByShip = new Map();
+  for (const [shipId, obsList] of observationsByShip.entries()) {
+    for (const obs of obsList) {
+      let regionDetected = null;
+      if (obs.sourceRegion === 'hormuz') {
+        const side = sideFromPoint(obs.lat, obs.lon);
+        if (side === 'west') regionDetected = 'hormuz_west';
+        if (side === 'east') regionDetected = 'hormuz_east';
+      } else if (EASTERN_REGIONS.includes(obs.sourceRegion)) {
+        regionDetected = obs.sourceRegion;
+      }
+      if (!regionDetected) continue;
+      if (!zoneTimelineByShip.has(shipId)) zoneTimelineByShip.set(shipId, []);
+      zoneTimelineByShip.get(shipId).push({ t: obs.t, region: regionDetected, lat: obs.lat, lon: obs.lon });
+    }
+  }
+
+  for (const [shipId, events] of zoneTimelineByShip.entries()) {
+    const sorted = events.slice().sort((a, b) => new Date(a.t) - new Date(b.t));
+    let lastZoneType = null; // 'west' or 'east'
+    let lastT = null;
+
+    for (const ev of sorted) {
+      const isWest = ev.region === 'hormuz_west';
+      const isEast = EASTERN_REGIONS.includes(ev.region);
+      if (!isWest && !isEast) continue;
+
+      const currentType = isWest ? 'west' : 'east';
+      if (lastZoneType && currentType !== lastZoneType) {
+        const direction = lastZoneType === 'west' ? 'west_to_east' : 'east_to_west';
+        const dedupKey = `${shipId}|${direction}|${ev.t}`;
+        // Only add if not already captured by direct Hormuz boundary observation
+        const directKey = `${shipId}|${direction}|${ev.t}`;
+        if (!crossingEvents.some((e) => e.shipId === shipId && e.direction === direction && e.t === ev.t)) {
+          inferredCrossingKeys.add(dedupKey);
+          crossingEvents.push({
+            t: ev.t,
+            hour: hourBin(ev.t),
+            shipId,
+            shipName: shipMeta[shipId]?.shipName || 'Unknown',
+            vesselType: shipMeta[shipId]?.vesselType || 'other',
+            flag: shipMeta[shipId]?.flag || '',
+            direction,
+            inferred: true,
+          });
+
+          if (!crossingShipIds.has(shipId)) {
+            crossingShipIds.add(shipId);
+            // Gather all observations for this ship for the crossing path
+            const allObs = observationsByShip.get(shipId) || [];
+            const hormuzObs = hormuzObservationsByShip.get(shipId) || [];
+            const combinedObs = [...hormuzObs, ...allObs]
+              .sort((a, b) => new Date(a.t) - new Date(b.t))
+              .filter((v, i, arr) => i === 0 || v.t !== arr[i - 1].t);
+            crossingPaths.push({
+              shipId,
+              shipName: shipMeta[shipId]?.shipName || 'Unknown',
+              vesselType: shipMeta[shipId]?.vesselType || 'other',
+              flag: shipMeta[shipId]?.flag || '',
+              primaryDirection: direction,
+              directionCounts: { east_to_west: direction === 'east_to_west' ? 1 : 0, west_to_east: direction === 'west_to_east' ? 1 : 0 },
+              points: combinedObs.map((x) => ({ t: x.t, lat: x.lat, lon: x.lon })),
+              inferred: true,
+            });
+          }
+        }
+      }
+      lastZoneType = currentType;
+      lastT = ev.t;
+    }
+  }
+
   const hourly = new Map();
   for (const event of crossingEvents) {
     if (!hourly.has(event.hour)) hourly.set(event.hour, { hour: event.hour, east_to_west: 0, west_to_east: 0 });
@@ -339,7 +421,7 @@ async function main() {
         const side = sideFromPoint(obs.lat, obs.lon);
         if (side === 'west') regionDetected = 'hormuz_west';
         if (side === 'east') regionDetected = 'hormuz_east';
-      } else if (['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka'].includes(obs.sourceRegion)) {
+      } else if (['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'].includes(obs.sourceRegion)) {
         regionDetected = obs.sourceRegion;
       }
 
@@ -350,7 +432,7 @@ async function main() {
   }
 
   const linkageEvents = [];
-  const targetRegions = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka'];
+  const targetRegions = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'];
 
   for (const [shipId, events] of zonePresenceByShip.entries()) {
     const sorted = events.slice().sort((a, b) => new Date(a.t) - new Date(b.t));
@@ -417,7 +499,7 @@ async function main() {
   const externalPresencePoints = [];
   for (const [shipId, obsList] of observationsByShip.entries()) {
     for (const o of obsList) {
-      if (!['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka'].includes(o.sourceRegion)) continue;
+      if (!['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'].includes(o.sourceRegion)) continue;
       externalPresencePoints.push({
         shipId,
         shipName: shipMeta[shipId]?.shipName || 'Unknown',

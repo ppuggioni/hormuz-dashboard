@@ -612,7 +612,7 @@ export default function Page() {
   const [loadAllRegions, setLoadAllRegions] = useState(false);
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
   const [crossingDirectionFilter, setCrossingDirectionFilter] = useState<"all" | "east_to_west" | "west_to_east">("all");
-  const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h">("48h");
+  const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h" | "all">("all");
   const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
   const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
@@ -1008,8 +1008,8 @@ export default function Page() {
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const tableWindowHours = Number.parseInt(crossingWindow, 10);
-    const cutoff = latestTs - tableWindowHours * 60 * 60 * 1000;
+    const tableWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
+    const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
     const rows = (data.crossingEvents || []).filter((e) => {
       if (e.vesselType !== "tanker") return false;
       if (!crossingMapTypes.includes(e.vesselType)) return false;
@@ -1040,8 +1040,8 @@ export default function Page() {
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const tableWindowHours = Number.parseInt(crossingWindow, 10);
-    const cutoff = latestTs - tableWindowHours * 60 * 60 * 1000;
+    const tableWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
+    const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
     const rows = (data.crossingEvents || []).filter((e) => {
       if (e.vesselType !== "cargo") return false;
       if (!crossingMapTypes.includes(e.vesselType)) return false;
@@ -1106,14 +1106,14 @@ export default function Page() {
     };
   }, [data]);
 
-  const crossingWindowHours = Number.parseInt(crossingWindow, 10);
+  const crossingWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
 
   const filteredCrossingEvents = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const cutoff = latestTs - crossingWindowHours * 60 * 60 * 1000;
+    const cutoff = crossingWindowHours == null ? null : latestTs - crossingWindowHours * 60 * 60 * 1000;
     return (data.crossingEvents || []).filter((e) => {
       if (!crossingMapTypes.includes(e.vesselType)) return false;
       if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;

@@ -196,6 +196,17 @@ Script:
 This uploads the processed artifacts to:
 - `x-scrapes-public/multi_region/*`
 
+Current live-published AIS artifacts are:
+- `processed_core.json`
+- `processed_paths.json`
+- `processed_candidates.json`
+- `processed_playback_24h.json`
+- `processed_playback_48h.json`
+- `processed_external_24h.json`
+- `processed_external_48h.json`
+- `processed_shipmeta_24h.json`
+- `processed_shipmeta_48h.json`
+
 It also dispatches alerts after processing.
 
 ## Step 5 — dashboard runtime consumption
@@ -216,18 +227,22 @@ Primary runtime pattern:
 ## Current split artifacts
 - `processed_core.json`
 - `processed_paths.json`
+- `processed_candidates.json`
 - `processed_playback_24h.json`
 - `processed_playback_48h.json`
-- `processed_playback_72h.json`
-- `processed_playback_all.json`
 - `processed_external_24h.json`
 - `processed_external_48h.json`
-- `processed_external_72h.json`
-- `processed_external_all.json`
 - `processed_shipmeta_24h.json`
 - `processed_shipmeta_48h.json`
+
+## Removed from live browser pipeline
+- `processed_playback_72h.json`
+- `processed_playback_all.json`
+- `processed_external_72h.json`
+- `processed_external_all.json`
 - `processed_shipmeta_72h.json`
 - `processed_shipmeta_all.json`
+- `processed.json`
 
 ## Why split
 - smaller default payloads
@@ -411,6 +426,9 @@ Implemented product behavior includes:
 - cumulative confirmed crossing logic
 - linkage/transit analytics
 - candidate dark-crossing scoring and confidence bands
+- full-path preservation for confirmed crossings, inferred crossings, and candidate dark crossers
+- a compact `processed_candidates.json` artifact so the browser gets relevant traces without needing full global history
+- a `load all regions` UI toggle (default off) so large generic external-region payloads are only fetched when explicitly requested
 - freshness diagnostics for all active regions
 
 ## News side

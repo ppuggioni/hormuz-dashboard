@@ -164,6 +164,14 @@ type NewsFeedShape = {
   items: NewsItem[];
 };
 
+type CandidatesShape = {
+  data?: {
+    tankerCandidates?: CandidateCrosser[];
+    cargoCandidates?: CandidateCrosser[];
+    relevantExternalPoints?: ExternalPresencePoint[];
+  };
+};
+
 type DataShape = {
   metadata: {
     generatedAt: string;
@@ -601,22 +609,23 @@ export default function Page() {
   const [showCrossing, setShowCrossing] = useState(true);
   const [showNonCrossing, setShowNonCrossing] = useState(true);
   const [showOnlyLinkedExternal, setShowOnlyLinkedExternal] = useState(false);
+  const [loadAllRegions, setLoadAllRegions] = useState(false);
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
   const [crossingDirectionFilter, setCrossingDirectionFilter] = useState<"all" | "east_to_west" | "west_to_east">("all");
-  const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h" | "72h" | "all">("all");
+  const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h">("48h");
   const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
-  const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h" | "72h" | "all">("24h");
+  const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
   const [splitMode, setSplitMode] = useState(false);
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
-  const [candidateSnapshots, setCandidateSnapshots] = useState<Snapshot[]>([]);
+  const [tankerCandidatesData, setTankerCandidatesData] = useState<CandidateCrosser[]>([]);
+  const [cargoCandidatesData, setCargoCandidatesData] = useState<CandidateCrosser[]>([]);
   const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [crossingDetailSort, setCrossingDetailSort] = useState<{ key: "ship" | "type" | "direction" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
-  const [candidateAllSnapshots, setCandidateAllSnapshots] = useState<Snapshot[]>([]);
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [newDataAvailable, setNewDataAvailable] = useState(false);
@@ -667,6 +676,7 @@ export default function Page() {
       try {
         const core = await fetchJson(`${root}/processed_core.json`);
         const paths = await fetchJson(`${root}/processed_paths.json`);
+        const candidates = await fetchJson(`${root}/processed_candidates.json`);
         const playback24 = await fetchJson(`${root}/processed_playback_24h.json`);
         const shipmeta24 = await fetchJson(`${root}/processed_shipmeta_24h.json`);
 
@@ -693,9 +703,9 @@ export default function Page() {
 
         setSplitMode(true);
         setData(normalized);
-        setCandidateSnapshots(normalized.snapshots);
-        setCandidateAllSnapshots(normalized.snapshots);
-        setExternalPoints([]);
+        setTankerCandidatesData(Array.isArray(candidates?.data?.tankerCandidates) ? candidates.data.tankerCandidates : []);
+        setCargoCandidatesData(Array.isArray(candidates?.data?.cargoCandidates) ? candidates.data.cargoCandidates : []);
+        setExternalPoints(Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : []);
         const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
         setSelectedTypes(defaults);
         setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
@@ -802,8 +812,8 @@ export default function Page() {
       setPlaybackLoading(true);
       try {
         const playbackJson = await fetchJsonMaybeGzip(`${root}/processed_playback_${playbackWindow}.json`);
-        const externalJson = await fetchJsonMaybeGzip(`${root}/processed_external_${playbackWindow}.json`);
         const shipmetaJson = await fetchJsonMaybeGzip(`${root}/processed_shipmeta_${playbackWindow}.json`);
+        const externalJson = loadAllRegions ? await fetchJsonMaybeGzip(`${root}/processed_external_${playbackWindow}.json`) : null;
         const snaps = Array.isArray(playbackJson?.data?.snapshots) ? playbackJson.data.snapshots : [];
         const ext = Array.isArray(externalJson?.data?.externalPresencePoints) ? externalJson.data.externalPresencePoints : [];
         const sm = shipmetaJson?.data?.shipMeta || {};
@@ -816,7 +826,7 @@ export default function Page() {
     };
 
     fetchWindowData();
-  }, [splitMode, playbackWindow]);
+  }, [splitMode, playbackWindow, loadAllRegions]);
 
   const currentSnapshot = data?.snapshots?.[frameIndex];
 
@@ -832,45 +842,21 @@ export default function Page() {
 
   const crossingShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((p) => p.shipId)), [data]);
 
-  const candidateCrossers = useMemo(
-    () => computeLikelyDarkCrossers(candidateSnapshots, data, crossingShipIds, ["tanker"]),
-    [candidateSnapshots, data, crossingShipIds],
-  );
+  const candidateCrossers = useMemo(() => tankerCandidatesData || [], [tankerCandidatesData]);
 
-  const cargoCandidateCrossers = useMemo(
-    () => computeLikelyDarkCrossers(candidateSnapshots, data, crossingShipIds, ["cargo"]),
-    [candidateSnapshots, data, crossingShipIds],
-  );
+  const cargoCandidateCrossers = useMemo(() => cargoCandidatesData || [], [cargoCandidatesData]);
 
-  const candidateFullPointsByShip = useMemo(() => {
-    const byShip = new Map<string, PathPoint[]>();
-    for (const s of candidateAllSnapshots || []) {
-      for (const p of s.points || []) {
-        if (!byShip.has(p.shipId)) byShip.set(p.shipId, []);
-        byShip.get(p.shipId)!.push({ t: s.t, lat: p.lat, lon: p.lon });
-      }
-    }
-    for (const [shipId, pts] of byShip.entries()) {
-      pts.sort((a, b) => +new Date(a.t) - +new Date(b.t));
-      byShip.set(shipId, pts);
-    }
-    return byShip;
-  }, [candidateAllSnapshots]);
-
-  const candidateCrossersForDisplay = useMemo(
-    () => candidateCrossers.map((c) => ({ ...c, points: candidateFullPointsByShip.get(c.shipId) || c.points })),
-    [candidateCrossers, candidateFullPointsByShip],
-  );
+  const candidateCrossersForDisplay = useMemo(() => candidateCrossers, [candidateCrossers]);
 
   const jaskCenter = useMemo(() => ({ lat: 25.65, lon: 57.78 }), []);
   const jaskFacilitiesCenter = useMemo(() => ({ lat: 25.82, lon: 57.28 }), []);
   const jaskPortAnalytics = useMemo(
-    () => computeAreaEntryAnalytics(candidateSnapshots, jaskCenter.lat, jaskCenter.lon, 26.7, 26.7, ["tanker", "cargo"], "jask_port_area"),
-    [candidateSnapshots, jaskCenter],
+    () => computeAreaEntryAnalytics(data?.snapshots || [], jaskCenter.lat, jaskCenter.lon, 26.7, 26.7, ["tanker", "cargo"], "jask_port_area"),
+    [data?.snapshots, jaskCenter],
   );
   const jaskFacilitiesAnalytics = useMemo(
-    () => computeAreaEntryAnalytics(candidateSnapshots, jaskFacilitiesCenter.lat, jaskFacilitiesCenter.lon, 13, 20, ["tanker", "cargo"], "jask_port_facilities"),
-    [candidateSnapshots, jaskFacilitiesCenter],
+    () => computeAreaEntryAnalytics(data?.snapshots || [], jaskFacilitiesCenter.lat, jaskFacilitiesCenter.lon, 13, 20, ["tanker", "cargo"], "jask_port_facilities"),
+    [data?.snapshots, jaskFacilitiesCenter],
   );
   const jaskAnalytics = useMemo(
     () => computeAreaUnionAnalytics([jaskPortAnalytics, jaskFacilitiesAnalytics], "jask_combined_area"),
@@ -880,8 +866,8 @@ export default function Page() {
   const jaskEvents = jaskAnalytics.events;
   const jaskPaths = jaskAnalytics.paths;
   const latestCandidateSnapshotTs = useMemo(
-    () => (candidateSnapshots?.length ? +new Date(candidateSnapshots[candidateSnapshots.length - 1].t) : +new Date(data?.metadata?.generatedAt || 0)),
-    [candidateSnapshots, data?.metadata?.generatedAt],
+    () => (data?.snapshots?.length ? +new Date(data.snapshots[data.snapshots.length - 1].t) : +new Date(data?.metadata?.generatedAt || 0)),
+    [data?.snapshots, data?.metadata?.generatedAt],
   );
   const jaskCutoffTs = latestCandidateSnapshotTs - 24 * 60 * 60 * 1000;
   const jaskLast48hCounts = useMemo(() => {
@@ -1013,8 +999,8 @@ export default function Page() {
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const tableWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
-    const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
+    const tableWindowHours = Number.parseInt(crossingWindow, 10);
+    const cutoff = latestTs - tableWindowHours * 60 * 60 * 1000;
     const rows = (data.crossingEvents || []).filter((e) => {
       if (e.vesselType !== "tanker") return false;
       if (!crossingMapTypes.includes(e.vesselType)) return false;
@@ -1045,8 +1031,8 @@ export default function Page() {
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const tableWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
-    const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
+    const tableWindowHours = Number.parseInt(crossingWindow, 10);
+    const cutoff = latestTs - tableWindowHours * 60 * 60 * 1000;
     const rows = (data.crossingEvents || []).filter((e) => {
       if (e.vesselType !== "cargo") return false;
       if (!crossingMapTypes.includes(e.vesselType)) return false;
@@ -1111,14 +1097,14 @@ export default function Page() {
     };
   }, [data]);
 
-  const crossingWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
+  const crossingWindowHours = Number.parseInt(crossingWindow, 10);
 
   const filteredCrossingEvents = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
       : +new Date(data.metadata.generatedAt);
-    const cutoff = crossingWindowHours == null ? null : latestTs - crossingWindowHours * 60 * 60 * 1000;
+    const cutoff = latestTs - crossingWindowHours * 60 * 60 * 1000;
     return (data.crossingEvents || []).filter((e) => {
       if (!crossingMapTypes.includes(e.vesselType)) return false;
       if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
@@ -1694,7 +1680,7 @@ export default function Page() {
             <div className="flex items-center gap-2 text-sm">
               {splitMode ? (
                 <div className="flex items-center gap-1 mr-2">
-                  {(["24h", "48h", "72h", "all"] as const).map((w) => (
+                  {(["24h", "48h"] as const).map((w) => (
                     <button
                       key={w}
                       onClick={() => setPlaybackWindow(w)}
@@ -1740,6 +1726,7 @@ export default function Page() {
             })}
             <button onClick={() => setShowCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>✕ crossing</button>
             <button onClick={() => setShowNonCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showNonCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>● non-crossing</button>
+            <button onClick={() => setLoadAllRegions((v) => !v)} className={`px-2 py-1 rounded border ${loadAllRegions ? "border-amber-300 text-amber-200" : "border-slate-700 text-slate-500"}`}>◎ load all regions: {loadAllRegions ? "on" : "off"}</button>
             <button onClick={() => setShowOnlyLinkedExternal((v) => !v)} className={`px-2 py-1 rounded border ${showOnlyLinkedExternal ? "border-violet-300 text-violet-200" : "border-slate-700 text-slate-500"}`}>◉ display only linked ships: {showOnlyLinkedExternal ? "on" : "off (show all external ships)"}</button>
           </div>
 
@@ -1957,7 +1944,7 @@ export default function Page() {
             <button onClick={() => setCrossingDirectionFilter("all")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "all" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>all crossings</button>
             <button onClick={() => setCrossingDirectionFilter("east_to_west")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "east_to_west" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>east → west</button>
             <button onClick={() => setCrossingDirectionFilter("west_to_east")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "west_to_east" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>west → east</button>
-            {(["24h", "48h", "72h", "all"] as const).map((w) => (
+            {(["24h", "48h"] as const).map((w) => (
               <button key={w} onClick={() => setCrossingWindow(w)} className={`px-2 py-1 rounded border ${crossingWindow === w ? "border-emerald-300 text-emerald-200" : "border-slate-700 text-slate-400"}`}>{w}</button>
             ))}
             <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>

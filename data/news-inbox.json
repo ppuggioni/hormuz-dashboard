@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "runAt": "2026-03-15T00:28:00Z",
+  "lastUpdateSummary": {
+    "headline": "No genuinely new high-signal items were added in this pass.",
+    "body": "Tracked sources were rechecked after the previous run. The only clearly newer X item found was a TankerTrackers post relaying a Trump quote about Kharg being 'totally demolished', which did not add enough verified operational detail for the dashboard beyond the existing Kharg coverage already in history. Other visible unlogged posts were either older than the latest run, off-focus, or derivative of already captured themes.",
+    "generatedAt": "2026-03-15T00:28:00Z"
+  },
+  "last24hSummary": {
+    "headline": "Cross-source picture remains unchanged: compliant traffic stays thin while visibility and attribution stay noisy.",
+    "body": "Nothing in this collection pass changed the working picture from the previous update. The most useful live signals still point to sparse standard tanker movement, continued resilience in Iranian-linked liftings, and an operating environment shaped by AIS-off behavior, spoofing or GNSS disruption, and selective use of bypass routes such as Jask or westbound pivots outside Hormuz.",
+    "generatedAt": "2026-03-15T00:28:00Z"
+  },
+  "items": []
+}

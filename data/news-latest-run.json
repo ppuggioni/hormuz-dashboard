@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "runAt": "2026-03-15T00:00:00Z",
+  "lastUpdateSummary": {
+    "headline": "Iran-linked and shadow-fleet movements remain the clearest flows still moving through Hormuz.",
+    "body": "The newest collected items point to the same pattern from different angles: MarineTraffic sees only 15 laden liquid tankers over the late-February to mid-March period, Lloyd's List says shadow tonnage made up roughly half of early-March tanker and gas-carrier transits above 10,000 dwt, and TankerTrackers reports that Kharg storage remained intact with two NITC tankers loading 2.7 million barrels on 14 March. The freshest operational colour is that visibility remains impaired by AIS-off behavior, GNSS interference and recent strike reporting, which means sparse observed traffic does not necessarily imply a simple full stop in movement.",
+    "generatedAt": "2026-03-15T00:00:00Z"
+  },
+  "last24hSummary": {
+    "headline": "Over the last day, sources converged on sharply reduced compliant traffic, resilient Iranian export activity, and rising navigational opacity.",
+    "body": "Across the last 24 hours of collected material, the strongest signals are a deep drop in standard tanker traffic, continued Iranian or Iran-linked crude liftings, and a heavier role for shadow-fleet or restricted-trade behavior. The most useful figures in that set are MarineTraffic's 15 laden liquid tankers for the 28 February-12 March window, Kpler's roughly 92% drop in tanker transits versus the prior week, and TankerTrackers' 2.7 million barrels loading on two NITC tankers after strikes on Kharg.",
+    "generatedAt": "2026-03-15T00:00:00Z"
+  },
+  "newItems": [
+    "live-marinetraffic-x",
+    "live-lloyds-shadow-fleet",
+    "live-tankertrackers-x",
+    "live-kpler-charterers",
+    "live-kpler-x",
+    "live-google-research",
+    "live-lloyds-daily-briefing"
+  ]
+}

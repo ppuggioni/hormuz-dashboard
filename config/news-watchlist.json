@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "updatedAt": "2026-03-14T23:25:00Z",
+  "profile": "hormuz-news",
+  "notes": "MVP watchlist for Hormuz dashboard newsfeed. Future dedicated 6h agent should browse these sources with the hormuz-news browser profile, store only high-signal items, update data/news-seed-items.json or a future DB-backed store, then run npm run build:news.",
+  "sources": [
+    {
+      "id": "tankertrackers-x",
+      "type": "x_account",
+      "name": "TankerTrackers.com, Inc.",
+      "url": "https://x.com/TankerTrackers",
+      "priority": 1,
+      "tags": ["x", "tankers", "sanctions", "shadow-fleet"]
+    },
+    {
+      "id": "marinetraffic-x",
+      "type": "x_account",
+      "name": "MarineTraffic",
+      "url": "https://x.com/MarineTraffic",
+      "priority": 2,
+      "tags": ["x", "shipping-data", "ais"]
+    },
+    {
+      "id": "kpler-x",
+      "type": "x_account",
+      "name": "Kpler",
+      "url": "https://x.com/Kpler",
+      "priority": 2,
+      "tags": ["x", "analytics", "energy"]
+    },
+    {
+      "id": "lloyds-briefing",
+      "type": "search_page",
+      "name": "Lloyd's List Daily Briefing",
+      "url": "https://www.lloydslist.com/search#?regulars=Daily%20Briefing",
+      "priority": 1,
+      "tags": ["lloyds-list", "briefing", "shipping-news"]
+    },
+    {
+      "id": "lloyds-hormuz",
+      "type": "search_page",
+      "name": "Lloyd's List Hormuz Crisis",
+      "url": "https://www.lloydslist.com/search#?topic=Strait%20of%20Hormuz%20crisis",
+      "priority": 1,
+      "tags": ["lloyds-list", "hormuz", "geopolitics"]
+    },
+    {
+      "id": "kpler-blog",
+      "type": "blog",
+      "name": "Kpler Blog",
+      "url": "https://www.kpler.com/resources/blog",
+      "priority": 2,
+      "tags": ["blog", "analytics", "energy", "shipping"]
+    },
+    {
+      "id": "google-research",
+      "type": "search_query",
+      "name": "Fresh web research: hormuz shadow fleet",
+      "url": "https://www.google.com/search?q=hormuz+shadow+fleet",
+      "priority": 2,
+      "tags": ["research", "search", "shadow-fleet", "last-24h"]
+    }
+  ]
+}

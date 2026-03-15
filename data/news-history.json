@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "live-kpler-x",
+      "canonicalUrl": "https://x.com/Kpler/status/2032851790861885716",
+      "sourceId": "kpler-x",
+      "sourceName": "Kpler",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-14T16:10:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "Kpler says Southeast Asia previously depended on roughly 1.8 million barrels per day of crude and about 500 thousand barrels per day of refined products moving through Hormuz, and that replacement barrels from the US, Nigeria, Australia and Brazil are not enough. This matters for the dashboard because it shows the effect of reduced crossings is not only local tanker scarcity but also downstream refinery pressure and inventory drawdowns in end markets.",
+      "tags": [
+        "kpler",
+        "southeast-asia",
+        "crude",
+        "refined-products"
+      ],
+      "figureNote": "The useful number here is the lost inflow into Southeast Asia, which turns a crossings story into a demand-side stress story."
+    },
+    {
+      "id": "live-tankertrackers-x",
+      "canonicalUrl": "https://x.com/TankerTrackers/status/2032794164920758375",
+      "sourceId": "tankertrackers-x",
+      "sourceName": "TankerTrackers.com, Inc.",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-14T12:21:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "TankerTrackers says that after the previous night's US strikes on Kharg Island, all 55 crude storage tanks appeared intact and two Iranian NITC tankers began loading a combined 2.7 million barrels of crude on the morning of 14 March. That is a strong indication that Iranian export infrastructure and state-linked tanker liftings remained operational even while broader Gulf traffic stayed disrupted.",
+      "tags": [
+        "tankertrackers",
+        "kharg",
+        "nitc",
+        "iranian-exports"
+      ],
+      "figureNote": "The most useful hard figure here is the 2.7 million barrels loading across two NITC tankers, which helps explain why Iranian-linked flows can stay resilient while compliant traffic remains thin."
+    },
+    {
+      "id": "live-lloyds-shadow-fleet",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156563/Shadow-fleet-dominates-Hormuz-crossings-as-Iran-ramps-up-bypass-loadings",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "Lloyd's List reports that about half of tanker and gas-carrier transits above 10,000 dwt between 1 and 8 March were shadow-fleet vessels, including suspected dark transits. The same piece notes heavier AIS-off behavior, widespread GNSS interference, and renewed loading activity at Jask south of Hormuz, which is important because Jask offers Iran a slower but meaningful bypass to the usual Kharg export pattern.",
+      "tags": [
+        "lloyds-list",
+        "shadow-fleet",
+        "jask",
+        "gnss"
+      ],
+      "figureNote": "Jask loadings are operationally slow, but their reappearance is a specific clue for interpreting eastbound tanker movements near southern Iran."
+    },
+    {
+      "id": "live-kpler-charterers",
+      "canonicalUrl": "https://www.kpler.com/blog/when-the-strait-closes-how-tanker-charterers-navigate-the-hormuz-crisis",
+      "sourceId": "kpler-blog",
+      "sourceName": "Kpler Blog",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "Kpler says tanker transits through Hormuz have fallen by roughly 92% compared with the week before the conflict, and argues that the key constraint is security risk rather than a total disappearance of insurance quotes. Its chartering view is useful because it explains why even owners who could technically transit may still hold back tonnage once war-risk premiums, rerouting costs, compliance checks and strike risk are priced together.",
+      "tags": [
+        "kpler",
+        "transits",
+        "chartering",
+        "war-risk"
+      ],
+      "figureNote": "The headline number is the 92% collapse in tanker transits versus the prior week, paired with large volumes of trapped or idle Gulf tonnage."
+    },
+    {
+      "id": "live-google-research",
+      "canonicalUrl": "https://marineindustrynews.co.uk/oil-tankers-hit-gps-spoofed-and-ships-stranded-confusion-spreads-across-strait-of-hormuz/",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "Recent reporting cited in the research pass says multiple vessels have been struck within a 48-hour period and that GPS spoofing is compounding navigational uncertainty across the strait and wider Gulf. This is useful context for the dashboard because it implies that low observed traffic can reflect both real hesitation and degraded positional visibility, especially when vessels wait offshore, switch off AIS, or transit under heavy interference.",
+      "tags": [
+        "research",
+        "gps-spoofing",
+        "attacks",
+        "last-24h"
+      ],
+      "figureNote": "The operational takeaway is that crossing counts should be read alongside interference and waiting-fleet conditions, not as a perfect census of all movement."
+    },
+    {
+      "id": "live-marinetraffic-x",
+      "canonicalUrl": "https://x.com/MarineTraffic/status/2032502230524305463",
+      "sourceId": "marinetraffic-x",
+      "sourceName": "MarineTraffic",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-13T17:01:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "MarineTraffic says only 15 laden liquid tankers crossed the Strait of Hormuz between 28 February and 12 March. It also highlights the case of Wen Yao, described as maintaining AIS transmission inside the Gulf despite links to restricted trade, which matters because it contrasts with the more typical shadow-fleet pattern of going dark during sensitive voyages.",
+      "tags": [
+        "marinetraffic",
+        "tankers",
+        "ais",
+        "restricted-trade"
+      ],
+      "figureNote": "The useful quantitative anchor here is the 15-laden-tanker count over the period, which gives a very sparse baseline for comparing dashboard-observed crossings."
+    },
+    {
+      "id": "live-lloyds-daily-briefing",
+      "canonicalUrl": "https://www.lloydslist.com/search#?regulars=Daily%20Briefing",
+      "sourceId": "lloyds-briefing",
+      "sourceName": "Lloyd's List Daily Briefing",
+      "sourceType": "search_page",
+      "publishedAt": "2026-03-13T06:00:00Z",
+      "firstSeenAt": "2026-03-14T23:50:00Z",
+      "lastSeenAt": "2026-03-14T23:50:00Z",
+      "summary": "The latest visible Lloyd's List briefing cluster around Hormuz is focused less on reopening optimism and more on secondary effects: liner detours, insurance stress, and owners refusing highly profitable voyages because the security calculus still looks unacceptable. That broad framing supports a dashboard interpretation in which low crossings are not a temporary data glitch but part of a wider commercial stand-off.",
+      "tags": [
+        "lloyds-list",
+        "daily-briefing",
+        "insurance",
+        "detours"
+      ],
+      "figureNote": null
+    }
+  ]
+}

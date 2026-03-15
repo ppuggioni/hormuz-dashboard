@@ -116,6 +116,54 @@ type ShipMeta = {
   latestCourseRaw?: string | null;
 };
 
+type NewsSource = {
+  id: string;
+  name: string;
+  type: string;
+  url: string;
+  priority: number;
+  tags: string[];
+};
+
+type NewsItem = {
+  id: string;
+  title: string;
+  url: string;
+  canonicalUrl?: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  publishedAt: string;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  summary: string;
+  tags: string[];
+  figureNote?: string | null;
+  isNew?: boolean;
+  lastRunAt?: string;
+};
+
+type NewsSummary = {
+  headline: string;
+  body: string;
+  generatedAt: string;
+};
+
+type NewsFeedShape = {
+  metadata: {
+    generatedAt: string;
+    profile: string;
+    sourceCount: number;
+    itemCount: number;
+    lastRunAt?: string;
+    newItemCount?: number;
+  };
+  lastUpdateSummary: NewsSummary;
+  last24hSummary: NewsSummary;
+  sources: NewsSource[];
+  items: NewsItem[];
+};
+
 type DataShape = {
   metadata: {
     generatedAt: string;
@@ -570,6 +618,7 @@ export default function Page() {
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
   const [candidateAllSnapshots, setCandidateAllSnapshots] = useState<Snapshot[]>([]);
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
+  const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const candidateDefaultsAppliedRef = useRef(false);
   const interactionAtRef = useRef<number>(Date.now());
@@ -597,7 +646,17 @@ export default function Page() {
       return JSON.parse(text);
     };
 
+    const loadNews = async () => {
+      try {
+        const news = await fetchJson(`${root}/news_feed.json`);
+        setNewsFeed(news as NewsFeedShape);
+      } catch {
+        setNewsFeed(null);
+      }
+    };
+
     const load = async () => {
+      await loadNews();
       try {
         const core = await fetchJson(`${root}/processed_core.json`);
         const paths = await fetchJson(`${root}/processed_paths.json`);
@@ -2221,6 +2280,88 @@ export default function Page() {
             />
           </div>
           <p className="text-xs text-slate-400">This map shows trajectories for vessels that entered either Jask monitored area within the loaded monitoring window.</p>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Newsfeed MVP</div>
+              <h2 className="mt-1 text-xl font-semibold text-slate-100">External narrative and analyst colour</h2>
+              <p className="mt-2 max-w-3xl text-sm text-slate-400">
+                A lightweight intelligence layer for commentary, screenshots, blogs, and headline flow sitting on top of the observed AIS crossing data.
+              </p>
+            </div>
+            <div className="text-xs text-slate-400 md:text-right">
+              <div>Profile: {newsFeed?.metadata?.profile || "hormuz-news"}</div>
+              <div>Items loaded: {newsFeed?.metadata?.itemCount ?? 0}</div>
+              <div>New this run: {newsFeed?.metadata?.newItemCount ?? 0}</div>
+              <div>Last run: {newsFeed?.metadata?.lastRunAt ? new Date(newsFeed.metadata.lastRunAt).toUTCString() : "Not available yet"}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_0.7fr]">
+            <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Last update summary</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No last-update summary yet"}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {newsFeed?.lastUpdateSummary?.body || "The latest run summary will appear here once the next browsing cycle writes it."}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Last 24h summary</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.last24hSummary?.headline || "No 24h summary yet"}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {newsFeed?.last24hSummary?.body || "The rolling 24-hour view will appear here once enough collected items exist."}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracked sources</div>
+              <div className="mt-3 space-y-2">
+                {(newsFeed?.sources || []).slice(0, 6).map((source) => (
+                  <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="flex items-start justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-700 hover:bg-slate-900/70">
+                    <div>
+                      <div className="font-medium text-slate-100">{source.name}</div>
+                      <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{source.type.replaceAll("_", " ")}</div>
+                    </div>
+                    <div className="text-[11px] text-slate-500">P{source.priority}</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {(newsFeed?.items || []).length ? (newsFeed?.items || []).map((item) => (
+              <article key={item.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                      <span>{item.sourceName}</span>
+                      {item.isNew ? <span className="rounded-full border border-emerald-700 bg-emerald-950/50 px-2 py-1 text-[10px] text-emerald-300">New in last run</span> : null}
+                    </div>
+                    <a href={item.url} target="_blank" rel="noreferrer" className="mt-1 block text-base font-semibold text-slate-100 hover:text-cyan-300">{item.title}</a>
+                  </div>
+                  <div className="text-right text-xs text-slate-500">
+                    <div>{new Date(item.publishedAt).toUTCString()}</div>
+                    {item.isNew && item.lastRunAt ? <div className="mt-1 text-emerald-300">Added {new Date(item.lastRunAt).toUTCString()}</div> : null}
+                  </div>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{item.summary}</p>
+                {item.figureNote ? <p className="mt-3 rounded-lg border border-cyan-900/40 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100">Figure note: {item.figureNote}</p> : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.tags.map((tag) => (
+                    <span key={`${item.id}-${tag}`} className="rounded-full border border-slate-700 px-2 py-1 text-[11px] uppercase tracking-wide text-slate-300">{tag}</span>
+                  ))}
+                </div>
+              </article>
+            )) : (
+              <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                No news items yet. Once a manual or automated browsing run publishes <code className="text-slate-300">/data/news_feed.json</code>, this section will populate automatically.
+              </div>
+            )}
+          </div>
         </section>
 
         <details className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">

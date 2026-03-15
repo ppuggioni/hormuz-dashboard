@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npm run build:data && next dev",
+    "dev": "npm run build:data && npm run build:news && next dev",
     "build:data": "node scripts/build-data.mjs",
-    "build": "npm run build:data && next build",
+    "ingest:news": "node scripts/ingest-news.mjs",
+    "build:news": "node scripts/build-news.mjs",
+    "build": "npm run build:data && npm run build:news && next build",
     "start": "next start",
     "lint": "eslint"
   },

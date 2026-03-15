@@ -1496,7 +1496,8 @@ export default function Page() {
 
   const candidateTableRows = useMemo(() => {
     const rank = { high: 2, low: 1, no: 0 } as const;
-    return [...candidateCrossers].sort((a, b) => {
+    const rows = tankerCandidateEventsData.filter((c) => !discardSuspectedSpoofing || !isSuspectedCandidateSpoofingEvent(c));
+    return [...rows].sort((a, b) => {
       let cmp = 0;
       switch (candidateSort.key) {
         case "ship":
@@ -1532,7 +1533,7 @@ export default function Page() {
       }
       return candidateSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [candidateCrossers, candidateSort]);
+  }, [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidateSort]);
 
   const playbackLinkedPoints = useMemo(() => {
     if (!externalPoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {

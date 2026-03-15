@@ -1915,8 +1915,8 @@ export default function Page() {
                     )}
                   />
                   <Legend />
-                  {showEastToWest ? <Bar dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
-                  {showWestToEast ? <Bar dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -2008,8 +2008,8 @@ export default function Page() {
                     )}
                   />
                   <Legend />
-                  {showEastToWest ? <Bar dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
-                  {showWestToEast ? <Bar dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>

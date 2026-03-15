@@ -7,7 +7,7 @@
     "build:data": "node scripts/build-data.mjs",
     "ingest:news": "node scripts/ingest-news.mjs",
     "build:news": "node scripts/build-news.mjs",
-    "build": "npm run build:data && npm run build:news && next build",
+    "build": "npm run build:news && next build",
     "start": "next start",
     "lint": "eslint"
   },

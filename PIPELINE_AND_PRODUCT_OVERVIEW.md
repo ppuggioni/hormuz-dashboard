@@ -217,6 +217,15 @@ Primary runtime pattern:
 - read processed split artifacts from Supabase-hosted URLs
 - fall back to local `/data/*.json` when remote is unavailable
 
+## Vercel build behavior
+
+Vercel should only build the frontend application shell.
+It should **not** re-run the full AIS processing pipeline during deploy.
+
+Current intended split:
+- local/OpenClaw jobs: build and upload live AIS/news artifacts
+- Vercel: run frontend build only (`build:news` + `next build`), then read live artifacts from Supabase at runtime
+
 ---
 
 ## 5) Processed AIS artifact strategy

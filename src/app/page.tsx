@@ -1261,7 +1261,7 @@ export default function Page() {
 
   const candidateTableRows = useMemo(() => {
     const rank = { high: 2, low: 1, no: 0 } as const;
-    return [...candidateCrossers].sort((a, b) => {
+    return [...candidateCrossers, ...cargoCandidateCrossers].sort((a, b) => {
       let cmp = 0;
       switch (candidateSort.key) {
         case "ship":
@@ -1297,7 +1297,7 @@ export default function Page() {
       }
       return candidateSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [candidateCrossers, candidateSort]);
+  }, [candidateCrossers, cargoCandidateCrossers, candidateSort]);
 
   const playbackLinkedPoints = useMemo(() => {
     if (!externalPoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {
@@ -2038,7 +2038,7 @@ export default function Page() {
         </section>
 
         <section id="candidate-dark-crossers" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <h2 className="text-lg font-medium">Candidate Dark Crossers — Tankers</h2>
+          <h2 className="text-lg font-medium">Candidate Dark Crossers</h2>
           <p className="text-xs text-slate-400">Heuristic shortlist: at least 3 aligned approach points, dark for &gt;6h, speed-plausibility weighted, excluding already observed crossers.</p>
           <div className="flex items-center gap-3 text-xs text-slate-300">
             <button

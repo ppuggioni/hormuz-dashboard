@@ -307,6 +307,38 @@ function formatUtcTime(iso: string) {
   return `${hour}:${minute} UTC`;
 }
 
+function utcDayStartMs(iso: string) {
+  const d = new Date(iso);
+  d.setUTCHours(0, 0, 0, 0);
+  return +d;
+}
+
+function buildSuspectedSpoofingEventKeySet(events: CrossingEvent[]) {
+  const byShip = new Map<string, CrossingEvent[]>();
+  for (const e of events) {
+    if (!byShip.has(e.shipId)) byShip.set(e.shipId, []);
+    byShip.get(e.shipId)!.push(e);
+  }
+
+  const flagged = new Set<string>();
+  for (const rows of byShip.values()) {
+    const sorted = [...rows].sort((a, b) => +new Date(a.t) - +new Date(b.t));
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const a = sorted[i];
+        const b = sorted[j];
+        const dayDiff = Math.abs(utcDayStartMs(a.t) - utcDayStartMs(b.t)) / (24 * 60 * 60 * 1000);
+        if (dayDiff > 1) break;
+        if (a.direction !== b.direction) {
+          flagged.add(`${a.shipId}|${a.t}|${a.direction}`);
+          flagged.add(`${b.shipId}|${b.t}|${b.direction}`);
+        }
+      }
+    }
+  }
+  return flagged;
+}
+
 function aggregateCandidatesToDailyBins(rows: Array<CandidateCrosser & { inferredDirection?: "east_to_west" | "west_to_east" }>) {
   const out = new Map<string, { hour: string; east_to_west: number; west_to_east: number; count: number }>();
   for (const r of rows) {
@@ -749,6 +781,7 @@ export default function Page() {
   const [crossingMapTypes, setCrossingMapTypes] = useState<string[]>(["tanker"]);
   const [crossingDirectionFilter, setCrossingDirectionFilter] = useState<"all" | "east_to_west" | "west_to_east">("all");
   const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h" | "all">("all");
+  const [discardSuspectedSpoofing, setDiscardSuspectedSpoofing] = useState(true);
   const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
   const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
@@ -1088,10 +1121,22 @@ export default function Page() {
     });
   }, [candidateCrossersForDisplay, candidateCrossers]);
 
+  const suspectedSpoofingEventKeys = useMemo(
+    () => buildSuspectedSpoofingEventKeySet(data?.crossingEvents || []),
+    [data?.crossingEvents],
+  );
+
+  const isSuspectedSpoofingEvent = (e: CrossingEvent) => suspectedSpoofingEventKeys.has(`${e.shipId}|${e.t}|${e.direction}`);
+
+  const crossingEventsForCharts = useMemo(
+    () => (data?.crossingEvents || []).filter((e) => !discardSuspectedSpoofing || !isSuspectedSpoofingEvent(e)),
+    [data?.crossingEvents, discardSuspectedSpoofing, suspectedSpoofingEventKeys],
+  );
+
   const hourlyFromEvents = (vesselType: string) => {
-    if (!data?.crossingEvents?.length) return [] as CrossingHour[];
+    if (!crossingEventsForCharts.length) return [] as CrossingHour[];
     const byHour = new Map<string, { hour: string; east_to_west: number; west_to_east: number }>();
-    for (const e of data.crossingEvents) {
+    for (const e of crossingEventsForCharts) {
       if (e.vesselType !== vesselType) continue;
       if (!byHour.has(e.hour)) byHour.set(e.hour, { hour: e.hour, east_to_west: 0, west_to_east: 0 });
       if (e.direction === "east_to_west") byHour.get(e.hour)!.east_to_west += 1;
@@ -1100,8 +1145,8 @@ export default function Page() {
     return [...byHour.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
   };
 
-  const tankerHourly = useMemo(() => hourlyFromEvents("tanker"), [data]);
-  const cargoHourly = useMemo(() => hourlyFromEvents("cargo"), [data]);
+  const tankerHourly = useMemo(() => hourlyFromEvents("tanker"), [crossingEventsForCharts]);
+  const cargoHourly = useMemo(() => hourlyFromEvents("cargo"), [crossingEventsForCharts]);
 
   const hourlyFromAreaEntries = (events: AreaEntryEvent[], vesselType: string) => {
     if (!events?.length) return [] as CrossingHour[];
@@ -1119,14 +1164,14 @@ export default function Page() {
 
   const sharedHours = useMemo(() => {
     const eventHours = [
-      ...(data?.crossingEvents || []).map((e) => e.hour),
+      ...crossingEventsForCharts.map((e) => e.hour),
       ...jaskEvents.map((e) => e.hour),
     ].sort((a, b) => +new Date(a) - +new Date(b));
     if (!eventHours.length) return [] as string[];
     const start = toHourStartIso(eventHours[0]);
     const end = toHourStartIso(eventHours[eventHours.length - 1]);
     return buildContinuousHourRange(start, end);
-  }, [data?.crossingEvents, jaskEvents]);
+  }, [crossingEventsForCharts, jaskEvents]);
 
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
@@ -1141,19 +1186,19 @@ export default function Page() {
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
-    return data.crossingEvents
+    return crossingEventsForCharts
       .filter((e) => e.vesselType === "tanker" && isSameUtcDay(e.t, selectedTankerHour))
       .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
       .sort((a, b) => +new Date(a.t) - +new Date(b.t));
-  }, [data, selectedTankerHour]);
+  }, [crossingEventsForCharts, data, selectedTankerHour]);
 
   const cargoNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedCargoHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
-    return data.crossingEvents
+    return crossingEventsForCharts
       .filter((e) => e.vesselType === "cargo" && isSameUtcDay(e.t, selectedCargoHour))
       .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
       .sort((a, b) => +new Date(a.t) - +new Date(b.t));
-  }, [data, selectedCargoHour]);
+  }, [crossingEventsForCharts, data, selectedCargoHour]);
 
   const jaskTankerNamesAtSelectedHour = useMemo(() => {
     if (!selectedJaskTankerHour) return [] as { shipName: string; shipId: string }[];
@@ -1985,6 +2030,7 @@ export default function Page() {
           <div className="xl:col-span-2 flex flex-wrap gap-2 text-xs">
             <button onClick={() => setShowEastToWest((v) => !v)} className={`px-2 py-1 rounded border ${showEastToWest ? "border-sky-300 text-sky-200" : "border-slate-700 text-slate-500"}`}>East → West</button>
             <button onClick={() => setShowWestToEast((v) => !v)} className={`px-2 py-1 rounded border ${showWestToEast ? "border-orange-300 text-orange-200" : "border-slate-700 text-slate-500"}`}>West → East</button>
+            <button onClick={() => setDiscardSuspectedSpoofing((v) => !v)} className={`px-2 py-1 rounded border ${discardSuspectedSpoofing ? "border-rose-300 text-rose-200" : "border-slate-700 text-slate-500"}`}>Discard suspected spoofing in charts: {discardSuspectedSpoofing ? "on" : "off"}</button>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h2 className="text-lg font-medium mb-3">Crossings in daily bins — Tanker</h2>
@@ -2053,6 +2099,7 @@ export default function Page() {
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Tanker ship</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                    <th className="text-left p-2">Status</th>
                     <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
@@ -2072,6 +2119,7 @@ export default function Page() {
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                       <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   )})}
@@ -2146,6 +2194,7 @@ export default function Page() {
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Cargo ship</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                    <th className="text-left p-2">Status</th>
                     <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
@@ -2165,6 +2214,7 @@ export default function Page() {
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                       <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   )})}
@@ -2229,6 +2279,7 @@ export default function Page() {
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                  <th className="text-left p-2">Status</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
                 </tr>
               </thead>
@@ -2258,6 +2309,7 @@ export default function Page() {
                       <td className="p-2">{r.vesselType}</td>
                       <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                      <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   );

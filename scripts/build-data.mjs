@@ -107,6 +107,104 @@ function normalizeShipName(name) {
   return n;
 }
 
+function scoreCandidateFromTail({ shipId, shipName, vesselType, points, shipMeta, darkHours }) {
+  const centerLon = (EAST_LON + WEST_LON) / 2;
+  const centerLat = 26.25;
+  const tail = points.slice(-Math.min(6, points.length));
+  if (tail.length < 3) return null;
+
+  let aligned = 0;
+  let speedQuality = 0;
+  let segCount = 0;
+  let towardCosineSum = 0;
+  const segSpeeds = [];
+
+  for (let i = 1; i < tail.length; i++) {
+    const a = tail[i - 1];
+    const b = tail[i];
+    const distPrev = haversineKm(a.lat, a.lon, centerLat, centerLon);
+    const distCur = haversineKm(b.lat, b.lon, centerLat, centerLon);
+    if (distCur < distPrev) aligned += 1;
+
+    const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
+    const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
+    const cosToward = cosineTowardMidpoint(a, b, { lat: centerLat, lon: centerLon });
+    towardCosineSum += Math.max(0, cosToward);
+    segSpeeds.push(speedKnots);
+    if (speedKnots < 3) speedQuality += 0.2;
+    else if (speedKnots <= 23) speedQuality += 1;
+    else if (speedKnots <= 30) speedQuality += 0.5;
+    else speedQuality += 0.1;
+    segCount += 1;
+  }
+
+  const alignedPoints = aligned + 1;
+  if (alignedPoints < 3) return null;
+
+  const speedScore = segCount ? speedQuality / segCount : 0;
+  const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
+  const last = tail[tail.length - 1];
+  const lastMidDistKm = haversineKm(last.lat, last.lon, centerLat, centerLon);
+  if (lastMidDistKm > 300) return null;
+  const proximityRaw = 1 - Math.min(1, lastMidDistKm / 160);
+  const prev = tail[tail.length - 2];
+  const prevMidDistKm = haversineKm(prev.lat, prev.lon, centerLat, centerLon);
+  const approachDirectionRaw = Math.max(0, Math.min(1, (prevMidDistKm - lastMidDistKm) / 8));
+  const avgTowardCosine = segCount ? towardCosineSum / segCount : 0;
+  const tangentialPenalty = avgTowardCosine < 0.35 ? (0.35 - avgTowardCosine) * 5 : 0;
+  const darknessScore = Math.min(18, Math.max(0, darkHours - 6) * 1.2);
+  const directionScore = 25 * approachDirectionRaw;
+  const proximityScore = 20 * proximityRaw;
+  const approachScore = 55 * approachConfidence;
+  const lastSegmentKnots = segSpeeds[segSpeeds.length - 1] ?? 0;
+  const prevSegmentKnots = segSpeeds[segSpeeds.length - 2] ?? lastSegmentKnots;
+  const acceleratingTowardStrait = lastSegmentKnots > prevSegmentKnots + 1 && approachDirectionRaw > 0.35;
+  const deceleratingAway = lastSegmentKnots < 2.5 && approachDirectionRaw < 0.08;
+  const readinessScore = acceleratingTowardStrait ? 4 : deceleratingAway ? -12 : 0;
+  const postAnchoringPenalty = prevSegmentKnots < 1.5 && lastSegmentKnots > 2.5 && segCount < 3 ? 6 : 0;
+  let score = approachScore + proximityScore + directionScore + readinessScore - tangentialPenalty - postAnchoringPenalty;
+  score += darknessScore * 0.2;
+  let confidenceBand = score > 50 ? 'high' : score >= 30 ? 'low' : 'no';
+  if (lastMidDistKm > 90 && confidenceBand === 'high') confidenceBand = 'low';
+  if (score < 30) return null;
+
+  return {
+    shipId,
+    shipName,
+    vesselType,
+    score: Math.round(score * 10) / 10,
+    confidenceBand,
+    alignedPoints,
+    speedQuality: Math.round(speedScore * 100) / 100,
+    approachConfidence: Math.round(approachConfidence * 100) / 100,
+    darkHours: Math.round(darkHours * 10) / 10,
+    proximityRaw: Math.round(proximityRaw * 100) / 100,
+    approachDirectionRaw: Math.round(approachDirectionRaw * 100) / 100,
+    proximityScore: Math.round(proximityScore * 10) / 10,
+    approachScore: Math.round(approachScore * 10) / 10,
+    darknessScore: Math.round(darknessScore * 10) / 10,
+    directionScore: Math.round(directionScore * 10) / 10,
+    tangentialPenalty: Math.round(tangentialPenalty * 10) / 10,
+    cosineTowardness: Math.round(avgTowardCosine * 100) / 100,
+    readinessScore: Math.round(readinessScore * 10) / 10,
+    onePointPostAnchoringPenalty: Math.round(postAnchoringPenalty * 10) / 10,
+    lastSegmentKnots: Math.round(lastSegmentKnots * 10) / 10,
+    prevSegmentKnots: Math.round(prevSegmentKnots * 10) / 10,
+    lastSeenAt: last.t,
+    lastLat: last.lat,
+    lastLon: last.lon,
+    points,
+    flag: shipMeta[shipId]?.flag || '',
+  };
+}
+
+function sortCandidates(a, b) {
+  if (b.confidenceBand !== a.confidenceBand) {
+    return (b.confidenceBand === 'high' ? 2 : b.confidenceBand === 'low' ? 1 : 0) - (a.confidenceBand === 'high' ? 2 : a.confidenceBand === 'low' ? 1 : 0);
+  }
+  return b.score - a.score;
+}
+
 function computeLikelyDarkCrossers(snapshots, shipMeta, crossingShipIds, allowedTypes = ['tanker']) {
   if (!snapshots?.length) return [];
 
@@ -121,112 +219,69 @@ function computeLikelyDarkCrossers(snapshots, shipMeta, crossingShipIds, allowed
     }
   }
 
-  const centerLon = (EAST_LON + WEST_LON) / 2;
-  const centerLat = 26.25;
   const out = [];
+  for (const [shipId, v] of byShip.entries()) {
+    const pts = v.points.sort((a, b) => +new Date(a.t) - +new Date(b.t));
+    if (pts.length < 3) continue;
+    if (crossingShipIds.has(shipId)) continue;
+    const last = pts[pts.length - 1];
+    const darkHours = (latestTs - +new Date(last.t)) / (1000 * 60 * 60);
+    if (darkHours <= 6) continue;
+    const scored = scoreCandidateFromTail({ shipId, shipName: v.shipName, vesselType: v.vesselType, points: pts, shipMeta, darkHours });
+    if (scored) out.push(scored);
+  }
 
+  return out.sort(sortCandidates).slice(0, 80);
+}
+
+function computeHistoricalDarkCrosserEvents(snapshots, shipMeta, crossingShipIds, allowedTypes = ['tanker']) {
+  if (!snapshots?.length) return [];
+
+  const latestTs = +new Date(snapshots[snapshots.length - 1].t);
+  const byShip = new Map();
+
+  for (const s of snapshots) {
+    for (const p of s.points || []) {
+      if (!allowedTypes.includes(p.vesselType)) continue;
+      if (!byShip.has(p.shipId)) byShip.set(p.shipId, { shipName: p.shipName, vesselType: p.vesselType, points: [] });
+      byShip.get(p.shipId).points.push({ t: s.t, lat: p.lat, lon: p.lon });
+    }
+  }
+
+  const out = [];
   for (const [shipId, v] of byShip.entries()) {
     const pts = v.points.sort((a, b) => +new Date(a.t) - +new Date(b.t));
     if (pts.length < 3) continue;
     if (crossingShipIds.has(shipId)) continue;
 
-    const last = pts[pts.length - 1];
-    const darkHours = (latestTs - +new Date(last.t)) / (1000 * 60 * 60);
-    if (darkHours <= 6) continue;
+    for (let i = 0; i < pts.length; i++) {
+      const lastVisible = pts[i];
+      const nextVisibleTs = i + 1 < pts.length ? +new Date(pts[i + 1].t) : latestTs;
+      const gapHours = (nextVisibleTs - +new Date(lastVisible.t)) / (1000 * 60 * 60);
+      if (gapHours <= 6) continue;
 
-    const tail = pts.slice(-Math.min(6, pts.length));
-    if (tail.length < 3) continue;
+      const prefix = pts.slice(0, i + 1);
+      const scored = scoreCandidateFromTail({
+        shipId,
+        shipName: v.shipName,
+        vesselType: v.vesselType,
+        points: prefix,
+        shipMeta,
+        darkHours: gapHours,
+      });
+      if (!scored) continue;
 
-    let aligned = 0;
-    let speedQuality = 0;
-    let segCount = 0;
-    let towardCosineSum = 0;
-    const segSpeeds = [];
-
-    for (let i = 1; i < tail.length; i++) {
-      const a = tail[i - 1];
-      const b = tail[i];
-      const distPrev = haversineKm(a.lat, a.lon, centerLat, centerLon);
-      const distCur = haversineKm(b.lat, b.lon, centerLat, centerLon);
-      if (distCur < distPrev) aligned += 1;
-
-      const dtHours = Math.max((+new Date(b.t) - +new Date(a.t)) / (1000 * 60 * 60), 1 / 60);
-      const speedKnots = (haversineKm(a.lat, a.lon, b.lat, b.lon) / dtHours) / 1.852;
-      const cosToward = cosineTowardMidpoint(a, b, { lat: centerLat, lon: centerLon });
-      towardCosineSum += Math.max(0, cosToward);
-      segSpeeds.push(speedKnots);
-      if (speedKnots < 3) speedQuality += 0.2;
-      else if (speedKnots <= 23) speedQuality += 1;
-      else if (speedKnots <= 30) speedQuality += 0.5;
-      else speedQuality += 0.1;
-      segCount += 1;
+      out.push({
+        ...scored,
+        eventId: `${shipId}:${lastVisible.t}`,
+        gapHours: Math.round(gapHours * 10) / 10,
+        resumedAt: i + 1 < pts.length ? pts[i + 1].t : null,
+        eventType: i + 1 < pts.length ? 'historical_gap' : 'open_gap',
+      });
     }
-
-    const alignedPoints = aligned + 1;
-    if (alignedPoints < 3) continue;
-
-    const speedScore = segCount ? speedQuality / segCount : 0;
-    const approachConfidence = Math.min(1, (alignedPoints / Math.max(3, tail.length)) * speedScore);
-    const lastMidDistKm = haversineKm(last.lat, last.lon, centerLat, centerLon);
-    if (lastMidDistKm > 300) continue;
-    const proximityRaw = 1 - Math.min(1, lastMidDistKm / 160);
-    const prev = tail[tail.length - 2];
-    const prevMidDistKm = haversineKm(prev.lat, prev.lon, centerLat, centerLon);
-    const approachDirectionRaw = Math.max(0, Math.min(1, (prevMidDistKm - lastMidDistKm) / 8));
-    const avgTowardCosine = segCount ? towardCosineSum / segCount : 0;
-    const tangentialPenalty = avgTowardCosine < 0.35 ? (0.35 - avgTowardCosine) * 5 : 0;
-    const darknessScore = Math.min(18, Math.max(0, darkHours - 6) * 1.2);
-    const directionScore = 25 * approachDirectionRaw;
-    const proximityScore = 20 * proximityRaw;
-    const approachScore = 55 * approachConfidence;
-    const lastSegmentKnots = segSpeeds[segSpeeds.length - 1] ?? 0;
-    const prevSegmentKnots = segSpeeds[segSpeeds.length - 2] ?? lastSegmentKnots;
-    const acceleratingTowardStrait = lastSegmentKnots > prevSegmentKnots + 1 && approachDirectionRaw > 0.35;
-    const deceleratingAway = lastSegmentKnots < 2.5 && approachDirectionRaw < 0.08;
-    const readinessScore = acceleratingTowardStrait ? 4 : deceleratingAway ? -12 : 0;
-    const postAnchoringPenalty = prevSegmentKnots < 1.5 && lastSegmentKnots > 2.5 && segCount < 3 ? 6 : 0;
-    let score = approachScore + proximityScore + directionScore + readinessScore - tangentialPenalty - postAnchoringPenalty;
-    score += darknessScore * 0.2;
-    let confidenceBand = score > 50 ? 'high' : score >= 30 ? 'low' : 'no';
-    if (lastMidDistKm > 90 && confidenceBand === 'high') confidenceBand = 'low';
-
-    out.push({
-      shipId,
-      shipName: v.shipName,
-      vesselType: v.vesselType,
-      score: Math.round(score * 10) / 10,
-      confidenceBand,
-      alignedPoints,
-      speedQuality: Math.round(speedScore * 100) / 100,
-      approachConfidence: Math.round(approachConfidence * 100) / 100,
-      darkHours: Math.round(darkHours * 10) / 10,
-      proximityRaw: Math.round(proximityRaw * 100) / 100,
-      approachDirectionRaw: Math.round(approachDirectionRaw * 100) / 100,
-      proximityScore: Math.round(proximityScore * 10) / 10,
-      approachScore: Math.round(approachScore * 10) / 10,
-      darknessScore: Math.round(darknessScore * 10) / 10,
-      directionScore: Math.round(directionScore * 10) / 10,
-      tangentialPenalty: Math.round(tangentialPenalty * 10) / 10,
-      cosineTowardness: Math.round(avgTowardCosine * 100) / 100,
-      readinessScore: Math.round(readinessScore * 10) / 10,
-      onePointPostAnchoringPenalty: Math.round(postAnchoringPenalty * 10) / 10,
-      lastSegmentKnots: Math.round(lastSegmentKnots * 10) / 10,
-      prevSegmentKnots: Math.round(prevSegmentKnots * 10) / 10,
-      lastSeenAt: last.t,
-      lastLat: last.lat,
-      lastLon: last.lon,
-      points: pts,
-      flag: shipMeta[shipId]?.flag || '',
-    });
   }
 
-  return out
-    .filter((x) => x.score >= 30)
-    .sort((a, b) => {
-      if (b.confidenceBand !== a.confidenceBand) return (b.confidenceBand === 'high' ? 2 : b.confidenceBand === 'low' ? 1 : 0) - (a.confidenceBand === 'high' ? 2 : a.confidenceBand === 'low' ? 1 : 0);
-      return b.score - a.score;
-    })
-    .slice(0, 80);
+  return out.sort((a, b) => +new Date(a.lastSeenAt) - +new Date(b.lastSeenAt));
 }
 
 function classifyVesselType(_gtShipType, shipTypeCode) {
@@ -859,18 +914,24 @@ async function main() {
 
   const tankerCandidates = computeLikelyDarkCrossers(snapshots, shipMeta, mergedCrossingShipIds, ['tanker']);
   const cargoCandidates = computeLikelyDarkCrossers(snapshots, shipMeta, mergedCrossingShipIds, ['cargo']);
+  const tankerCandidateEvents = computeHistoricalDarkCrosserEvents(snapshots, shipMeta, mergedCrossingShipIds, ['tanker']);
+  const cargoCandidateEvents = computeHistoricalDarkCrosserEvents(snapshots, shipMeta, mergedCrossingShipIds, ['cargo']);
   const relevantShipIds = new Set([
     ...mergedCrossingShipIds,
     ...tankerCandidates.map((c) => c.shipId),
     ...cargoCandidates.map((c) => c.shipId),
+    ...tankerCandidateEvents.map((c) => c.shipId),
+    ...cargoCandidateEvents.map((c) => c.shipId),
   ]);
   const relevantExternalPoints = externalPresencePoints.filter((p) => relevantShipIds.has(p.shipId));
 
   await writeJson(
     'processed_candidates.json',
-    wrap('candidates', { tankerCandidates, cargoCandidates, relevantExternalPoints }, 'all', {
+    wrap('candidates', { tankerCandidates, cargoCandidates, tankerCandidateEvents, cargoCandidateEvents, relevantExternalPoints }, 'all', {
       tankerCount: tankerCandidates.length,
       cargoCount: cargoCandidates.length,
+      tankerEventCount: tankerCandidateEvents.length,
+      cargoEventCount: cargoCandidateEvents.length,
       externalPointCount: relevantExternalPoints.length,
     }),
   );

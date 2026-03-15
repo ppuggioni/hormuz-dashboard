@@ -164,10 +164,19 @@ type NewsFeedShape = {
   items: NewsItem[];
 };
 
+type CandidateEvent = CandidateCrosser & {
+  eventId: string;
+  gapHours: number;
+  resumedAt?: string | null;
+  eventType: "historical_gap" | "open_gap";
+};
+
 type CandidatesShape = {
   data?: {
     tankerCandidates?: CandidateCrosser[];
     cargoCandidates?: CandidateCrosser[];
+    tankerCandidateEvents?: CandidateEvent[];
+    cargoCandidateEvents?: CandidateEvent[];
     relevantExternalPoints?: ExternalPresencePoint[];
   };
 };
@@ -295,6 +304,63 @@ function formatUtcTime(iso: string) {
   const hour = String(d.getUTCHours()).padStart(2, "0");
   const minute = String(d.getUTCMinutes()).padStart(2, "0");
   return `${hour}:${minute} UTC`;
+}
+
+function aggregateCandidatesToDailyBins(rows: CandidateCrosser[]) {
+  const out = new Map<string, { hour: string; count: number }>();
+  for (const r of rows) {
+    const d = new Date(r.lastSeenAt);
+    d.setUTCHours(0, 0, 0, 0);
+    const key = d.toISOString();
+    if (!out.has(key)) out.set(key, { hour: key, count: 0 });
+    out.get(key)!.count += 1;
+  }
+  return [...out.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
+}
+
+function DailyCandidateTooltip({
+  active,
+  label,
+  payload,
+  rows,
+  shipMeta,
+}: {
+  active?: boolean;
+  label?: string;
+  payload?: ReadonlyArray<{ value?: number; name?: string; color?: string }>;
+  rows: CandidateCrosser[];
+  shipMeta?: Record<string, ShipMeta>;
+}) {
+  if (!active || !label) return null;
+  return (
+    <div className="max-w-[420px] rounded border border-slate-700 bg-slate-950/95 p-3 text-xs text-slate-100 shadow-xl">
+      <div className="font-semibold">{new Date(label).toUTCString()}</div>
+      {!!payload?.length && (
+        <div className="mt-2 space-y-1">
+          {payload.map((item) => (
+            <div key={item.name} className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.color || "#94a3b8" }} />
+              <span>{item.name}: {item.value ?? 0}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 border-t border-slate-800 pt-2">
+        <div className="mb-1 font-medium text-slate-200">High-conviction candidates last seen that day</div>
+        {rows.length ? (
+          <ul className="max-h-56 space-y-1 overflow-auto pr-1 text-slate-200">
+            {rows.map((r) => (
+              <li key={r.shipId}>
+                {formatShipDisplayName(r.shipName, shipMeta?.[r.shipId]?.flag)} — {formatUtcTime(r.lastSeenAt)} — score {r.score.toFixed(1)}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-slate-400">No high-conviction candidates that day.</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function DailyCrossingsTooltip({
@@ -686,6 +752,8 @@ export default function Page() {
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
   const [tankerCandidatesData, setTankerCandidatesData] = useState<CandidateCrosser[]>([]);
   const [cargoCandidatesData, setCargoCandidatesData] = useState<CandidateCrosser[]>([]);
+  const [tankerCandidateEventsData, setTankerCandidateEventsData] = useState<CandidateEvent[]>([]);
+  const [cargoCandidateEventsData, setCargoCandidateEventsData] = useState<CandidateEvent[]>([]);
   const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
@@ -772,6 +840,8 @@ export default function Page() {
         setData(normalized);
         setTankerCandidatesData(Array.isArray(candidates?.data?.tankerCandidates) ? candidates.data.tankerCandidates : []);
         setCargoCandidatesData(Array.isArray(candidates?.data?.cargoCandidates) ? candidates.data.cargoCandidates : []);
+        setTankerCandidateEventsData(Array.isArray(candidates?.data?.tankerCandidateEvents) ? candidates.data.tankerCandidateEvents : []);
+        setCargoCandidateEventsData(Array.isArray(candidates?.data?.cargoCandidateEvents) ? candidates.data.cargoCandidateEvents : []);
         setExternalPoints(Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : []);
         const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
         setSelectedTypes(defaults);
@@ -950,6 +1020,19 @@ export default function Page() {
   }, [jaskEvents, jaskCutoffTs, latestCandidateSnapshotTs]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
+  const highConfidenceCandidates = useMemo(
+    () => candidateCrossers.filter((c) => c.confidenceBand === "high"),
+    [candidateCrossers],
+  );
+  const highConfidenceCandidateEvents = useMemo(
+    () => tankerCandidateEventsData.filter((c) => c.confidenceBand === "high"),
+    [tankerCandidateEventsData],
+  );
+  const candidateDailyHigh = useMemo(
+    () => aggregateCandidatesToDailyBins(highConfidenceCandidateEvents),
+    [highConfidenceCandidateEvents],
+  );
+  const candidateChartTicks = useMemo(() => candidateDailyHigh.map((x) => x.hour), [candidateDailyHigh]);
   const candidateLast24hHighCount = useMemo(
     () => candidateCrossers.filter((c) => c.confidenceBand === "high" && c.darkHours <= 24).length,
     [candidateCrossers],
@@ -962,19 +1045,19 @@ export default function Page() {
 
   useEffect(() => {
     const valid = new Set(candidateCrossers.map((c) => c.shipId));
-    const high24hIds = candidateCrossersForDisplay
-      .filter((c) => c.confidenceBand === "high" && c.darkHours <= 24)
+    const highIds = candidateCrossersForDisplay
+      .filter((c) => c.confidenceBand === "high")
       .map((c) => c.shipId);
 
     if (!candidateDefaultsAppliedRef.current) {
-      setSelectedCandidateShipIds(high24hIds);
+      setSelectedCandidateShipIds(highIds);
       candidateDefaultsAppliedRef.current = true;
       return;
     }
 
     setSelectedCandidateShipIds((prev) => {
       const stillValid = prev.filter((id) => valid.has(id));
-      if (stillValid.length === 0 && high24hIds.length) return high24hIds;
+      if (stillValid.length === 0 && highIds.length) return highIds;
       return stillValid;
     });
   }, [candidateCrossersForDisplay, candidateCrossers]);
@@ -2156,6 +2239,47 @@ export default function Page() {
               display only selected: {showOnlySelectedCandidates ? "on" : "off"}
             </button>
             <span>Selected: {selectedCandidateShipIds.length}</span>
+            <span>High-confidence open candidates now: {highConfidenceCandidates.length}</span>
+            <span>High-confidence historical candidate events: {highConfidenceCandidateEvents.length}</span>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <h3 className="mb-3 text-sm font-medium text-slate-100">High-conviction dark-crossing candidate events in daily bins</h3>
+            <div className="h-[240px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={candidateDailyHigh}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis
+                    dataKey="hour"
+                    ticks={candidateChartTicks}
+                    tickFormatter={(v) => formatDayTick(v as string)}
+                    minTickGap={40}
+                    angle={-35}
+                    textAnchor="end"
+                    height={56}
+                    tick={{ fontSize: 11 }}
+                    stroke="#94a3b8"
+                  />
+                  <YAxis allowDecimals={false} stroke="#94a3b8" />
+                  <Tooltip
+                    content={(props) => (
+                      <DailyCandidateTooltip
+                        active={props.active}
+                        label={props.label as string | undefined}
+                        payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
+                        rows={highConfidenceCandidateEvents
+                          .filter((c) => props.label && isSameUtcDay(c.lastSeenAt, props.label as string))
+                          .sort((a, b) => +new Date(a.lastSeenAt) - +new Date(b.lastSeenAt))}
+                        shipMeta={data?.shipMeta}
+                      />
+                    )}
+                  />
+                  <Bar dataKey="count" fill="#f59e0b" name="High confidence" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              Binned by each historical candidate event&apos;s last seen UTC timestamp before the dark gap began.
+            </div>
           </div>
           <div className="h-[520px] rounded-xl overflow-hidden border border-slate-800">
             <CandidatePathsMap
@@ -2193,7 +2317,7 @@ export default function Page() {
                 )
               }
               onResetSelection={() =>
-                setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high" && c.darkHours <= 24).map((c) => c.shipId))
+                setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high").map((c) => c.shipId))
               }
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}

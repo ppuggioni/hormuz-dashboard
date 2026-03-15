@@ -883,12 +883,12 @@ export default function Page() {
   }, [jaskEvents, jaskCutoffTs, latestCandidateSnapshotTs]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
-  const candidateLast48hHighCount = useMemo(
-    () => candidateCrossers.filter((c) => c.darkHours <= 48 && c.score > 50).length,
+  const candidateLast24hHighCount = useMemo(
+    () => candidateCrossers.filter((c) => c.confidenceBand === "high" && c.darkHours <= 24).length,
     [candidateCrossers],
   );
-  const candidateLast48hLowCount = useMemo(
-    () => candidateCrossers.filter((c) => c.darkHours <= 48 && c.score >= 30 && c.score <= 50).length,
+  const candidateLast24hLowCount = useMemo(
+    () => candidateCrossers.filter((c) => c.confidenceBand === "low" && c.darkHours <= 24).length,
     [candidateCrossers],
   );
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
@@ -1233,7 +1233,7 @@ export default function Page() {
 
   const candidateTableRows = useMemo(() => {
     const rank = { high: 2, low: 1, no: 0 } as const;
-    return [...candidateCrossers].sort((a, b) => {
+    return [...candidateCrossers].filter((c) => c.confidenceBand === "high").sort((a, b) => {
       let cmp = 0;
       switch (candidateSort.key) {
         case "ship":
@@ -1551,7 +1551,7 @@ export default function Page() {
             </div>
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
               <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
-              <div className="text-lg font-semibold text-amber-100">{candidateLast48hHighCount}</div>
+              <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
               <button
                 onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"

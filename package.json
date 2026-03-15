@@ -9,7 +9,8 @@
     "build:news": "node scripts/build-news.mjs",
     "build": "npm run build:news && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:incremental": "node --test tests/incremental-state.test.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

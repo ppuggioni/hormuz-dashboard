@@ -1,0 +1,4 @@
+# Ignore runtime incremental pipeline state while keeping the scaffold tracked.
+*
+!.gitignore
+!README.md

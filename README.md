@@ -77,6 +77,18 @@ npm run build:data
 ./refresh_and_upload_processed.sh
 ```
 
+## Incremental pipeline rollout status
+
+Incremental hot-pipeline work is being added in phases. Phase 1 introduces only
+scaffolding under `scripts/incremental/` plus the runtime `state/` directory
+layout and helper APIs for checkpoints, lock files, JSONL ledgers, and baseline
+metadata.
+
+Important:
+- the current full rebuild path remains the live path
+- `scripts/build-data.mjs` is still authoritative for production artifacts
+- the new state helpers are not wired into publication yet
+
 ## Environment / runtime assumption
 
 The app uses `NEXT_PUBLIC_HORMUZ_PROCESSED_URL` as the base URL for processed artifacts. The code then derives the split-file root from that base and attempts split-file loading first.

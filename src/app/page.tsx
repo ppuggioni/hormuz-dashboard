@@ -1111,13 +1111,29 @@ export default function Page() {
     [highConfidenceCandidateEventsForCharts],
   );
   const candidateChartTicks = useMemo(() => candidateDailyHigh.map((x) => x.hour), [candidateDailyHigh]);
+  const latestCandidateEventTs = useMemo(
+    () => tankerCandidateEventsData.length ? Math.max(...tankerCandidateEventsData.map((c) => +new Date(c.lastSeenAt))) : null,
+    [tankerCandidateEventsData],
+  );
+  const candidate24hCutoffTs = useMemo(
+    () => latestCandidateEventTs == null ? null : latestCandidateEventTs - 24 * 60 * 60 * 1000,
+    [latestCandidateEventTs],
+  );
   const candidateLast24hHighCount = useMemo(
-    () => highConfidenceCandidateEventsForCharts.filter((c) => c.darkHours <= 24).length,
-    [highConfidenceCandidateEventsForCharts],
+    () => candidate24hCutoffTs == null ? 0 : highConfidenceCandidateEventsForCharts.filter((c) => {
+      const ts = +new Date(c.lastSeenAt);
+      return ts >= candidate24hCutoffTs && ts <= latestCandidateEventTs!;
+    }).length,
+    [highConfidenceCandidateEventsForCharts, candidate24hCutoffTs, latestCandidateEventTs],
   );
   const candidateLast24hLowCount = useMemo(
-    () => tankerCandidateEventsData.filter((c) => c.confidenceBand === "low" && c.darkHours <= 24 && (!discardSuspectedSpoofing || !suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`))).length,
-    [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys],
+    () => candidate24hCutoffTs == null ? 0 : tankerCandidateEventsData.filter((c) => {
+      if (c.confidenceBand !== "low") return false;
+      if (discardSuspectedSpoofing && suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`)) return false;
+      const ts = +new Date(c.lastSeenAt);
+      return ts >= candidate24hCutoffTs && ts <= latestCandidateEventTs!;
+    }).length,
+    [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidate24hCutoffTs, latestCandidateEventTs],
   );
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
 

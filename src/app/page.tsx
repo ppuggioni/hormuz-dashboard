@@ -635,7 +635,7 @@ export default function Page() {
   const latestGeneratedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "/data";
+    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
     const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
 
     const fetchJson = async (url: string) => {
@@ -743,7 +743,7 @@ export default function Page() {
     const isIdle = () => Date.now() - interactionAtRef.current > 120000;
 
     const checkForFreshData = async () => {
-      const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "/data";
+      const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
       try {
         const r = await fetch(`${root}/processed_core.json?t=${Date.now()}`);
         if (r.ok) {
@@ -789,7 +789,7 @@ export default function Page() {
 
   useEffect(() => {
     if (!splitMode || !data) return;
-    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "/data";
+    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
 
     const fetchJsonMaybeGzip = async (url: string) => {
       const r = await fetch(`${url}?t=${Date.now()}`);

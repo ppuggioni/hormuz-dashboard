@@ -776,7 +776,7 @@ export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [frameIndex, setFrameIndex] = useState(0);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
   const [selectedTankerHour, setSelectedTankerHour] = useState<string | null>(null);
   const [selectedCargoHour, setSelectedCargoHour] = useState<string | null>(null);
   const [selectedJaskTankerHour, setSelectedJaskTankerHour] = useState<string | null>(null);
@@ -816,13 +816,15 @@ export default function Page() {
   const interactionAtRef = useRef<number>(Date.now());
   const mountedAtRef = useRef<number>(Date.now());
   const latestGeneratedAtRef = useRef<string | null>(null);
+  const playbackSectionRef = useRef<HTMLElement | null>(null);
+  const [playbackDataRequested, setPlaybackDataRequested] = useState(false);
 
   useEffect(() => {
     const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
     const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
 
     const fetchJson = async (url: string) => {
-      const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+      const r = await fetch(url, { cache: "force-cache" });
       if (!r.ok) throw new Error(`fetch failed ${r.status}`);
       const buf = await r.arrayBuffer();
       const bytes = new Uint8Array(buf);
@@ -860,8 +862,6 @@ export default function Page() {
         const core = await fetchJson(`${root}/processed_core.json`);
         const paths = await fetchJson(`${root}/processed_paths.json`);
         const candidates = await fetchJson(`${root}/processed_candidates.json`);
-        const playback24 = await fetchJson(`${root}/processed_playback_24h.json`);
-        const shipmeta24 = await fetchJson(`${root}/processed_shipmeta_24h.json`);
 
         const normalized: DataShape = {
           metadata: core?.metadata || {
@@ -875,8 +875,8 @@ export default function Page() {
             crossingEventCount: 0,
           },
           vesselTypes: Array.isArray(core?.data?.vesselTypes) ? core.data.vesselTypes : [],
-          shipMeta: shipmeta24?.data?.shipMeta || core?.data?.shipMeta || {},
-          snapshots: Array.isArray(playback24?.data?.snapshots) ? playback24.data.snapshots : [],
+          shipMeta: core?.data?.shipMeta || {},
+          snapshots: [],
           crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
           crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
           crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
@@ -930,7 +930,7 @@ export default function Page() {
     const checkForFreshData = async () => {
       const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
       try {
-        const r = await fetch(`${root}/processed_core.json?t=${Date.now()}`);
+        const r = await fetch(`${root}/processed_core.json`, { cache: "no-store" });
         if (r.ok) {
           const j = await r.json();
           const remoteGen = j?.metadata?.generatedAt as string | undefined;
@@ -973,11 +973,27 @@ export default function Page() {
   }, [playing, data?.snapshots?.length]);
 
   useEffect(() => {
-    if (!splitMode || !data) return;
+    const el = playbackSectionRef.current;
+    if (!el || playbackDataRequested) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setPlaybackDataRequested(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [playbackDataRequested]);
+
+  useEffect(() => {
+    if (!splitMode || !data || !playbackDataRequested) return;
     const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
 
     const fetchJsonMaybeGzip = async (url: string) => {
-      const r = await fetch(`${url}?t=${Date.now()}`);
+      const r = await fetch(url, { cache: "force-cache" });
       if (!r.ok) return null;
       const buf = await r.arrayBuffer();
       const bytes = new Uint8Array(buf);
@@ -1004,14 +1020,14 @@ export default function Page() {
         const sm = shipmetaJson?.data?.shipMeta || {};
         setData((prev) => (prev ? { ...prev, snapshots: snaps, shipMeta: sm } : prev));
         setExternalPoints(ext);
-        setFrameIndex(0);
+        setFrameIndex(snaps.length ? snaps.length - 1 : 0);
       } finally {
         setPlaybackLoading(false);
       }
     };
 
     fetchWindowData();
-  }, [splitMode, playbackWindow, loadAllRegions]);
+  }, [splitMode, playbackWindow, loadAllRegions, playbackDataRequested]);
 
   const currentSnapshot = data?.snapshots?.[frameIndex];
 
@@ -1982,7 +1998,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="playback-map" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
+        <section id="playback-map" ref={playbackSectionRef} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Playback Map (filtered vessels)</h2>
             <div className="flex items-center gap-2 text-sm">

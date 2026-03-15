@@ -810,6 +810,7 @@ export default function Page() {
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newDataAvailable, setNewDataAvailable] = useState(false);
+  const [mapMode, setMapMode] = useState<"confirmed" | "candidates">("confirmed");
   const candidateDefaultsAppliedRef = useRef(false);
   const crossingDefaultsAppliedRef = useRef(false);
   const interactionAtRef = useRef<number>(Date.now());
@@ -2259,101 +2260,6 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <h2 className="text-lg font-medium">{crossingMapTitle}</h2>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-            <span className="text-slate-200 mr-2">Legend (click to toggle)</span>
-            {data.vesselTypes.map((type) => {
-              const active = crossingMapTypes.includes(type);
-              return (
-                <button
-                  key={`cross-${type}`}
-                  onClick={() =>
-                    setCrossingMapTypes((prev) =>
-                      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
-                    )
-                  }
-                  className={`px-2 py-1 rounded border ${active ? "border-slate-200" : "border-slate-700 opacity-50"}`}
-                >
-                  <span className={`inline-block w-3 h-3 rounded-full ${classForType(type)} mr-2`} />{type}
-                </button>
-              );
-            })}
-            <button onClick={() => setCrossingDirectionFilter("all")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "all" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>all crossings</button>
-            <button onClick={() => setCrossingDirectionFilter("east_to_west")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "east_to_west" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>east → west</button>
-            <button onClick={() => setCrossingDirectionFilter("west_to_east")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "west_to_east" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>west → east</button>
-            {(["24h", "48h", "all"] as const).map((w) => (
-              <button key={w} onClick={() => setCrossingWindow(w)} className={`px-2 py-1 rounded border ${crossingWindow === w ? "border-emerald-300 text-emerald-200" : "border-slate-700 text-slate-400"}`}>{w}</button>
-            ))}
-            <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>
-            {selectedCrossingShipIds.length ? <button onClick={() => setSelectedCrossingShipIds([])} className="px-2 py-1 rounded border border-slate-600 text-slate-300">reset selection</button> : null}
-          </div>
-          <div className="text-xs text-slate-300">
-            Showing {crossingSummary.crossings} crossings across {crossingSummary.ships} ships under the current filters.
-          </div>
-          <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
-            <CrossingPathsMap
-              paths={filteredCrossingPathsForMap.slice(0, 180)}
-              eastLon={data.metadata.eastLon}
-              westLon={data.metadata.westLon}
-              linkLines={crossingMapLinkLines}
-              selectedShipIds={selectedCrossingShipIds}
-              onToggleShip={(shipId) => setSelectedCrossingShipIds((prev) => prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId])}
-              onResetSelection={() => setSelectedCrossingShipIds([])}
-            />
-          </div>
-          <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
-
-          <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
-            <table className="w-full text-xs">
-              <thead className="bg-slate-900 sticky top-0">
-                <tr>
-                  <th className="text-left p-2">Sel</th>
-                  <th className="text-left p-2">Only</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
-                  <th className="text-left p-2">Status</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {crossingDetailRows.map((r, idx) => {
-                  const selected = selectedCrossingShipIds.includes(r.shipId);
-                  return (
-                    <tr
-                      key={`cross-detail-${r.shipId}-${r.t}-${idx}`}
-                      className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
-                      onClick={() => setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId])}
-                    >
-                      <td className="p-2">{selected ? "●" : "○"}</td>
-                      <td className="p-2">
-                        <button
-                          type="button"
-                          className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCrossingShipIds([r.shipId]);
-                          }}
-                        >
-                          only
-                        </button>
-                      </td>
-                      <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
-                      <td className="p-2">{r.vesselType}</td>
-                      <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
-                      <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                      <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
-                      <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
         <section id="candidate-dark-crossers" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <h2 className="text-lg font-medium">Candidate Dark Crossers — Tankers</h2>
           <p className="text-xs text-slate-400">Heuristic shortlist: at least 3 aligned approach points, dark for &gt;6h, speed-plausibility weighted, excluding already observed crossers.</p>
@@ -2407,48 +2313,6 @@ export default function Page() {
             <div className="mt-2 text-xs text-slate-400">
               Binned by each historical candidate event&apos;s last seen UTC timestamp before the dark gap began, split by inferred travel direction.
             </div>
-          </div>
-          <div className="h-[520px] rounded-xl overflow-hidden border border-slate-800">
-            <CandidatePathsMap
-              candidates={candidateCrossersForDisplay
-                .filter((c) => !showOnlySelectedCandidates || selectedCandidateShipIdSet.has(c.shipId))
-                .map((c) => ({
-                  shipId: c.shipId,
-                  shipName: c.shipName,
-                  flag: data?.shipMeta?.[c.shipId]?.flag,
-                  points: c.points,
-                  lastSeenAt: c.lastSeenAt,
-                  score: c.score,
-                  confidenceBand: c.confidenceBand,
-                  approachScore: c.approachScore,
-                  proximityScore: c.proximityScore,
-                  directionScore: c.directionScore,
-                  tangentialPenalty: c.tangentialPenalty,
-                  cosineTowardness: c.cosineTowardness,
-                  darknessScore: c.darknessScore,
-                  readinessScore: c.readinessScore,
-                  alignedPoints: c.alignedPoints,
-                  speedQuality: c.speedQuality,
-                  approachConfidence: c.approachConfidence,
-                  proximityRaw: c.proximityRaw,
-                  approachDirectionRaw: c.approachDirectionRaw,
-                  onePointPostAnchoringPenalty: c.onePointPostAnchoringPenalty,
-                  lastSegmentKnots: c.lastSegmentKnots,
-                  prevSegmentKnots: c.prevSegmentKnots,
-                }))}
-              selectedShipIds={selectedCandidateShipIds}
-              colorSelectedWhenFiltered={showOnlySelectedCandidates}
-              onToggleShip={(shipId) =>
-                setSelectedCandidateShipIds((prev) =>
-                  prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId],
-                )
-              }
-              onResetSelection={() =>
-                setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high").map((c) => c.shipId))
-              }
-              eastLon={data.metadata.eastLon}
-              westLon={data.metadata.westLon}
-            />
           </div>
           <div className="max-h-[360px] overflow-auto border border-slate-800 rounded-lg">
             <table className="w-full text-xs">
@@ -2538,6 +2402,233 @@ export default function Page() {
               <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time), used only as a strict filter (&gt; 6h).</div>
             </div>
           </details>
+        </section>
+
+        <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <h2 className="text-lg font-medium">
+              {mapMode === "confirmed" ? "Crossings Map — Confirmed Tanker Crossings" : "Crossings Map — Likely Dark-Crossing Candidates"}
+            </h2>
+            <div className="flex items-center gap-1 text-xs">
+              <button
+                onClick={() => setMapMode("confirmed")}
+                className={`rounded-md border px-3 py-1.5 ${mapMode === "confirmed" ? "border-emerald-300 text-emerald-200 bg-emerald-500/10" : "border-slate-700 text-slate-400"}`}
+              >
+                Confirmed tanker crossings
+              </button>
+              <button
+                onClick={() => setMapMode("candidates")}
+                className={`rounded-md border px-3 py-1.5 ${mapMode === "candidates" ? "border-amber-300 text-amber-200 bg-amber-500/10" : "border-slate-700 text-slate-400"}`}
+              >
+                Dark-crossing candidates
+              </button>
+            </div>
+          </div>
+          {mapMode === "confirmed" ? (
+            <>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                <span className="text-slate-200 mr-2">Legend (click to toggle)</span>
+                {data.vesselTypes.map((type) => {
+                  const active = crossingMapTypes.includes(type);
+                  return (
+                    <button
+                      key={`cross-${type}`}
+                      onClick={() =>
+                        setCrossingMapTypes((prev) =>
+                          prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+                        )
+                      }
+                      className={`px-2 py-1 rounded border ${active ? "border-slate-200" : "border-slate-700 opacity-50"}`}
+                    >
+                      <span className={`inline-block w-3 h-3 rounded-full ${classForType(type)} mr-2`} />{type}
+                    </button>
+                  );
+                })}
+                <button onClick={() => setCrossingDirectionFilter("all")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "all" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>all crossings</button>
+                <button onClick={() => setCrossingDirectionFilter("east_to_west")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "east_to_west" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>east → west</button>
+                <button onClick={() => setCrossingDirectionFilter("west_to_east")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "west_to_east" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>west → east</button>
+                {(["24h", "48h", "all"] as const).map((w) => (
+                  <button key={w} onClick={() => setCrossingWindow(w)} className={`px-2 py-1 rounded border ${crossingWindow === w ? "border-emerald-300 text-emerald-200" : "border-slate-700 text-slate-400"}`}>{w}</button>
+                ))}
+                <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>
+                {selectedCrossingShipIds.length ? <button onClick={() => setSelectedCrossingShipIds([])} className="px-2 py-1 rounded border border-slate-600 text-slate-300">reset selection</button> : null}
+              </div>
+              <div className="text-xs text-slate-300">
+                Showing {crossingSummary.crossings} crossings across {crossingSummary.ships} ships under the current filters.
+              </div>
+              <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
+                <CrossingPathsMap
+                  paths={filteredCrossingPathsForMap.slice(0, 180)}
+                  eastLon={data.metadata.eastLon}
+                  westLon={data.metadata.westLon}
+                  linkLines={crossingMapLinkLines}
+                  selectedShipIds={selectedCrossingShipIds}
+                  onToggleShip={(shipId) => setSelectedCrossingShipIds((prev) => prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId])}
+                  onResetSelection={() => setSelectedCrossingShipIds([])}
+                />
+              </div>
+              <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
+              <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-900 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Sel</th>
+                      <th className="text-left p-2">Only</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {crossingDetailRows.map((r, idx) => {
+                      const selected = selectedCrossingShipIds.includes(r.shipId);
+                      return (
+                        <tr
+                          key={`cross-detail-${r.shipId}-${r.t}-${idx}`}
+                          className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
+                          onClick={() => setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId])}
+                        >
+                          <td className="p-2">{selected ? "●" : "○"}</td>
+                          <td className="p-2">
+                            <button
+                              type="button"
+                              className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCrossingShipIds([r.shipId]);
+                              }}
+                            >
+                              only
+                            </button>
+                          </td>
+                          <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
+                          <td className="p-2">{r.vesselType}</td>
+                          <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
+                          <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                          <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
+                          <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 text-xs text-slate-300">
+                <button
+                  className={`px-2 py-1 rounded border ${showOnlySelectedCandidates ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                  onClick={() => setShowOnlySelectedCandidates((v) => !v)}
+                >
+                  display only selected: {showOnlySelectedCandidates ? "on" : "off"}
+                </button>
+                <span>Selected: {selectedCandidateShipIds.length}</span>
+                {selectedCandidateShipIds.length ? (
+                  <button onClick={() => setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high").map((c) => c.shipId))} className="px-2 py-1 rounded border border-slate-700 text-slate-400">reset to high-confidence</button>
+                ) : null}
+              </div>
+              <div className="h-[520px] rounded-xl overflow-hidden border border-slate-800">
+                <CandidatePathsMap
+                  candidates={candidateCrossersForDisplay
+                    .filter((c) => !showOnlySelectedCandidates || selectedCandidateShipIdSet.has(c.shipId))
+                    .map((c) => ({
+                      shipId: c.shipId,
+                      shipName: c.shipName,
+                      flag: data?.shipMeta?.[c.shipId]?.flag,
+                      points: c.points,
+                      lastSeenAt: c.lastSeenAt,
+                      score: c.score,
+                      confidenceBand: c.confidenceBand,
+                      approachScore: c.approachScore,
+                      proximityScore: c.proximityScore,
+                      directionScore: c.directionScore,
+                      tangentialPenalty: c.tangentialPenalty,
+                      cosineTowardness: c.cosineTowardness,
+                      darknessScore: c.darknessScore,
+                      readinessScore: c.readinessScore,
+                      alignedPoints: c.alignedPoints,
+                      speedQuality: c.speedQuality,
+                      approachConfidence: c.approachConfidence,
+                      proximityRaw: c.proximityRaw,
+                      approachDirectionRaw: c.approachDirectionRaw,
+                      onePointPostAnchoringPenalty: c.onePointPostAnchoringPenalty,
+                      lastSegmentKnots: c.lastSegmentKnots,
+                      prevSegmentKnots: c.prevSegmentKnots,
+                    }))}
+                  selectedShipIds={selectedCandidateShipIds}
+                  colorSelectedWhenFiltered={showOnlySelectedCandidates}
+                  onToggleShip={(shipId) =>
+                    setSelectedCandidateShipIds((prev) =>
+                      prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId],
+                    )
+                  }
+                  onResetSelection={() =>
+                    setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high").map((c) => c.shipId))
+                  }
+                  eastLon={data.metadata.eastLon}
+                  westLon={data.metadata.westLon}
+                />
+              </div>
+              <div className="max-h-[360px] overflow-auto border border-slate-800 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-900 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Sel</th>
+                      <th className="text-left p-2">Only</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "lastSeen", dir: s.key === "lastSeen" && s.dir === "asc" ? "desc" : "asc" }))}>Last seen (UTC)</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "darkHours", dir: s.key === "darkHours" && s.dir === "asc" ? "desc" : "asc" }))}>Dark hours</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "alignedPoints", dir: s.key === "alignedPoints" && s.dir === "asc" ? "desc" : "asc" }))}>Aligned points</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "speedQuality", dir: s.key === "speedQuality" && s.dir === "asc" ? "desc" : "asc" }))}>Speed quality</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "approachConfidence", dir: s.key === "approachConfidence" && s.dir === "asc" ? "desc" : "asc" }))}>Approach confidence</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "score", dir: s.key === "score" && s.dir === "asc" ? "desc" : "asc" }))}>Score</th>
+                      <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "confidence", dir: s.key === "confidence" && s.dir === "asc" ? "desc" : "asc" }))}>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {candidateTableRows.map((c) => (
+                      <tr key={`cand-map-${c.shipId}-${c.lastSeenAt}`} className="border-t border-slate-800">
+                        <td className="p-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidateShipIdSet.has(c.shipId)}
+                            onChange={() =>
+                              setSelectedCandidateShipIds((prev) =>
+                                prev.includes(c.shipId) ? prev.filter((id) => id !== c.shipId) : [...prev, c.shipId],
+                              )
+                            }
+                          />
+                        </td>
+                        <td className="p-2">
+                          <button
+                            type="button"
+                            className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
+                            onClick={() => setSelectedCandidateShipIds([c.shipId])}
+                          >
+                            only
+                          </button>
+                        </td>
+                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(c.shipName, data?.shipMeta?.[c.shipId]?.flag)} ({c.shipId})</a></td>
+                        <td className="p-2">{new Date(c.lastSeenAt).toUTCString()}</td>
+                        <td className="p-2">{c.darkHours.toFixed(1)}</td>
+                        <td className="p-2">{c.alignedPoints}</td>
+                        <td className="p-2">{c.speedQuality.toFixed(2)}</td>
+                        <td className="p-2">{c.approachConfidence.toFixed(2)}</td>
+                        <td className="p-2 font-medium">{c.score.toFixed(1)}</td>
+                        <td className="p-2">{suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
+                        <td className="p-2">{c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </section>
 
         <section id="jask-port" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">

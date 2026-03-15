@@ -61,6 +61,7 @@ type CandidateCrosser = {
   shipId: string;
   shipName: string;
   vesselType: string;
+  inferredDirection: "east_to_west" | "west_to_east";
   score: number;
   confidenceBand: "high" | "low" | "no";
   alignedPoints: number;
@@ -313,8 +314,8 @@ function utcDayStartMs(iso: string) {
   return +d;
 }
 
-function buildSuspectedSpoofingEventKeySet(events: CrossingEvent[]) {
-  const byShip = new Map<string, CrossingEvent[]>();
+function buildSuspectedOppositeDirectionKeySet<T extends { shipId: string; lastSeenAt: string; inferredDirection: "east_to_west" | "west_to_east" }>(events: T[]) {
+  const byShip = new Map<string, T[]>();
   for (const e of events) {
     if (!byShip.has(e.shipId)) byShip.set(e.shipId, []);
     byShip.get(e.shipId)!.push(e);
@@ -322,21 +323,29 @@ function buildSuspectedSpoofingEventKeySet(events: CrossingEvent[]) {
 
   const flagged = new Set<string>();
   for (const rows of byShip.values()) {
-    const sorted = [...rows].sort((a, b) => +new Date(a.t) - +new Date(b.t));
+    const sorted = [...rows].sort((a, b) => +new Date(a.lastSeenAt) - +new Date(b.lastSeenAt));
     for (let i = 0; i < sorted.length; i++) {
       for (let j = i + 1; j < sorted.length; j++) {
         const a = sorted[i];
         const b = sorted[j];
-        const dayDiff = Math.abs(utcDayStartMs(a.t) - utcDayStartMs(b.t)) / (24 * 60 * 60 * 1000);
+        const dayDiff = Math.abs(utcDayStartMs(a.lastSeenAt) - utcDayStartMs(b.lastSeenAt)) / (24 * 60 * 60 * 1000);
         if (dayDiff > 1) break;
-        if (a.direction !== b.direction) {
-          flagged.add(`${a.shipId}|${a.t}|${a.direction}`);
-          flagged.add(`${b.shipId}|${b.t}|${b.direction}`);
+        if (a.inferredDirection !== b.inferredDirection) {
+          flagged.add(`${a.shipId}|${a.lastSeenAt}|${a.inferredDirection}`);
+          flagged.add(`${b.shipId}|${b.lastSeenAt}|${b.inferredDirection}`);
         }
       }
     }
   }
   return flagged;
+}
+
+function buildSuspectedSpoofingEventKeySet(events: CrossingEvent[]) {
+  return buildSuspectedOppositeDirectionKeySet(events.map((e) => ({
+    shipId: e.shipId,
+    lastSeenAt: e.t,
+    inferredDirection: e.direction,
+  })));
 }
 
 function aggregateCandidatesToDailyBins(rows: Array<CandidateCrosser & { inferredDirection?: "east_to_west" | "west_to_east" }>) {
@@ -597,6 +606,7 @@ function computeLikelyDarkCrossers(
       shipId,
       shipName: v.shipName,
       vesselType: v.vesselType,
+      inferredDirection: last.lon >= centerLon ? "east_to_west" : "west_to_east",
       score,
       confidenceBand,
       alignedPoints,
@@ -1066,6 +1076,15 @@ export default function Page() {
     () => tankerCandidateEventsData.filter((c) => c.confidenceBand === "high"),
     [tankerCandidateEventsData],
   );
+  const suspectedCandidateSpoofingKeys = useMemo(
+    () => buildSuspectedOppositeDirectionKeySet(highConfidenceCandidateEvents),
+    [highConfidenceCandidateEvents],
+  );
+  const isSuspectedCandidateSpoofingEvent = (e: CandidateEvent) => suspectedCandidateSpoofingKeys.has(`${e.shipId}|${e.lastSeenAt}|${e.inferredDirection}`);
+  const highConfidenceCandidateEventsForCharts = useMemo(
+    () => highConfidenceCandidateEvents.filter((e) => !discardSuspectedSpoofing || !isSuspectedCandidateSpoofingEvent(e)),
+    [highConfidenceCandidateEvents, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys],
+  );
   const newsDays = useMemo(() => {
     const byDay = new Map<string, { day: string; headline: string; items: NewsItem[] }>();
     for (const item of newsFeed?.items || []) {
@@ -1088,17 +1107,17 @@ export default function Page() {
     return newsDays.find((d) => d.day === selectedNewsDay) || newsDays[0];
   }, [newsDays, selectedNewsDay]);
   const candidateDailyHigh = useMemo(
-    () => aggregateCandidatesToDailyBins(highConfidenceCandidateEvents),
-    [highConfidenceCandidateEvents],
+    () => aggregateCandidatesToDailyBins(highConfidenceCandidateEventsForCharts),
+    [highConfidenceCandidateEventsForCharts],
   );
   const candidateChartTicks = useMemo(() => candidateDailyHigh.map((x) => x.hour), [candidateDailyHigh]);
   const candidateLast24hHighCount = useMemo(
-    () => candidateCrossers.filter((c) => c.confidenceBand === "high" && c.darkHours <= 24).length,
-    [candidateCrossers],
+    () => highConfidenceCandidateEventsForCharts.filter((c) => c.darkHours <= 24).length,
+    [highConfidenceCandidateEventsForCharts],
   );
   const candidateLast24hLowCount = useMemo(
-    () => candidateCrossers.filter((c) => c.confidenceBand === "low" && c.darkHours <= 24).length,
-    [candidateCrossers],
+    () => tankerCandidateEventsData.filter((c) => c.confidenceBand === "low" && c.darkHours <= 24 && (!discardSuspectedSpoofing || !suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`))).length,
+    [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys],
   );
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
 
@@ -1295,7 +1314,7 @@ export default function Page() {
   }, [jaskEvents, selectedJaskCargoHour]);
 
   const last24hCrossingCounts = useMemo(() => {
-    if (!data?.crossingEvents?.length) return { tanker: 0, cargo: 0, other: 0 };
+    if (!crossingEventsForCharts.length || !data) return { tanker: 0, cargo: 0, other: 0 };
 
     const latestTs = data.snapshots?.length
       ? +new Date(data.snapshots[data.snapshots.length - 1].t)
@@ -1306,7 +1325,7 @@ export default function Page() {
     const cargoIds = new Set<string>();
     const otherIds = new Set<string>();
 
-    for (const e of data.crossingEvents) {
+    for (const e of crossingEventsForCharts) {
       const ts = +new Date(e.t);
       if (ts < cutoff || ts > latestTs) continue;
       if (e.vesselType === "tanker") tankerIds.add(e.shipId);
@@ -1319,7 +1338,7 @@ export default function Page() {
       cargo: cargoIds.size,
       other: otherIds.size,
     };
-  }, [data]);
+  }, [crossingEventsForCharts, data]);
 
   const crossingWindowHours = crossingWindow === "all" ? null : Number.parseInt(crossingWindow, 10);
 
@@ -2331,7 +2350,7 @@ export default function Page() {
             </button>
             <span>Selected: {selectedCandidateShipIds.length}</span>
             <span>High-confidence open candidates now: {highConfidenceCandidates.length}</span>
-            <span>High-confidence historical candidate events: {highConfidenceCandidateEvents.length}</span>
+            <span>High-confidence historical candidate events: {highConfidenceCandidateEventsForCharts.length}</span>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
             <h3 className="mb-3 text-sm font-medium text-slate-100">High-conviction dark-crossing candidate events in daily bins</h3>
@@ -2358,7 +2377,7 @@ export default function Page() {
                         label={props.label as string | undefined}
                         payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
                         rows={highConfidenceCandidateEvents
-                          .filter((c) => props.label && isSameUtcDay(c.lastSeenAt, props.label as string))
+                          .filter((c) => (!discardSuspectedSpoofing || !isSuspectedCandidateSpoofingEvent(c)) && props.label && isSameUtcDay(c.lastSeenAt, props.label as string))
                           .sort((a, b) => +new Date(a.lastSeenAt) - +new Date(b.lastSeenAt))}
                         shipMeta={data?.shipMeta}
                       />
@@ -2428,6 +2447,7 @@ export default function Page() {
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "speedQuality", dir: s.key === "speedQuality" && s.dir === "asc" ? "desc" : "asc" }))}>Speed quality</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "approachConfidence", dir: s.key === "approachConfidence" && s.dir === "asc" ? "desc" : "asc" }))}>Approach confidence</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "score", dir: s.key === "score" && s.dir === "asc" ? "desc" : "asc" }))}>Score</th>
+                  <th className="text-left p-2">Status</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "confidence", dir: s.key === "confidence" && s.dir === "asc" ? "desc" : "asc" }))}>Confidence</th>
                 </tr>
               </thead>
@@ -2461,6 +2481,7 @@ export default function Page() {
                     <td className="p-2">{c.speedQuality.toFixed(2)}</td>
                     <td className="p-2">{c.approachConfidence.toFixed(2)}</td>
                     <td className="p-2 font-medium">{c.score.toFixed(1)}</td>
+                    <td className="p-2">{suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                     <td className="p-2">{c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</td>
                   </tr>
                 ))}

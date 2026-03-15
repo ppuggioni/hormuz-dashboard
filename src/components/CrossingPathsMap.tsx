@@ -142,6 +142,8 @@ export default function CrossingPathsMap({
         const isSelected = selectedSet.has(ship.shipId);
         const dimmed = hasSelection && !isSelected;
         const color = dimmed ? "#64748b" : colorForShip(ship.shipId);
+        const markerColor = dimmed ? "#94a3b8" : color;
+        const markerSize = dimmed ? 5 : isSelected ? 11 : 9;
         const polyline = ship.points.map((p) => [p.lat, p.lon] as [number, number]);
         return (
           <Fragment key={ship.shipId}>
@@ -172,7 +174,7 @@ export default function CrossingPathsMap({
               <Marker
                 key={`${ship.shipId}-pt-${idx}`}
                 position={[p.lat, p.lon]}
-                icon={triangleIcon(color, deg, isSelected ? 11 : 9)}
+                icon={triangleIcon(markerColor, deg, markerSize)}
                 eventHandlers={{ click: () => onToggleShip?.(ship.shipId) }}
               >
                 <Tooltip>

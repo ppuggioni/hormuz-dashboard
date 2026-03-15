@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-14T23:25:00Z",
+  "updatedAt": "2026-03-15T18:42:00Z",
   "profile": "hormuz-news",
   "notes": "MVP watchlist for Hormuz dashboard newsfeed. Future dedicated 6h agent should browse these sources with the hormuz-news browser profile, store only high-signal items, update data/news-seed-items.json or a future DB-backed store, then run npm run build:news.",
   "sources": [
@@ -59,6 +59,38 @@
       "url": "https://www.google.com/search?q=hormuz+shadow+fleet",
       "priority": 2,
       "tags": ["research", "search", "shadow-fleet", "last-24h"]
+    },
+    {
+      "id": "staunovo-x",
+      "type": "x_account",
+      "name": "staunovo",
+      "url": "https://x.com/staunovo",
+      "priority": 2,
+      "tags": ["x", "energy", "shipping", "market-commentary"]
+    },
+    {
+      "id": "hormuz-monitor-home",
+      "type": "website",
+      "name": "Hormuz Strait Monitor",
+      "url": "https://hormuzstraitmonitor.com/",
+      "priority": 2,
+      "tags": ["external-baseline", "hormuz", "analysis", "crisis-monitoring"]
+    },
+    {
+      "id": "hormuz-monitor-newsfeed",
+      "type": "website_section",
+      "name": "Hormuz Strait Monitor Newsfeed",
+      "url": "https://hormuzstraitmonitor.com/newsfeed/",
+      "priority": 2,
+      "tags": ["external-baseline", "newsfeed", "hormuz", "analysis"]
+    },
+    {
+      "id": "hormuz-monitor-crisis-timeline",
+      "type": "website_section",
+      "name": "Hormuz Strait Monitor Crisis Timeline",
+      "url": "https://hormuzstraitmonitor.com/crisis-timeline/",
+      "priority": 2,
+      "tags": ["external-baseline", "timeline", "hormuz", "crisis"]
     }
   ]
 }

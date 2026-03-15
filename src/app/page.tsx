@@ -1564,7 +1564,7 @@ export default function Page() {
           <p className="mt-3 text-xs text-slate-300">
             Tanker data is generally more reliable for our purposes because tankers are the vessels most likely to carry oil and gas. Cargo traffic is more frequent, but also a noisier signal.
           </p>
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-8 gap-3 text-sm">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
               <div className="text-xs text-emerald-200">Crossing Tankers (last 24h | baseline pre-war: 30/day each way)</div>
@@ -1597,6 +1597,26 @@ export default function Page() {
                 className="mt-2 rounded-md border border-cyan-300/60 px-2 py-1 text-[11px] text-cyan-100"
               >
                 Jump to Jask section
+              </button>
+            </div>
+            <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3 md:col-span-2">
+              <div className="text-xs text-fuchsia-200">News — last update</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-fuchsia-100">{newsFeed?.lastUpdateSummary?.headline || "No latest news summary yet"}</div>
+              <button
+                onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-fuchsia-300/60 px-2 py-1 text-[11px] text-fuchsia-100"
+              >
+                Jump to news section
+              </button>
+            </div>
+            <div className="rounded-xl border border-purple-300/60 bg-purple-500/10 p-3 md:col-span-2">
+              <div className="text-xs text-purple-200">News — last 24h</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-purple-100">{newsFeed?.last24hSummary?.headline || "No 24h news summary yet"}</div>
+              <button
+                onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-purple-300/60 px-2 py-1 text-[11px] text-purple-100"
+              >
+                Jump to news section
               </button>
             </div>
           </div>
@@ -2267,7 +2287,7 @@ export default function Page() {
           <p className="text-xs text-slate-400">This map shows trajectories for vessels that entered either Jask monitored area within the loaded monitoring window.</p>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <section id="newsfeed" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Newsfeed MVP</div>

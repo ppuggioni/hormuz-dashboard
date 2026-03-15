@@ -209,7 +209,6 @@ type DataShape = {
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
-const PortAreaPathsMap = dynamic(() => import("@/components/PortAreaPathsMap"), { ssr: false });
 
 function formatShipDisplayName(shipName: string, flag?: string | null) {
   const cleanName = String(shipName || "Unknown").trim() || "Unknown";
@@ -2613,20 +2612,6 @@ export default function Page() {
 
           </div>
 
-          <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
-            <PortAreaPathsMap
-              paths={jaskPaths}
-              centerLat={(jaskPortAnalytics.bounds.minLat + jaskFacilitiesAnalytics.bounds.maxLat) / 2}
-              centerLon={(jaskPortAnalytics.bounds.maxLon + jaskFacilitiesAnalytics.bounds.minLon) / 2}
-              minLat={jaskPortAnalytics.bounds.minLat}
-              maxLat={jaskPortAnalytics.bounds.maxLat}
-              minLon={jaskPortAnalytics.bounds.minLon}
-              maxLon={jaskPortAnalytics.bounds.maxLon}
-              title="Jask port area"
-              extraAreas={[{ ...jaskFacilitiesAnalytics.bounds, title: "Jask facilities area", color: "#38bdf8" }]}
-            />
-          </div>
-          <p className="text-xs text-slate-400">This map shows trajectories for vessels that entered either Jask monitored area within the loaded monitoring window.</p>
         </section>
 
         <section id="newsfeed" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">

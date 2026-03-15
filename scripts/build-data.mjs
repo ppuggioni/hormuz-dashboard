@@ -517,7 +517,6 @@ async function main() {
   const outDir = path.resolve('public/data');
   const prevCorePath = path.join(outDir, 'processed_core.json');
   const prevPathsPath = path.join(outDir, 'processed_paths.json');
-  const prevLegacyPath = path.join(outDir, 'processed.json');
 
   // Preserve "once crossed, always crossed" by merging previous crossing events/paths.
   let prevCrossingEvents = [];
@@ -529,11 +528,6 @@ async function main() {
   try {
     const prevPaths = JSON.parse(await fs.readFile(prevPathsPath, 'utf8'));
     prevCrossingPaths = prevPaths?.data?.crossingPaths || prevPaths?.crossingPaths || [];
-  } catch {}
-  try {
-    const prevLegacy = JSON.parse(await fs.readFile(prevLegacyPath, 'utf8'));
-    prevCrossingEvents = [...prevCrossingEvents, ...(prevLegacy?.crossingEvents || [])];
-    prevCrossingPaths = [...prevCrossingPaths, ...(prevLegacy?.crossingPaths || [])];
   } catch {}
 
   const crossingEventKey = (e) => `${e.shipId}|${e.direction}|${e.t}`;
@@ -693,10 +687,7 @@ async function main() {
     await fs.rename(tmpPath, finalPath);
   }
 
-  // Legacy monolith (kept for compatibility during migration)
-  await writeJson('processed.json', output);
-
-  // New split outputs
+  // Split outputs only
   await writeJson(
     'processed_core.json',
     wrap(
@@ -755,7 +746,7 @@ async function main() {
     );
   }
 
-  console.log('Wrote public/data/processed.json + split v2 files');
+  console.log('Wrote public/data split v2 files');
 }
 
 main().catch((err) => {

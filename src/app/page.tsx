@@ -626,8 +626,7 @@ export default function Page() {
   const latestGeneratedAtRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
-    const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "/data";
     const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
 
     const fetchJson = async (url: string) => {
@@ -669,8 +668,6 @@ export default function Page() {
         const core = await fetchJson(`${root}/processed_core.json`);
         const paths = await fetchJson(`${root}/processed_paths.json`);
         const playback24 = await fetchJson(`${root}/processed_playback_24h.json`);
-        const playback72 = await fetchJson(`${root}/processed_playback_72h.json`);
-        const playbackAll = await fetchJson(`${root}/processed_playback_all.json`);
         const shipmeta24 = await fetchJson(`${root}/processed_shipmeta_24h.json`);
 
         const normalized: DataShape = {
@@ -696,57 +693,16 @@ export default function Page() {
 
         setSplitMode(true);
         setData(normalized);
-        setCandidateSnapshots(Array.isArray(playback72?.data?.snapshots) ? playback72.data.snapshots : normalized.snapshots);
-        setCandidateAllSnapshots(Array.isArray(playbackAll?.data?.snapshots) ? playbackAll.data.snapshots : (Array.isArray(playback72?.data?.snapshots) ? playback72.data.snapshots : normalized.snapshots));
+        setCandidateSnapshots(normalized.snapshots);
+        setCandidateAllSnapshots(normalized.snapshots);
         setExternalPoints([]);
         const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
         setSelectedTypes(defaults);
         setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
         return;
-      } catch {
-        // fallback to legacy monolith
+      } catch (err) {
+        console.error("Failed to load split dashboard artifacts", err);
       }
-
-      let json: any = null;
-      try {
-        json = await fetchJson(remoteBase);
-      } catch {
-        try {
-          json = await fetchJson('/data/processed.json');
-        } catch {
-          json = null;
-        }
-      }
-
-      const normalized: DataShape = {
-        metadata: json?.metadata || {
-          generatedAt: new Date().toISOString(),
-          eastLon: 56.4,
-          westLon: 56.15,
-          minLat: 24,
-          fileCount: 0,
-          shipCount: 0,
-          crossingShipCount: 0,
-          crossingEventCount: 0,
-        },
-        vesselTypes: Array.isArray(json?.vesselTypes) ? json.vesselTypes : [],
-        shipMeta: json?.shipMeta || {},
-        snapshots: Array.isArray(json?.snapshots) ? json.snapshots : [],
-        crossingsByHour: Array.isArray(json?.crossingsByHour) ? json.crossingsByHour : [],
-        crossingEvents: Array.isArray(json?.crossingEvents) ? json.crossingEvents : [],
-        crossingPaths: Array.isArray(json?.crossingPaths) ? json.crossingPaths : [],
-        linkageEvents: Array.isArray(json?.linkageEvents) ? json.linkageEvents : [],
-        externalPresencePoints: Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : [],
-      };
-
-      setSplitMode(false);
-      setData(normalized);
-      setCandidateSnapshots(Array.isArray(normalized.snapshots) ? normalized.snapshots : []);
-      setCandidateAllSnapshots(Array.isArray(normalized.snapshots) ? normalized.snapshots : []);
-      setExternalPoints(Array.isArray(json?.externalPresencePoints) ? json.externalPresencePoints : []);
-      const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
-      setSelectedTypes(defaults);
-      setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
     };
 
     load();
@@ -777,8 +733,7 @@ export default function Page() {
     const isIdle = () => Date.now() - interactionAtRef.current > 120000;
 
     const checkForFreshData = async () => {
-      const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
-      const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+      const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "/data";
       try {
         const r = await fetch(`${root}/processed_core.json?t=${Date.now()}`);
         if (r.ok) {
@@ -824,8 +779,7 @@ export default function Page() {
 
   useEffect(() => {
     if (!splitMode || !data) return;
-    const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
-    const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "/data";
 
     const fetchJsonMaybeGzip = async (url: string) => {
       const r = await fetch(`${url}?t=${Date.now()}`);
@@ -1533,7 +1487,7 @@ export default function Page() {
               Last ingested: {new Date(lastIngestedAt).toUTCString()}
             </div>
             <button
-              onClick={() => alert(`Data source mode: ${splitMode ? "split-v2 files" : "legacy processed.json"}`)}
+              onClick={() => alert(`Data source mode: split-v2 files`)}
               className={`inline-flex items-center rounded-full border px-3 py-1 ${splitMode ? "border-cyan-400/40 bg-cyan-500/10 text-cyan-200" : "border-amber-400/40 bg-amber-500/10 text-amber-200"}`}
               title="Click to show data source mode"
             >

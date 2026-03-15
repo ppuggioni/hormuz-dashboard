@@ -1,5 +1,6 @@
 # Live Run Report
 
-- New items added: 0
-- Key takeaway: Recheck found no genuinely new high-signal items worth adding; the operating picture still points to thin compliant Hormuz traffic, resilient Iran-linked liftings, and noisy visibility from AIS-off/spoofing interference rather than a changed flow regime.
-- build:news succeeded: yes
+- New items added: 2
+- Key takeaway: the freshest actionable shift is from a simple traffic freeze toward selective, politically negotiated passage for some cargoes, while escorts and public insurance are emerging as partial enablers rather than a full normalization signal.
+- build:news: succeeded
+- upload to Supabase: succeeded

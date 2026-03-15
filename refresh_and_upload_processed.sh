@@ -7,7 +7,6 @@ LOG="$WORKROOT/hormuz_processed_remote.log"
 OUT_DIR="$ROOT/public/data"
 BUCKET="x-scrapes-public"
 OBJECTS=(
-  "processed.json"
   "processed_core.json"
   "processed_paths.json"
   "processed_playback_24h.json"
@@ -42,8 +41,8 @@ API_BASE="${SUPABASE_URL%/}/storage/v1"
   cd "$ROOT"
   npm run -s build:data
 
-  if [[ ! -f "$OUT_DIR/processed.json" ]]; then
-    echo "processed.json missing after build"
+  if [[ ! -f "$OUT_DIR/processed_core.json" ]]; then
+    echo "processed_core.json missing after build"
     exit 1
   fi
 

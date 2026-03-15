@@ -1,21 +1,21 @@
 {
   "metadata": {
-    "generatedAt": "2026-03-15T00:30:51.580Z",
+    "generatedAt": "2026-03-15T01:10:55.233Z",
     "profile": "hormuz-news",
     "sourceCount": 7,
-    "itemCount": 7,
-    "lastRunAt": "2026-03-15T00:00:00Z",
-    "newItemCount": 7
+    "itemCount": 9,
+    "lastRunAt": "2026-03-15T00:43:00Z",
+    "newItemCount": 2
   },
   "lastUpdateSummary": {
-    "headline": "Iran-linked and shadow-fleet movements remain the clearest flows still moving through Hormuz.",
-    "body": "The newest collected items point to the same pattern from different angles: MarineTraffic sees only 15 laden liquid tankers over the late-February to mid-March period, Lloyd's List says shadow tonnage made up roughly half of early-March tanker and gas-carrier transits above 10,000 dwt, and TankerTrackers reports that Kharg storage remained intact with two NITC tankers loading 2.7 million barrels on 14 March. The freshest operational colour is that visibility remains impaired by AIS-off behavior, GNSS interference and recent strike reporting, which means sparse observed traffic does not necessarily imply a simple full stop in movement.",
-    "generatedAt": "2026-03-15T00:00:00Z"
+    "headline": "Two new operating signals point to passage becoming negotiated and war-risk support becoming more explicit.",
+    "body": "This pass found two genuinely new and dashboard-relevant developments beyond the existing history set. First, reporting on two India-operated LPG carriers clearing Hormuz after Iranian approval suggests that some movements are now being decided case by case through nationality, operator and diplomatic channels rather than broad commercial reopening. Second, maritime reporting on Washington's push for tanker escorts and state-backed maritime insurance clarifies that insurance and naval cover are moving closer to policy tools, but that shipowner risk tolerance is still likely to remain selective rather than restoring normal flows quickly.",
+    "generatedAt": "2026-03-15T00:43:00Z"
   },
   "last24hSummary": {
-    "headline": "Over the last day, sources converged on sharply reduced compliant traffic, resilient Iranian export activity, and rising navigational opacity.",
-    "body": "Across the last 24 hours of collected material, the strongest signals are a deep drop in standard tanker traffic, continued Iranian or Iran-linked crude liftings, and a heavier role for shadow-fleet or restricted-trade behavior. The most useful figures in that set are MarineTraffic's 15 laden liquid tankers for the 28 February-12 March window, Kpler's roughly 92% drop in tanker transits versus the prior week, and TankerTrackers' 2.7 million barrels loading on two NITC tankers after strikes on Kharg.",
-    "generatedAt": "2026-03-15T00:00:00Z"
+    "headline": "Over the last 24 hours, the freshest shift is from pure closure language toward selective access, escorts and negotiated passage.",
+    "body": "The cross-source picture still shows thin compliant traffic, strong shadow-fleet or Iran-linked activity, and degraded visibility from AIS-off behavior or interference. What changed in this run is the emergence of a more political operating pattern: India-linked LPG cargoes reportedly cleared Hormuz under an exceptional arrangement, while US-backed escort and maritime-insurance proposals are being framed as ways to push some traffic back into the corridor. For the dashboard, that means the next meaningful movements may depend less on nominal market demand and more on flag, operator, cargo sensitivity, and access to state protection or diplomatic clearance.",
+    "generatedAt": "2026-03-15T00:43:00Z"
   },
   "sources": [
     {
@@ -129,8 +129,8 @@
         "refined-products"
       ],
       "figureNote": "The useful number here is the lost inflow into Southeast Asia, which turns a crossings story into a demand-side stress story.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     },
     {
       "id": "live-tankertrackers-x",
@@ -155,8 +155,8 @@
         "iranian-exports"
       ],
       "figureNote": "The most useful hard figure here is the 2.7 million barrels loading across two NITC tankers, which helps explain why Iranian-linked flows can stay resilient while compliant traffic remains thin.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     },
     {
       "id": "live-lloyds-shadow-fleet",
@@ -179,8 +179,8 @@
         "gnss"
       ],
       "figureNote": "Jask loadings are operationally slow, but their reappearance is a specific clue for interpreting eastbound tanker movements near southern Iran.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     },
     {
       "id": "live-kpler-charterers",
@@ -205,8 +205,8 @@
         "war-risk"
       ],
       "figureNote": "The headline number is the 92% collapse in tanker transits versus the prior week, paired with large volumes of trapped or idle Gulf tonnage.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     },
     {
       "id": "live-google-research",
@@ -229,8 +229,60 @@
         "attacks"
       ],
       "figureNote": "The operational takeaway is that crossing counts should be read alongside interference and waiting-fleet conditions, not as a perfect census of all movement.",
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
+    },
+    {
+      "id": "live-google-research-india-lpg-passage",
+      "canonicalUrl": "https://gcaptain.com/indias-tanker-escape-rare-hormuz-passage-signals-new-political-reality-for-global-shipping/",
+      "url": "https://gcaptain.com/indias-tanker-escape-rare-hormuz-passage-signals-new-political-reality-for-global-shipping/",
+      "title": "India-operated LPG carriers clear Hormuz under rare Iran-approved arrangement",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-15T00:43:00Z",
+      "lastSeenAt": "2026-03-15T00:43:00Z",
+      "summary": "gCaptain, citing Reuters reporting, says the LPG carriers Shivalik and Nanda Devi, both operated by Shipping Corporation of India, were allowed through Hormuz after high-level India-Iran contacts. That is useful for the dashboard because it suggests passage is no longer simply open or shut: selected cargoes can still move when nationality, operator profile and diplomatic leverage line up, implying that future counts may hinge on negotiated access rather than a broad return of commercial confidence.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "india",
+        "lpg",
+        "escort",
+        "diplomacy"
+      ],
+      "figureNote": "India consumes more than 30 million tonnes of cooking gas a year, with about 60% imported and roughly 90% of those imports sourced from the Middle East, which helps explain why even a small number of cleared LPG passages can matter operationally.",
       "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "lastRunAt": "2026-03-15T00:43:00Z"
+    },
+    {
+      "id": "live-google-research-escort-insurance",
+      "canonicalUrl": "https://www.rivieramm.com/news-content-hub/trump-directs-us-government-to-sell-maritime-insurance-escort-vessels-through-strait-of-hormuz-if-necessary-88009",
+      "url": "https://www.rivieramm.com/news-content-hub/trump-directs-us-government-to-sell-maritime-insurance-escort-vessels-through-strait-of-hormuz-if-necessary-88009",
+      "title": "Escort and maritime-insurance plans move closer to being active routing variables",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-15T00:43:00Z",
+      "lastSeenAt": "2026-03-15T00:43:00Z",
+      "summary": "Riviera reports that the US administration is explicitly pairing possible naval escorts with maritime-insurance support for Hormuz transits, while Bimco argues escorts could reduce threat for some ships but cannot realistically cover all tanker demand in the current threat environment. For the dashboard, the main implication is that any recovery in compliant traffic may arrive unevenly by operator and risk appetite, with state-backed cover helping a subset of voyages rather than restoring normal volumes across the board.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "insurance",
+        "escort",
+        "bimco",
+        "risk"
+      ],
+      "figureNote": "The operational point is not a single transit count but the widening split between ships that may re-enter under escort or public backstop and the larger pool of owners still likely to stand off outside the Gulf.",
+      "isNew": true,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     },
     {
       "id": "live-marinetraffic-x",
@@ -253,8 +305,8 @@
         "restricted-trade"
       ],
       "figureNote": "The useful quantitative anchor here is the 15-laden-tanker count over the period, which gives a very sparse baseline for comparing dashboard-observed crossings.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     },
     {
       "id": "live-lloyds-daily-briefing",
@@ -277,8 +329,8 @@
         "detours"
       ],
       "figureNote": null,
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:00:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-15T00:43:00Z"
     }
   ]
 }

@@ -1,23 +1,18 @@
 {
   "version": 1,
-  "runAt": "2026-03-15T00:00:00Z",
+  "runAt": "2026-03-15T00:43:00Z",
   "lastUpdateSummary": {
-    "headline": "Iran-linked and shadow-fleet movements remain the clearest flows still moving through Hormuz.",
-    "body": "The newest collected items point to the same pattern from different angles: MarineTraffic sees only 15 laden liquid tankers over the late-February to mid-March period, Lloyd's List says shadow tonnage made up roughly half of early-March tanker and gas-carrier transits above 10,000 dwt, and TankerTrackers reports that Kharg storage remained intact with two NITC tankers loading 2.7 million barrels on 14 March. The freshest operational colour is that visibility remains impaired by AIS-off behavior, GNSS interference and recent strike reporting, which means sparse observed traffic does not necessarily imply a simple full stop in movement.",
-    "generatedAt": "2026-03-15T00:00:00Z"
+    "headline": "Two new operating signals point to passage becoming negotiated and war-risk support becoming more explicit.",
+    "body": "This pass found two genuinely new and dashboard-relevant developments beyond the existing history set. First, reporting on two India-operated LPG carriers clearing Hormuz after Iranian approval suggests that some movements are now being decided case by case through nationality, operator and diplomatic channels rather than broad commercial reopening. Second, maritime reporting on Washington's push for tanker escorts and state-backed maritime insurance clarifies that insurance and naval cover are moving closer to policy tools, but that shipowner risk tolerance is still likely to remain selective rather than restoring normal flows quickly.",
+    "generatedAt": "2026-03-15T00:43:00Z"
   },
   "last24hSummary": {
-    "headline": "Over the last day, sources converged on sharply reduced compliant traffic, resilient Iranian export activity, and rising navigational opacity.",
-    "body": "Across the last 24 hours of collected material, the strongest signals are a deep drop in standard tanker traffic, continued Iranian or Iran-linked crude liftings, and a heavier role for shadow-fleet or restricted-trade behavior. The most useful figures in that set are MarineTraffic's 15 laden liquid tankers for the 28 February-12 March window, Kpler's roughly 92% drop in tanker transits versus the prior week, and TankerTrackers' 2.7 million barrels loading on two NITC tankers after strikes on Kharg.",
-    "generatedAt": "2026-03-15T00:00:00Z"
+    "headline": "Over the last 24 hours, the freshest shift is from pure closure language toward selective access, escorts and negotiated passage.",
+    "body": "The cross-source picture still shows thin compliant traffic, strong shadow-fleet or Iran-linked activity, and degraded visibility from AIS-off behavior or interference. What changed in this run is the emergence of a more political operating pattern: India-linked LPG cargoes reportedly cleared Hormuz under an exceptional arrangement, while US-backed escort and maritime-insurance proposals are being framed as ways to push some traffic back into the corridor. For the dashboard, that means the next meaningful movements may depend less on nominal market demand and more on flag, operator, cargo sensitivity, and access to state protection or diplomatic clearance.",
+    "generatedAt": "2026-03-15T00:43:00Z"
   },
   "newItems": [
-    "live-marinetraffic-x",
-    "live-lloyds-shadow-fleet",
-    "live-tankertrackers-x",
-    "live-kpler-charterers",
-    "live-kpler-x",
-    "live-google-research",
-    "live-lloyds-daily-briefing"
+    "live-google-research-india-lpg-passage",
+    "live-google-research-escort-insurance"
   ]
 }

@@ -92,6 +92,46 @@
       "figureNote": "The operational takeaway is that crossing counts should be read alongside interference and waiting-fleet conditions, not as a perfect census of all movement."
     },
     {
+      "id": "live-google-research-india-lpg-passage",
+      "canonicalUrl": "https://gcaptain.com/indias-tanker-escape-rare-hormuz-passage-signals-new-political-reality-for-global-shipping/",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-15T00:43:00Z",
+      "lastSeenAt": "2026-03-15T00:43:00Z",
+      "title": "India-operated LPG carriers clear Hormuz under rare Iran-approved arrangement",
+      "summary": "gCaptain, citing Reuters reporting, says the LPG carriers Shivalik and Nanda Devi, both operated by Shipping Corporation of India, were allowed through Hormuz after high-level India-Iran contacts. That is useful for the dashboard because it suggests passage is no longer simply open or shut: selected cargoes can still move when nationality, operator profile and diplomatic leverage line up, implying that future counts may hinge on negotiated access rather than a broad return of commercial confidence.",
+      "tags": [
+        "research",
+        "india",
+        "lpg",
+        "escort",
+        "diplomacy"
+      ],
+      "figureNote": "India consumes more than 30 million tonnes of cooking gas a year, with about 60% imported and roughly 90% of those imports sourced from the Middle East, which helps explain why even a small number of cleared LPG passages can matter operationally."
+    },
+    {
+      "id": "live-google-research-escort-insurance",
+      "canonicalUrl": "https://www.rivieramm.com/news-content-hub/trump-directs-us-government-to-sell-maritime-insurance-escort-vessels-through-strait-of-hormuz-if-necessary-88009",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-15T00:43:00Z",
+      "lastSeenAt": "2026-03-15T00:43:00Z",
+      "title": "Escort and maritime-insurance plans move closer to being active routing variables",
+      "summary": "Riviera reports that the US administration is explicitly pairing possible naval escorts with maritime-insurance support for Hormuz transits, while Bimco argues escorts could reduce threat for some ships but cannot realistically cover all tanker demand in the current threat environment. For the dashboard, the main implication is that any recovery in compliant traffic may arrive unevenly by operator and risk appetite, with state-backed cover helping a subset of voyages rather than restoring normal volumes across the board.",
+      "tags": [
+        "research",
+        "insurance",
+        "escort",
+        "bimco",
+        "risk"
+      ],
+      "figureNote": "The operational point is not a single transit count but the widening split between ships that may re-enter under escort or public backstop and the larger pool of owners still likely to stand off outside the Gulf."
+    },
+    {
       "id": "live-marinetraffic-x",
       "canonicalUrl": "https://x.com/MarineTraffic/status/2032502230524305463",
       "sourceId": "marinetraffic-x",

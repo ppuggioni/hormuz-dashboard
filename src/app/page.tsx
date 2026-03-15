@@ -262,18 +262,84 @@ function buildReadableTicks(hours: string[]) {
   return ticks;
 }
 
-function aggregateToSixHourBins(rows: CrossingHour[]) {
+function aggregateToDailyBins(rows: CrossingHour[]) {
   const out = new Map<string, CrossingHour>();
   for (const r of rows) {
     const d = new Date(r.hour);
-    d.setUTCMinutes(0, 0, 0);
-    d.setUTCHours(Math.floor(d.getUTCHours() / 6) * 6);
+    d.setUTCHours(0, 0, 0, 0);
     const key = d.toISOString();
     if (!out.has(key)) out.set(key, { hour: key, east_to_west: 0, west_to_east: 0 });
     out.get(key)!.east_to_west += r.east_to_west;
     out.get(key)!.west_to_east += r.west_to_east;
   }
   return [...out.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
+}
+
+function isSameUtcDay(ts: string, dayStartIso: string) {
+  const a = new Date(ts);
+  const b = new Date(dayStartIso);
+  return a.getUTCFullYear() === b.getUTCFullYear()
+    && a.getUTCMonth() === b.getUTCMonth()
+    && a.getUTCDate() === b.getUTCDate();
+}
+
+function formatDayTick(iso: string) {
+  const d = new Date(iso);
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}`;
+}
+
+function formatUtcTime(iso: string) {
+  const d = new Date(iso);
+  const hour = String(d.getUTCHours()).padStart(2, "0");
+  const minute = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${hour}:${minute} UTC`;
+}
+
+function DailyCrossingsTooltip({
+  active,
+  label,
+  payload,
+  rows,
+  shipMeta,
+}: {
+  active?: boolean;
+  label?: string;
+  payload?: ReadonlyArray<{ value?: number; name?: string; color?: string }>;
+  rows: { shipName: string; shipId: string; direction: string; t: string }[];
+  shipMeta?: Record<string, ShipMeta>;
+}) {
+  if (!active || !label) return null;
+  return (
+    <div className="max-w-[420px] rounded border border-slate-700 bg-slate-950/95 p-3 text-xs text-slate-100 shadow-xl">
+      <div className="font-semibold">{new Date(label).toUTCString()}</div>
+      {!!payload?.length && (
+        <div className="mt-2 space-y-1">
+          {payload.map((item) => (
+            <div key={item.name} className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.color || "#94a3b8" }} />
+              <span>{item.name}: {item.value ?? 0}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 border-t border-slate-800 pt-2">
+        <div className="mb-1 font-medium text-slate-200">Crossings that day</div>
+        {rows.length ? (
+          <ul className="max-h-56 space-y-1 overflow-auto pr-1 text-slate-200">
+            {rows.map((r, idx) => (
+              <li key={`${r.shipId}-${r.t}-${idx}`}>
+                {formatShipDisplayName(r.shipName, shipMeta?.[r.shipId]?.flag)} — {formatUtcTime(r.t)} — {r.direction.replace("_to_", " → ")}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-slate-400">No crossings that day.</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -955,33 +1021,29 @@ export default function Page() {
 
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
-  const tankerSixHour = useMemo(() => aggregateToSixHourBins(tankerHourlyAligned), [tankerHourlyAligned]);
-  const cargoSixHour = useMemo(() => aggregateToSixHourBins(cargoHourlyAligned), [cargoHourlyAligned]);
+  const tankerDaily = useMemo(() => aggregateToDailyBins(tankerHourlyAligned), [tankerHourlyAligned]);
+  const cargoDaily = useMemo(() => aggregateToDailyBins(cargoHourlyAligned), [cargoHourlyAligned]);
   const jaskTankerHourlyAligned = useMemo(() => alignHours(jaskTankerHourly, sharedHours), [jaskTankerHourly, sharedHours]);
   const jaskCargoHourlyAligned = useMemo(() => alignHours(jaskCargoHourly, sharedHours), [jaskCargoHourly, sharedHours]);
-  const jaskTankerSixHour = useMemo(() => aggregateToSixHourBins(jaskTankerHourlyAligned), [jaskTankerHourlyAligned]);
-  const jaskCargoSixHour = useMemo(() => aggregateToSixHourBins(jaskCargoHourlyAligned), [jaskCargoHourlyAligned]);
-  const chartTicks = useMemo(() => buildReadableTicks(tankerSixHour.map((x) => x.hour)), [tankerSixHour]);
-  const jaskChartTicks = useMemo(() => buildReadableTicks(jaskTankerSixHour.map((x) => x.hour)), [jaskTankerSixHour]);
+  const jaskTankerSixHour = useMemo(() => aggregateToDailyBins(jaskTankerHourlyAligned), [jaskTankerHourlyAligned]);
+  const jaskCargoSixHour = useMemo(() => aggregateToDailyBins(jaskCargoHourlyAligned), [jaskCargoHourlyAligned]);
+  const chartTicks = useMemo(() => tankerDaily.map((x) => x.hour), [tankerDaily]);
+  const jaskChartTicks = useMemo(() => jaskTankerSixHour.map((x) => x.hour), [jaskTankerSixHour]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
-    if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string }[];
-    const rows = data.crossingEvents
-      .filter((e) => e.hour === selectedTankerHour && e.vesselType === "tanker")
-      .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction }));
-    const uniq = new Map<string, { shipName: string; shipId: string; direction: string }>();
-    for (const r of rows) uniq.set(`${r.shipId}-${r.direction}`, r);
-    return [...uniq.values()].sort((a, b) => a.shipName.localeCompare(b.shipName));
+    if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
+    return data.crossingEvents
+      .filter((e) => e.vesselType === "tanker" && isSameUtcDay(e.t, selectedTankerHour))
+      .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
+      .sort((a, b) => +new Date(a.t) - +new Date(b.t));
   }, [data, selectedTankerHour]);
 
   const cargoNamesAtSelectedHour = useMemo(() => {
-    if (!data || !selectedCargoHour) return [] as { shipName: string; shipId: string; direction: string }[];
-    const rows = data.crossingEvents
-      .filter((e) => e.hour === selectedCargoHour && e.vesselType === "cargo")
-      .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction }));
-    const uniq = new Map<string, { shipName: string; shipId: string; direction: string }>();
-    for (const r of rows) uniq.set(`${r.shipId}-${r.direction}`, r);
-    return [...uniq.values()].sort((a, b) => a.shipName.localeCompare(b.shipName));
+    if (!data || !selectedCargoHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
+    return data.crossingEvents
+      .filter((e) => e.vesselType === "cargo" && isSameUtcDay(e.t, selectedCargoHour))
+      .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
+      .sort((a, b) => +new Date(a.t) - +new Date(b.t));
   }, [data, selectedCargoHour]);
 
   const jaskTankerNamesAtSelectedHour = useMemo(() => {
@@ -1020,7 +1082,7 @@ export default function Page() {
       }
       return true;
     });
-    const filtered = selectedTankerHour ? rows.filter((e) => e.hour === selectedTankerHour) : rows;
+    const filtered = selectedTankerHour ? rows.filter((e) => isSameUtcDay(e.t, selectedTankerHour)) : rows;
     return [...filtered].sort((a, b) => {
       if (tankerSort.key === "ship") {
         const cmp = a.shipName.localeCompare(b.shipName);
@@ -1051,7 +1113,7 @@ export default function Page() {
       }
       return true;
     });
-    const filtered = selectedCargoHour ? rows.filter((e) => e.hour === selectedCargoHour) : rows;
+    const filtered = selectedCargoHour ? rows.filter((e) => isSameUtcDay(e.t, selectedCargoHour)) : rows;
     return [...filtered].sort((a, b) => {
       if (cargoSort.key === "ship") {
         const cmp = a.shipName.localeCompare(b.shipName);
@@ -1816,11 +1878,11 @@ export default function Page() {
             <button onClick={() => setShowWestToEast((v) => !v)} className={`px-2 py-1 rounded border ${showWestToEast ? "border-orange-300 text-orange-200" : "border-slate-700 text-slate-500"}`}>West → East</button>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 className="text-lg font-medium mb-3">Crossings in 6-hour bins — Tanker</h2>
+            <h2 className="text-lg font-medium mb-3">Crossings in daily bins — Tanker</h2>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={tankerSixHour}
+                  data={tankerDaily}
                   onClick={(state: any) => {
                     if (state?.activeLabel) setSelectedTankerHour(state.activeLabel as string);
                   }}
@@ -1829,7 +1891,7 @@ export default function Page() {
                   <XAxis
                     dataKey="hour"
                     ticks={chartTicks}
-                    tickFormatter={(v) => formatHourTick(v as string)}
+                    tickFormatter={(v) => formatDayTick(v as string)}
                     minTickGap={40}
                     angle={-35}
                     textAnchor="end"
@@ -1838,7 +1900,20 @@ export default function Page() {
                     stroke="#94a3b8"
                   />
                   <YAxis stroke="#94a3b8" />
-                  <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
+                  <Tooltip
+                    content={(props) => (
+                      <DailyCrossingsTooltip
+                        active={props.active}
+                        label={props.label as string | undefined}
+                        payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
+                        rows={data?.crossingEvents
+                          ?.filter((e) => e.vesselType === "tanker" && props.label && isSameUtcDay(e.t, props.label as string))
+                          .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
+                          .sort((a, b) => +new Date(a.t) - +new Date(b.t)) || []}
+                        shipMeta={data?.shipMeta}
+                      />
+                    )}
+                  />
                   <Legend />
                   {showEastToWest ? <Bar dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
                   {showWestToEast ? <Bar dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
@@ -1847,17 +1922,17 @@ export default function Page() {
             </div>
             <div className="mt-3 text-xs text-slate-300">
               <div className="font-medium text-slate-200">
-                {selectedTankerHour ? `Clicked hour: ${new Date(selectedTankerHour).toUTCString()}` : "Click a tanker bar to list ship names"}
+                {selectedTankerHour ? `Clicked day: ${new Date(selectedTankerHour).toUTCString()}` : "Click a tanker bar to list that day's crossings"}
               </div>
               {selectedTankerHour ? (
                 tankerNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
-                    {tankerNamesAtSelectedHour.map((r) => (
-                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
+                    {tankerNamesAtSelectedHour.map((r, idx) => (
+                      <li key={`${r.shipId}-${r.t}-${idx}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a> — {formatUtcTime(r.t)} — {r.direction.replace("_to_", " → ")}</li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="mt-2 text-slate-400">No tanker crossings in this hour.</div>
+                  <div className="mt-2 text-slate-400">No tanker crossings that day.</div>
                 )
               ) : null}
             </div>
@@ -1896,11 +1971,11 @@ export default function Page() {
             </div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 className="text-lg font-medium mb-3">Crossings in 6-hour bins — Cargo</h2>
+            <h2 className="text-lg font-medium mb-3">Crossings in daily bins — Cargo</h2>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={cargoSixHour}
+                  data={cargoDaily}
                   onClick={(state: any) => {
                     if (state?.activeLabel) setSelectedCargoHour(state.activeLabel as string);
                   }}
@@ -1909,7 +1984,7 @@ export default function Page() {
                   <XAxis
                     dataKey="hour"
                     ticks={chartTicks}
-                    tickFormatter={(v) => formatHourTick(v as string)}
+                    tickFormatter={(v) => formatDayTick(v as string)}
                     minTickGap={40}
                     angle={-35}
                     textAnchor="end"
@@ -1918,7 +1993,20 @@ export default function Page() {
                     stroke="#94a3b8"
                   />
                   <YAxis stroke="#94a3b8" />
-                  <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
+                  <Tooltip
+                    content={(props) => (
+                      <DailyCrossingsTooltip
+                        active={props.active}
+                        label={props.label as string | undefined}
+                        payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
+                        rows={data?.crossingEvents
+                          ?.filter((e) => e.vesselType === "cargo" && props.label && isSameUtcDay(e.t, props.label as string))
+                          .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
+                          .sort((a, b) => +new Date(a.t) - +new Date(b.t)) || []}
+                        shipMeta={data?.shipMeta}
+                      />
+                    )}
+                  />
                   <Legend />
                   {showEastToWest ? <Bar dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
                   {showWestToEast ? <Bar dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
@@ -1927,17 +2015,17 @@ export default function Page() {
             </div>
             <div className="mt-3 text-xs text-slate-300">
               <div className="font-medium text-slate-200">
-                {selectedCargoHour ? `Clicked hour: ${new Date(selectedCargoHour).toUTCString()}` : "Click a cargo bar to list ship names"}
+                {selectedCargoHour ? `Clicked day: ${new Date(selectedCargoHour).toUTCString()}` : "Click a cargo bar to list that day's crossings"}
               </div>
               {selectedCargoHour ? (
                 cargoNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
-                    {cargoNamesAtSelectedHour.map((r) => (
-                      <li key={`${r.shipId}-${r.direction}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a> — {r.direction.replace("_to_", " → ")}</li>
+                    {cargoNamesAtSelectedHour.map((r, idx) => (
+                      <li key={`${r.shipId}-${r.t}-${idx}`}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a> — {formatUtcTime(r.t)} — {r.direction.replace("_to_", " → ")}</li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="mt-2 text-slate-400">No cargo crossings in this hour.</div>
+                  <div className="mt-2 text-slate-400">No cargo crossings that day.</div>
                 )
               ) : null}
             </div>

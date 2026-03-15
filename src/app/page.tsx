@@ -630,6 +630,7 @@ export default function Page() {
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const candidateDefaultsAppliedRef = useRef(false);
+  const crossingDefaultsAppliedRef = useRef(false);
   const interactionAtRef = useRef<number>(Date.now());
   const mountedAtRef = useRef<number>(Date.now());
   const latestGeneratedAtRef = useRef<string | null>(null);
@@ -1012,7 +1013,6 @@ export default function Page() {
     const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
     const rows = (data.crossingEvents || []).filter((e) => {
       if (e.vesselType !== "tanker") return false;
-      if (!crossingMapTypes.includes(e.vesselType)) return false;
       if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
       if (cutoff != null) {
         const ts = +new Date(e.t);
@@ -1033,7 +1033,7 @@ export default function Page() {
       const cmp = +new Date(a.t) - +new Date(b.t);
       return tankerSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [data, selectedTankerHour, tankerSort, crossingWindow, crossingMapTypes, crossingDirectionFilter]);
+  }, [data, selectedTankerHour, tankerSort, crossingWindow, crossingDirectionFilter]);
 
   const cargoTableRows = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
@@ -1044,7 +1044,6 @@ export default function Page() {
     const cutoff = tableWindowHours == null ? null : latestTs - tableWindowHours * 60 * 60 * 1000;
     const rows = (data.crossingEvents || []).filter((e) => {
       if (e.vesselType !== "cargo") return false;
-      if (!crossingMapTypes.includes(e.vesselType)) return false;
       if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
       if (cutoff != null) {
         const ts = +new Date(e.t);
@@ -1065,7 +1064,7 @@ export default function Page() {
       const cmp = +new Date(a.t) - +new Date(b.t);
       return cargoSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [data, selectedCargoHour, cargoSort, crossingWindow, crossingMapTypes, crossingDirectionFilter]);
+  }, [data, selectedCargoHour, cargoSort, crossingWindow, crossingDirectionFilter]);
 
   const jaskTankerTableRows = useMemo(() => {
     const rows = jaskEvents.filter((e) => e.vesselType === "tanker");
@@ -1124,6 +1123,35 @@ export default function Page() {
       return true;
     });
   }, [data, crossingMapTypes, crossingDirectionFilter, crossingWindowHours]);
+
+  useEffect(() => {
+    if (!data?.crossingEvents?.length) return;
+    const latestTs = data.snapshots?.length
+      ? +new Date(data.snapshots[data.snapshots.length - 1].t)
+      : +new Date(data.metadata.generatedAt);
+    const cutoff24 = latestTs - 24 * 60 * 60 * 1000;
+    const last24hIds = [...new Set((data.crossingEvents || [])
+      .filter((e) => {
+        if (!crossingMapTypes.includes(e.vesselType)) return false;
+        if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
+        const ts = +new Date(e.t);
+        return ts >= cutoff24 && ts <= latestTs;
+      })
+      .map((e) => e.shipId))];
+
+    if (!crossingDefaultsAppliedRef.current) {
+      setSelectedCrossingShipIds(last24hIds);
+      crossingDefaultsAppliedRef.current = true;
+      return;
+    }
+
+    setSelectedCrossingShipIds((prev) => {
+      const valid = new Set((data.crossingEvents || []).map((e) => e.shipId));
+      const stillValid = prev.filter((id) => valid.has(id));
+      if (stillValid.length === 0 && last24hIds.length) return last24hIds;
+      return stillValid;
+    });
+  }, [data, crossingMapTypes, crossingDirectionFilter]);
 
   const filteredCrossingPathsForMap = useMemo(() => {
     if (!data) return [] as CrossingPath[];
@@ -1952,7 +1980,7 @@ export default function Page() {
             <button onClick={() => setCrossingDirectionFilter("all")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "all" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>all crossings</button>
             <button onClick={() => setCrossingDirectionFilter("east_to_west")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "east_to_west" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>east → west</button>
             <button onClick={() => setCrossingDirectionFilter("west_to_east")} className={`px-2 py-1 rounded border ${crossingDirectionFilter === "west_to_east" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}>west → east</button>
-            {(["24h", "48h"] as const).map((w) => (
+            {(["24h", "48h", "all"] as const).map((w) => (
               <button key={w} onClick={() => setCrossingWindow(w)} className={`px-2 py-1 rounded border ${crossingWindow === w ? "border-emerald-300 text-emerald-200" : "border-slate-700 text-slate-400"}`}>{w}</button>
             ))}
             <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>

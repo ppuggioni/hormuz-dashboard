@@ -895,13 +895,22 @@ export default function Page() {
 
   useEffect(() => {
     const valid = new Set(candidateCrossers.map((c) => c.shipId));
-    setSelectedCandidateShipIds((prev) => prev.filter((id) => valid.has(id)));
+    const high24hIds = candidateCrossersForDisplay
+      .filter((c) => c.confidenceBand === "high" && c.darkHours <= 24)
+      .map((c) => c.shipId);
 
-    if (!candidateDefaultsAppliedRef.current && candidateCrossersForDisplay.length) {
-      setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high").map((c) => c.shipId));
+    if (!candidateDefaultsAppliedRef.current) {
+      setSelectedCandidateShipIds(high24hIds);
       candidateDefaultsAppliedRef.current = true;
+      return;
     }
-  }, [candidateCrossersForDisplay]);
+
+    setSelectedCandidateShipIds((prev) => {
+      const stillValid = prev.filter((id) => valid.has(id));
+      if (stillValid.length === 0 && high24hIds.length) return high24hIds;
+      return stillValid;
+    });
+  }, [candidateCrossersForDisplay, candidateCrossers]);
 
   const hourlyFromEvents = (vesselType: string) => {
     if (!data?.crossingEvents?.length) return [] as CrossingHour[];
@@ -2049,7 +2058,7 @@ export default function Page() {
                 )
               }
               onResetSelection={() =>
-                setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high").map((c) => c.shipId))
+                setSelectedCandidateShipIds(candidateCrossersForDisplay.filter((c) => c.confidenceBand === "high" && c.darkHours <= 24).map((c) => c.shipId))
               }
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}

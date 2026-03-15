@@ -1233,7 +1233,7 @@ export default function Page() {
 
   const candidateTableRows = useMemo(() => {
     const rank = { high: 2, low: 1, no: 0 } as const;
-    return [...candidateCrossers].filter((c) => c.confidenceBand === "high").sort((a, b) => {
+    return [...candidateCrossers].sort((a, b) => {
       let cmp = 0;
       switch (candidateSort.key) {
         case "ship":
@@ -1404,8 +1404,7 @@ export default function Page() {
     }));
 
     const candidateRows = [...candidateCrossers, ...cargoCandidateCrossers]
-      .filter((c) => c.confidenceBand === "high")
-      .map((c) => ({
+      .map((c) => ({ 
         sort_date_utc: c.lastSeenAt,
         record_type: "likely_dark_crossing_candidate",
         confidence: "high",

@@ -2297,65 +2297,51 @@ export default function Page() {
               Binned by each historical candidate event&apos;s last seen UTC timestamp before the dark gap began, split by inferred travel direction.
             </div>
           </div>
-          <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
+          <div className="mt-2 max-h-56 overflow-auto border border-slate-800 rounded-lg">
             <table className="w-full text-xs">
               <thead className="bg-slate-900 sticky top-0">
                 <tr>
-                  <th className="text-left p-2">Ship</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "lastSeen", dir: s.key === "lastSeen" && s.dir === "asc" ? "desc" : "asc" }))}>Last seen</th>
+                  <th className="text-left p-2">Sel</th>
+                  <th className="text-left p-2">Only</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "darkHours", dir: s.key === "darkHours" && s.dir === "asc" ? "desc" : "asc" }))}>Dark h</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "score", dir: s.key === "score" && s.dir === "asc" ? "desc" : "asc" }))}>Score</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "confidence", dir: s.key === "confidence" && s.dir === "asc" ? "desc" : "asc" }))}>Confidence</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "confidence", dir: s.key === "confidence" && s.dir === "asc" ? "desc" : "asc" }))}>Conf</th>
                 </tr>
               </thead>
               <tbody>
                 {candidateTableRows.map((c) => (
                   <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedCandidateShipIdSet.has(c.shipId)}
+                        onChange={() =>
+                          setSelectedCandidateShipIds((prev) =>
+                            prev.includes(c.shipId) ? prev.filter((id) => id !== c.shipId) : [...prev, c.shipId],
+                          )
+                        }
+                      />
+                    </td>
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-200 hover:border-slate-500"
+                        onClick={() => setSelectedCandidateShipIds([c.shipId])}
+                      >
+                        only
+                      </button>
+                    </td>
                     <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(c.shipName, data?.shipMeta?.[c.shipId]?.flag)}</a></td>
-                    <td className="p-2">{formatUtcTime(c.lastSeenAt)}</td>
                     <td className="p-2">{c.darkHours.toFixed(1)}</td>
                     <td className="p-2 font-medium">{c.score.toFixed(1)}</td>
-                    <td className="p-2">{c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</td>
+                    <td className="p-2">{c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           </section>
-          <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300 xl:col-span-2">
-            <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
-            <div className="mt-2 space-y-1 leading-relaxed">
-              <div><strong>Quick confidence guide:</strong></div>
-              <div>- <strong>High confidence</strong>: strong recent approach behavior, physically near Hormuz, and total score above 50.</div>
-              <div>- <strong>Low confidence</strong>: some approach evidence, but weaker score, weaker geometry, or farther from the strait.</div>
-              <div>- <strong>No confidence</strong>: does not clear the scoring threshold, despite passing the basic dark/evidence gates.</div>
-              <div>- <strong>Distance guardrail</strong>: vessels more than 300 km from the strait midpoint are excluded entirely; vessels beyond 150 km cannot be labeled high confidence.</div>
-              <div><strong>Total score</strong> = approachScore + proximityScore + directionScore + tangentialPenalty + readinessScore + onePointPostAnchoringPenalty.</div>
-              <div><strong>Universe filter:</strong> tankers only; vessels with observed confirmed crossing are excluded.</div>
-              <div><strong>Minimum evidence gate:</strong> at least 3 aligned approach points in the tail window.</div>
-              <div><strong>Darkness filter gate:</strong> candidate must be dark for more than 6 hours (darkHours &gt; 6); darkness is not scored.</div>
-              <div><strong>Tail window:</strong> up to last 6 visible points before disappearance.</div>
-              <div><strong>alignedPoints</strong>: count of tail points showing movement toward strait midpoint (centerLat + centerLon).</div>
-              <div><strong>Segment speed estimation:</strong> haversine distance / time delta, converted to knots.</div>
-              <div><strong>speedQuality per segment:</strong> &lt;3 kn =&gt; 0.2 (loiter/anchored candidate), 3-23 kn =&gt; 1.0, 23-30 kn =&gt; 0.5, &gt;30 kn =&gt; 0.1.</div>
-              <div><strong>speedQuality</strong>: average of segment speedQuality over tail segments.</div>
-              <div><strong>approachConfidence</strong> = min(1, (alignedPoints / max(3, tailLength)) × speedQuality).</div>
-              <div><strong>approachScore</strong> = approachConfidence × 55.</div>
-              <div><strong>proximityRaw</strong> = 1 - min(1, distanceKm(lastPoint, midpoint) / 160).</div>
-              <div><strong>proximityScore</strong> = proximityRaw × 20.</div>
-              <div><strong>approachDirectionRaw</strong>: normalized signed change in distance to midpoint between last two points.</div>
-              <div>If positive, vessel disappeared while still moving toward the strait (boost). If negative, moving away (penalty).</div>
-              <div><strong>directionScore</strong>: if approachDirectionRaw &gt; 0 then ×25; else ×20 (negative score).</div>
-              <div><strong>cosineTowardness</strong>: mean cos(theta) toward midpoint over tail segments (1 = directly toward, 0 = perpendicular).</div>
-              <div><strong>tangentialPenalty</strong>: applied when approachDirectionRaw is positive, = -(1 - cosineTowardness) × 12.</div>
-              <div><strong>readinessScore</strong> (disappearance readiness):</div>
-              <div>- if lastSegmentKnots &lt; 2 and direction not toward midpoint =&gt; -12 penalty.</div>
-              <div>- if lastSegmentKnots &ge; 4 and accelerating vs previous segment and toward midpoint =&gt; +4 bonus.</div>
-              <div><strong>lastSegmentKnots</strong> / <strong>prevSegmentKnots</strong>: speeds on the final two pre-disappearance segments.</div>
-              <div><strong>onePointPostAnchoringPenalty</strong>: if vessel has anchor-like history (&lt;2 kn) and only one post-anchor segment before disappearance, apply -6.</div>
-              <div><strong>darkHours</strong>: hours since last seen (using latest snapshot time), used only as a strict filter (&gt; 6h).</div>
-            </div>
-          </details>
         </section>
 
         <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">

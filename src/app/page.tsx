@@ -628,6 +628,7 @@ export default function Page() {
   useEffect(() => {
     const remoteBase = process.env.NEXT_PUBLIC_HORMUZ_PROCESSED_URL || "/data/processed.json";
     const root = remoteBase.replace(/\/processed\.json(?:\?.*)?$/, "");
+    const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
 
     const fetchJson = async (url: string) => {
       const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
@@ -647,6 +648,13 @@ export default function Page() {
     };
 
     const loadNews = async () => {
+      try {
+        const news = await fetchJson(remoteNewsUrl);
+        setNewsFeed(news as NewsFeedShape);
+        return;
+      } catch {
+        // fall through to local artifact
+      }
       try {
         const news = await fetchJson(`${root}/news_feed.json`);
         setNewsFeed(news as NewsFeedShape);

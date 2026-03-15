@@ -169,6 +169,7 @@ type CandidateEvent = CandidateCrosser & {
   gapHours: number;
   resumedAt?: string | null;
   eventType: "historical_gap" | "open_gap";
+  inferredDirection: "east_to_west" | "west_to_east";
 };
 
 type CandidatesShape = {
@@ -306,14 +307,17 @@ function formatUtcTime(iso: string) {
   return `${hour}:${minute} UTC`;
 }
 
-function aggregateCandidatesToDailyBins(rows: CandidateCrosser[]) {
-  const out = new Map<string, { hour: string; count: number }>();
+function aggregateCandidatesToDailyBins(rows: Array<CandidateCrosser & { inferredDirection?: "east_to_west" | "west_to_east" }>) {
+  const out = new Map<string, { hour: string; east_to_west: number; west_to_east: number; count: number }>();
   for (const r of rows) {
     const d = new Date(r.lastSeenAt);
     d.setUTCHours(0, 0, 0, 0);
     const key = d.toISOString();
-    if (!out.has(key)) out.set(key, { hour: key, count: 0 });
-    out.get(key)!.count += 1;
+    if (!out.has(key)) out.set(key, { hour: key, east_to_west: 0, west_to_east: 0, count: 0 });
+    const row = out.get(key)!;
+    row.count += 1;
+    if (r.inferredDirection === "east_to_west") row.east_to_west += 1;
+    else if (r.inferredDirection === "west_to_east") row.west_to_east += 1;
   }
   return [...out.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
 }
@@ -328,7 +332,7 @@ function DailyCandidateTooltip({
   active?: boolean;
   label?: string;
   payload?: ReadonlyArray<{ value?: number; name?: string; color?: string }>;
-  rows: CandidateCrosser[];
+  rows: CandidateEvent[];
   shipMeta?: Record<string, ShipMeta>;
 }) {
   if (!active || !label) return null;
@@ -350,8 +354,8 @@ function DailyCandidateTooltip({
         {rows.length ? (
           <ul className="max-h-56 space-y-1 overflow-auto pr-1 text-slate-200">
             {rows.map((r) => (
-              <li key={r.shipId}>
-                {formatShipDisplayName(r.shipName, shipMeta?.[r.shipId]?.flag)} — {formatUtcTime(r.lastSeenAt)} — score {r.score.toFixed(1)}
+              <li key={r.eventId}>
+                {formatShipDisplayName(r.shipName, shipMeta?.[r.shipId]?.flag)} — {formatUtcTime(r.lastSeenAt)} — {r.inferredDirection.replace("_to_", " → ")} — score {r.score.toFixed(1)}
               </li>
             ))}
           </ul>
@@ -762,6 +766,7 @@ export default function Page() {
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
+  const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const candidateDefaultsAppliedRef = useRef(false);
   const crossingDefaultsAppliedRef = useRef(false);
@@ -1028,6 +1033,27 @@ export default function Page() {
     () => tankerCandidateEventsData.filter((c) => c.confidenceBand === "high"),
     [tankerCandidateEventsData],
   );
+  const newsDays = useMemo(() => {
+    const byDay = new Map<string, { day: string; headline: string; items: NewsItem[] }>();
+    for (const item of newsFeed?.items || []) {
+      const d = new Date(item.publishedAt);
+      d.setUTCHours(0, 0, 0, 0);
+      const day = d.toISOString();
+      if (!byDay.has(day)) byDay.set(day, { day, headline: item.title, items: [] });
+      byDay.get(day)!.items.push(item);
+    }
+    return [...byDay.values()]
+      .map((entry) => ({
+        ...entry,
+        items: [...entry.items].sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt)),
+      }))
+      .sort((a, b) => +new Date(b.day) - +new Date(a.day));
+  }, [newsFeed]);
+  const selectedNewsDayEntry = useMemo(() => {
+    if (!newsDays.length) return null;
+    if (!selectedNewsDay) return newsDays[0];
+    return newsDays.find((d) => d.day === selectedNewsDay) || newsDays[0];
+  }, [newsDays, selectedNewsDay]);
   const candidateDailyHigh = useMemo(
     () => aggregateCandidatesToDailyBins(highConfidenceCandidateEvents),
     [highConfidenceCandidateEvents],
@@ -2273,12 +2299,13 @@ export default function Page() {
                       />
                     )}
                   />
-                  <Bar dataKey="count" fill="#f59e0b" name="High confidence" />
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-2 text-xs text-slate-400">
-              Binned by each historical candidate event&apos;s last seen UTC timestamp before the dark gap began.
+              Binned by each historical candidate event&apos;s last seen UTC timestamp before the dark gap began, split by inferred travel direction.
             </div>
           </div>
           <div className="h-[520px] rounded-xl overflow-hidden border border-slate-800">
@@ -2516,7 +2543,7 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_0.7fr]">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_0.8fr]">
             <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Last update summary</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No last-update summary yet"}</div>
@@ -2534,20 +2561,51 @@ export default function Page() {
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Tracked sources</div>
-              <div className="mt-3 space-y-2">
-                {(newsFeed?.sources || []).slice(0, 6).map((source) => (
-                  <a key={source.id} href={source.url} target="_blank" rel="noreferrer" className="flex items-start justify-between gap-3 rounded-lg border border-slate-800 px-3 py-2 text-sm text-slate-300 transition hover:border-slate-700 hover:bg-slate-900/70">
-                    <div>
-                      <div className="font-medium text-slate-100">{source.name}</div>
-                      <div className="mt-1 text-xs uppercase tracking-wide text-slate-500">{source.type.replaceAll("_", " ")}</div>
-                    </div>
-                    <div className="text-[11px] text-slate-500">P{source.priority}</div>
-                  </a>
-                ))}
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Daily headline rail</div>
+              <div className="mt-3 max-h-[260px] space-y-2 overflow-auto pr-1">
+                {newsDays.length ? newsDays.map((day) => {
+                  const active = selectedNewsDayEntry?.day === day.day;
+                  return (
+                    <button
+                      key={day.day}
+                      type="button"
+                      onClick={() => setSelectedNewsDay(day.day)}
+                      className={`w-full rounded-lg border px-3 py-2 text-left transition ${active ? "border-cyan-400 bg-cyan-500/10 text-cyan-100" : "border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/70"}`}
+                    >
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{new Date(day.day).toUTCString().slice(0, 16)}</div>
+                      <div className="mt-1 text-sm font-medium leading-5">{day.headline}</div>
+                      <div className="mt-1 text-[11px] text-slate-500">{day.items.length} item{day.items.length === 1 ? "" : "s"}</div>
+                    </button>
+                  );
+                }) : <div className="text-sm text-slate-500">No daily headlines yet.</div>}
               </div>
             </div>
           </div>
+
+          {selectedNewsDayEntry ? (
+            <div className="mt-4 rounded-xl border border-cyan-900/40 bg-cyan-950/20 p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Selected day</div>
+                  <div className="mt-1 text-lg font-semibold text-slate-100">{new Date(selectedNewsDayEntry.day).toUTCString().slice(0, 16)}</div>
+                  <div className="mt-2 text-base font-semibold text-cyan-100">{selectedNewsDayEntry.headline}</div>
+                </div>
+                <div className="text-xs text-slate-400">{selectedNewsDayEntry.items.length} item{selectedNewsDayEntry.items.length === 1 ? "" : "s"}</div>
+              </div>
+              <div className="mt-4 space-y-3">
+                {selectedNewsDayEntry.items.map((item) => (
+                  <div key={`day-${item.id}`} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                    <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
+                      <a href={item.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-slate-100 hover:text-cyan-300">{item.title}</a>
+                      <div className="text-xs text-slate-500">{new Date(item.publishedAt).toUTCString()}</div>
+                    </div>
+                    <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</div>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.summary}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-4 space-y-3">
             {(newsFeed?.items || []).length ? (newsFeed?.items || []).map((item) => (

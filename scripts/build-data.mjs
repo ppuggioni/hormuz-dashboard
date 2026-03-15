@@ -168,10 +168,13 @@ function scoreCandidateFromTail({ shipId, shipName, vesselType, points, shipMeta
   if (lastMidDistKm > 90 && confidenceBand === 'high') confidenceBand = 'low';
   if (score < 30) return null;
 
+  const inferredDirection = last.lon >= centerLon ? 'east_to_west' : 'west_to_east';
+
   return {
     shipId,
     shipName,
     vesselType,
+    inferredDirection,
     score: Math.round(score * 10) / 10,
     confidenceBand,
     alignedPoints,

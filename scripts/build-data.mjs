@@ -940,6 +940,9 @@ async function main() {
   ]);
   const relevantExternalPoints = externalPresencePoints.filter((p) => relevantShipIds.has(p.shipId));
   const latestSnapshot = snapshots.length ? snapshots[snapshots.length - 1] : null;
+  const latestExternalPoints = latestSnapshot
+    ? externalPresencePoints.filter((p) => p.t === latestSnapshot.t)
+    : [];
   const latestSnapshotShipMeta = {};
   for (const id of new Set([
     ...crossingAndLinkShipIds,
@@ -975,6 +978,15 @@ async function main() {
     wrap('shipmeta', { shipMeta: latestSnapshotShipMeta }, 'latest', {
       shipCount: Object.keys(latestSnapshotShipMeta).length,
       snapshotTimestamp: latestSnapshot?.t || null,
+    }),
+  );
+
+  await writeJson(
+    'processed_external_latest.json',
+    wrap('external', { externalPresencePoints: latestExternalPoints }, 'latest', {
+      pointCount: latestExternalPoints.length,
+      fromUtc: latestSnapshot?.t || null,
+      toUtc: latestSnapshot?.t || null,
     }),
   );
 

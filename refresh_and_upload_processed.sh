@@ -10,6 +10,8 @@ OBJECTS=(
   "processed_core.json"
   "processed_paths.json"
   "processed_candidates.json"
+  "processed_playback_latest.json"
+  "processed_shipmeta_latest.json"
   "processed_playback_24h.json"
   "processed_playback_48h.json"
   "processed_external_24h.json"

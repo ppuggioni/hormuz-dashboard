@@ -888,9 +888,21 @@ async function main() {
 
   async function writeJson(name, obj) {
     const finalPath = path.join(outDir, name);
-    const tmpPath = path.join(outDir, `${name}.tmp`);
-    await fs.writeFile(tmpPath, JSON.stringify(obj));
-    await fs.rename(tmpPath, finalPath);
+    const tmpPath = path.join(outDir, `${name}.${process.pid}.${Date.now()}.tmp`);
+    const payload = JSON.stringify(obj);
+    await fs.mkdir(path.dirname(finalPath), { recursive: true });
+    await fs.writeFile(tmpPath, payload);
+    try {
+      await fs.rename(tmpPath, finalPath);
+    } catch (err) {
+      if (err?.code === 'ENOENT') {
+        await fs.mkdir(path.dirname(finalPath), { recursive: true });
+        await fs.writeFile(finalPath, payload);
+        try { await fs.unlink(tmpPath); } catch {}
+        return;
+      }
+      throw err;
+    }
   }
 
   // Split outputs only
@@ -927,6 +939,15 @@ async function main() {
     ...cargoCandidateEvents.map((c) => c.shipId),
   ]);
   const relevantExternalPoints = externalPresencePoints.filter((p) => relevantShipIds.has(p.shipId));
+  const latestSnapshot = snapshots.length ? snapshots[snapshots.length - 1] : null;
+  const latestSnapshotShipMeta = {};
+  for (const id of new Set([
+    ...crossingAndLinkShipIds,
+    ...relevantShipIds,
+    ...(latestSnapshot?.points || []).map((p) => p.shipId),
+  ])) {
+    if (shipMeta[id]) latestSnapshotShipMeta[id] = minimalShipMeta(id);
+  }
 
   await writeJson(
     'processed_candidates.json',
@@ -936,6 +957,24 @@ async function main() {
       tankerEventCount: tankerCandidateEvents.length,
       cargoEventCount: cargoCandidateEvents.length,
       externalPointCount: relevantExternalPoints.length,
+    }),
+  );
+
+  await writeJson(
+    'processed_playback_latest.json',
+    wrap('playback', { snapshots: latestSnapshot ? [latestSnapshot] : [] }, 'latest', {
+      snapshotCount: latestSnapshot ? 1 : 0,
+      pointCount: latestSnapshot?.points?.length || 0,
+      fromUtc: latestSnapshot?.t || null,
+      toUtc: latestSnapshot?.t || null,
+    }),
+  );
+
+  await writeJson(
+    'processed_shipmeta_latest.json',
+    wrap('shipmeta', { shipMeta: latestSnapshotShipMeta }, 'latest', {
+      shipCount: Object.keys(latestSnapshotShipMeta).length,
+      snapshotTimestamp: latestSnapshot?.t || null,
     }),
   );
 

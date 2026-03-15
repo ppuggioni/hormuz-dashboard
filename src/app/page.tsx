@@ -794,6 +794,7 @@ export default function Page() {
   const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
   const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
+  const [playbackDataMode, setPlaybackDataMode] = useState<"latest" | "24h" | "48h">("latest");
   const [splitMode, setSplitMode] = useState(false);
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
   const [tankerCandidatesData, setTankerCandidatesData] = useState<CandidateCrosser[]>([]);
@@ -816,8 +817,6 @@ export default function Page() {
   const interactionAtRef = useRef<number>(Date.now());
   const mountedAtRef = useRef<number>(Date.now());
   const latestGeneratedAtRef = useRef<string | null>(null);
-  const playbackSectionRef = useRef<HTMLElement | null>(null);
-  const [playbackDataRequested, setPlaybackDataRequested] = useState(false);
 
   useEffect(() => {
     const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
@@ -862,6 +861,8 @@ export default function Page() {
         const core = await fetchJson(`${root}/processed_core.json`);
         const paths = await fetchJson(`${root}/processed_paths.json`);
         const candidates = await fetchJson(`${root}/processed_candidates.json`);
+        const latestPlayback = await fetchJson(`${root}/processed_playback_latest.json`);
+        const latestShipmeta = await fetchJson(`${root}/processed_shipmeta_latest.json`);
 
         const normalized: DataShape = {
           metadata: core?.metadata || {
@@ -875,8 +876,8 @@ export default function Page() {
             crossingEventCount: 0,
           },
           vesselTypes: Array.isArray(core?.data?.vesselTypes) ? core.data.vesselTypes : [],
-          shipMeta: core?.data?.shipMeta || {},
-          snapshots: [],
+          shipMeta: latestShipmeta?.data?.shipMeta || core?.data?.shipMeta || {},
+          snapshots: Array.isArray(latestPlayback?.data?.snapshots) ? latestPlayback.data.snapshots : [],
           crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
           crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
           crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
@@ -894,6 +895,8 @@ export default function Page() {
         const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
         setSelectedTypes(defaults);
         setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
+        setPlaybackDataMode("latest");
+        setFrameIndex(normalized.snapshots.length ? normalized.snapshots.length - 1 : 0);
         return;
       } catch (err) {
         console.error("Failed to load split dashboard artifacts", err);
@@ -973,23 +976,7 @@ export default function Page() {
   }, [playing, data?.snapshots?.length]);
 
   useEffect(() => {
-    const el = playbackSectionRef.current;
-    if (!el || playbackDataRequested) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setPlaybackDataRequested(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "300px 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [playbackDataRequested]);
-
-  useEffect(() => {
-    if (!splitMode || !data || !playbackDataRequested) return;
+    if (!splitMode || !data || playbackDataMode === "latest") return;
     const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
 
     const fetchJsonMaybeGzip = async (url: string) => {
@@ -1012,9 +999,9 @@ export default function Page() {
     const fetchWindowData = async () => {
       setPlaybackLoading(true);
       try {
-        const playbackJson = await fetchJsonMaybeGzip(`${root}/processed_playback_${playbackWindow}.json`);
-        const shipmetaJson = await fetchJsonMaybeGzip(`${root}/processed_shipmeta_${playbackWindow}.json`);
-        const externalJson = loadAllRegions ? await fetchJsonMaybeGzip(`${root}/processed_external_${playbackWindow}.json`) : null;
+        const playbackJson = await fetchJsonMaybeGzip(`${root}/processed_playback_${playbackDataMode}.json`);
+        const shipmetaJson = await fetchJsonMaybeGzip(`${root}/processed_shipmeta_${playbackDataMode}.json`);
+        const externalJson = loadAllRegions ? await fetchJsonMaybeGzip(`${root}/processed_external_${playbackDataMode}.json`) : null;
         const snaps = Array.isArray(playbackJson?.data?.snapshots) ? playbackJson.data.snapshots : [];
         const ext = Array.isArray(externalJson?.data?.externalPresencePoints) ? externalJson.data.externalPresencePoints : [];
         const sm = shipmetaJson?.data?.shipMeta || {};
@@ -1027,7 +1014,7 @@ export default function Page() {
     };
 
     fetchWindowData();
-  }, [splitMode, playbackWindow, loadAllRegions, playbackDataRequested]);
+  }, [splitMode, loadAllRegions, playbackDataMode]);
 
   const currentSnapshot = data?.snapshots?.[frameIndex];
 
@@ -1998,7 +1985,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section id="playback-map" ref={playbackSectionRef} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
+        <section id="playback-map" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Playback Map (filtered vessels)</h2>
             <div className="flex items-center gap-2 text-sm">
@@ -2007,7 +1994,10 @@ export default function Page() {
                   {(["24h", "48h"] as const).map((w) => (
                     <button
                       key={w}
-                      onClick={() => setPlaybackWindow(w)}
+                      onClick={() => {
+                        setPlaybackWindow(w);
+                        if (playbackDataMode !== "latest") setPlaybackDataMode(w);
+                      }}
                       className={`rounded-md border px-2 py-1 ${playbackWindow === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
                     >
                       {w}
@@ -2016,7 +2006,12 @@ export default function Page() {
                 </div>
               ) : null}
               <button
-                onClick={() => setPlaying((v) => !v)}
+                onClick={() => {
+                  if (!playing && playbackDataMode === "latest") {
+                    setPlaybackDataMode(playbackWindow);
+                  }
+                  setPlaying((v) => !v);
+                }}
                 className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 hover:bg-slate-700"
               >
                 {playing ? "Pause" : "Play"}

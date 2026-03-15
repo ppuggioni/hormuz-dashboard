@@ -33,6 +33,7 @@ fi
 : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY missing}"
 
 API_BASE="${SUPABASE_URL%/}/storage/v1"
+CACHE_CONTROL="public, max-age=3600, s-maxage=3600, stale-while-revalidate=300"
 
 {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] refresh start"
@@ -60,6 +61,7 @@ API_BASE="${SUPABASE_URL%/}/storage/v1"
       -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
       -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
       -H "Content-Type: application/json" \
+      -H "Cache-Control: ${CACHE_CONTROL}" \
       -H "x-upsert: true" \
       --data-binary "@${gz_out}" >/tmp/hormuz_processed_upload_${obj}.json
 

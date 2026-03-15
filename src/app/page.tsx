@@ -2224,6 +2224,7 @@ export default function Page() {
               <thead className="bg-slate-900 sticky top-0">
                 <tr>
                   <th className="text-left p-2">Sel</th>
+                  <th className="text-left p-2">Only</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
@@ -2241,6 +2242,18 @@ export default function Page() {
                       onClick={() => setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId])}
                     >
                       <td className="p-2">{selected ? "●" : "○"}</td>
+                      <td className="p-2">
+                        <button
+                          type="button"
+                          className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCrossingShipIds([r.shipId]);
+                          }}
+                        >
+                          only
+                        </button>
+                      </td>
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                       <td className="p-2">{r.vesselType}</td>
                       <td className="p-2">{r.direction.replace("_to_", " → ")}</td>

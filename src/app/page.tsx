@@ -2135,12 +2135,11 @@ export default function Page() {
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Tanker ship</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setTankerSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
-                    <th className="text-left p-2">Status</th>
                     <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tankerTableRows.map((r, idx) => {
+                  {tankerTableRows.filter((r) => !isSuspectedSpoofingEvent(r)).map((r, idx) => {
                     const selected = selectedCrossingShipIds.includes(r.shipId);
                     return (
                     <tr
@@ -2155,7 +2154,6 @@ export default function Page() {
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                       <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                      <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   )})}
@@ -2230,12 +2228,11 @@ export default function Page() {
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Cargo ship</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                     <th className="text-left p-2 cursor-pointer" onClick={() => setCargoSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
-                    <th className="text-left p-2">Status</th>
                     <th className="text-left p-2">Transit time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cargoTableRows.map((r, idx) => {
+                  {cargoTableRows.filter((r) => !isSuspectedSpoofingEvent(r)).map((r, idx) => {
                     const selected = selectedCrossingShipIds.includes(r.shipId);
                     return (
                     <tr
@@ -2250,7 +2247,6 @@ export default function Page() {
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
                       <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                       <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                      <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                       <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                     </tr>
                   )})}
@@ -2258,23 +2254,10 @@ export default function Page() {
               </table>
             </div>
           </div>
-        </section>
-
-        <section id="candidate-dark-crossers" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-          <h2 className="text-lg font-medium">Candidate Dark Crossers — Tankers</h2>
-          <p className="text-xs text-slate-400">Heuristic shortlist: at least 3 aligned approach points, dark for &gt;6h, speed-plausibility weighted, excluding already observed crossers.</p>
-          <div className="flex items-center gap-3 text-xs text-slate-300">
-            <button
-              className={`px-2 py-1 rounded border ${showOnlySelectedCandidates ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
-              onClick={() => setShowOnlySelectedCandidates((v) => !v)}
-            >
-              display only selected: {showOnlySelectedCandidates ? "on" : "off"}
-            </button>
-            <span>Selected: {selectedCandidateShipIds.length}</span>
-            <span>High-confidence open candidates now: {highConfidenceCandidates.length}</span>
-            <span>High-confidence historical candidate events: {highConfidenceCandidateEventsForCharts.length}</span>
-          </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+          <section id="candidate-dark-crossers" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
+            <h2 className="text-lg font-medium">Likely Dark-Crossing Candidates — Tankers</h2>
+            <p className="text-xs text-slate-400">Heuristic shortlist: ≥3 aligned approach points, dark &gt;6h, speed-plausibility weighted, excluding confirmed crossers.</p>
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
             <h3 className="mb-3 text-sm font-medium text-slate-100">High-conviction dark-crossing candidate events in daily bins</h3>
             <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -2314,61 +2297,32 @@ export default function Page() {
               Binned by each historical candidate event&apos;s last seen UTC timestamp before the dark gap began, split by inferred travel direction.
             </div>
           </div>
-          <div className="max-h-[360px] overflow-auto border border-slate-800 rounded-lg">
+          <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
             <table className="w-full text-xs">
               <thead className="bg-slate-900 sticky top-0">
                 <tr>
-                  <th className="text-left p-2">Sel</th>
-                  <th className="text-left p-2">Only</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "lastSeen", dir: s.key === "lastSeen" && s.dir === "asc" ? "desc" : "asc" }))}>Last seen (UTC)</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "darkHours", dir: s.key === "darkHours" && s.dir === "asc" ? "desc" : "asc" }))}>Dark hours</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "alignedPoints", dir: s.key === "alignedPoints" && s.dir === "asc" ? "desc" : "asc" }))}>Aligned points</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "speedQuality", dir: s.key === "speedQuality" && s.dir === "asc" ? "desc" : "asc" }))}>Speed quality</th>
-                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "approachConfidence", dir: s.key === "approachConfidence" && s.dir === "asc" ? "desc" : "asc" }))}>Approach confidence</th>
+                  <th className="text-left p-2">Ship</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "lastSeen", dir: s.key === "lastSeen" && s.dir === "asc" ? "desc" : "asc" }))}>Last seen</th>
+                  <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "darkHours", dir: s.key === "darkHours" && s.dir === "asc" ? "desc" : "asc" }))}>Dark h</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "score", dir: s.key === "score" && s.dir === "asc" ? "desc" : "asc" }))}>Score</th>
-                  <th className="text-left p-2">Status</th>
                   <th className="text-left p-2 cursor-pointer" onClick={() => setCandidateSort((s) => ({ key: "confidence", dir: s.key === "confidence" && s.dir === "asc" ? "desc" : "asc" }))}>Confidence</th>
                 </tr>
               </thead>
               <tbody>
                 {candidateTableRows.map((c) => (
                   <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
-                    <td className="p-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedCandidateShipIdSet.has(c.shipId)}
-                        onChange={() =>
-                          setSelectedCandidateShipIds((prev) =>
-                            prev.includes(c.shipId) ? prev.filter((id) => id !== c.shipId) : [...prev, c.shipId],
-                          )
-                        }
-                      />
-                    </td>
-                    <td className="p-2">
-                      <button
-                        type="button"
-                        className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
-                        onClick={() => setSelectedCandidateShipIds([c.shipId])}
-                      >
-                        only
-                      </button>
-                    </td>
-                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(c.shipName, data?.shipMeta?.[c.shipId]?.flag)} ({c.shipId})</a></td>
-                    <td className="p-2">{new Date(c.lastSeenAt).toUTCString()}</td>
+                    <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${c.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(c.shipName, data?.shipMeta?.[c.shipId]?.flag)}</a></td>
+                    <td className="p-2">{formatUtcTime(c.lastSeenAt)}</td>
                     <td className="p-2">{c.darkHours.toFixed(1)}</td>
-                    <td className="p-2">{c.alignedPoints}</td>
-                    <td className="p-2">{c.speedQuality.toFixed(2)}</td>
-                    <td className="p-2">{c.approachConfidence.toFixed(2)}</td>
                     <td className="p-2 font-medium">{c.score.toFixed(1)}</td>
-                    <td className="p-2">{suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                     <td className="p-2">{c.confidenceBand === "high" ? "high" : c.confidenceBand === "low" ? "low" : "no confidence"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300">
+          </section>
+          <details className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-xs text-slate-300 xl:col-span-2">
             <summary className="cursor-pointer select-none font-medium text-slate-100">Score rationale (candidate dark crossers)</summary>
             <div className="mt-2 space-y-1 leading-relaxed">
               <div><strong>Quick confidence guide:</strong></div>

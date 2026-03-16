@@ -20,12 +20,21 @@ type CrossingPath = {
 };
 
 type CrossingEvent = {
+  eventId: string;
   t: string;
   hour: string;
   shipId: string;
   shipName: string;
   vesselType: string;
   direction: "east_to_west" | "west_to_east";
+  manuallyExcluded?: boolean;
+};
+
+type ConfirmedCrossingExclusion = {
+  eventId: string;
+  reason: string;
+  note?: string;
+  excludedAt?: string | null;
 };
 
 type ExternalPresencePoint = {
@@ -204,6 +213,7 @@ type DataShape = {
   crossingPaths: CrossingPath[];
   linkageEvents?: LinkageEvent[];
   externalPresencePoints?: ExternalPresencePoint[];
+  confirmedCrossingExclusions?: ConfirmedCrossingExclusion[];
 };
 
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
@@ -345,6 +355,14 @@ function buildSuspectedSpoofingEventKeySet(events: CrossingEvent[]) {
     lastSeenAt: e.t,
     inferredDirection: e.direction,
   })));
+}
+
+async function copyText(text: string) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  return false;
 }
 
 function aggregateCandidatesToDailyBins(rows: Array<CandidateCrosser & { inferredDirection?: "east_to_west" | "west_to_east" }>) {
@@ -805,6 +823,7 @@ export default function Page() {
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [crossingDetailSort, setCrossingDetailSort] = useState<{ key: "ship" | "type" | "direction" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
+  const [copiedCrossingEventId, setCopiedCrossingEventId] = useState<string | null>(null);
   const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
@@ -883,6 +902,7 @@ export default function Page() {
           crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
           linkageEvents: Array.isArray(core?.data?.linkageEvents) ? core.data.linkageEvents : [],
           externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
+          confirmedCrossingExclusions: Array.isArray(core?.data?.confirmedCrossingExclusions) ? core.data.confirmedCrossingExclusions : [],
         };
 
         setSplitMode(true);
@@ -1165,9 +1185,11 @@ export default function Page() {
   );
 
   const isSuspectedSpoofingEvent = (e: CrossingEvent) => suspectedSpoofingEventKeys.has(`${e.shipId}|${e.t}|${e.direction}`);
+  const isManuallyExcludedCrossingEvent = (e: CrossingEvent) => Boolean(e.manuallyExcluded);
+  const isExcludedCrossingEvent = (e: CrossingEvent) => isManuallyExcludedCrossingEvent(e) || isSuspectedSpoofingEvent(e);
 
   const crossingEventsForCharts = useMemo(
-    () => (data?.crossingEvents || []).filter((e) => !discardSuspectedSpoofing || !isSuspectedSpoofingEvent(e)),
+    () => (data?.crossingEvents || []).filter((e) => !discardSuspectedSpoofing || !isExcludedCrossingEvent(e)),
     [data?.crossingEvents, discardSuspectedSpoofing, suspectedSpoofingEventKeys],
   );
 
@@ -2432,6 +2454,7 @@ export default function Page() {
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
                       <th className="text-left p-2">Status</th>
+                      <th className="text-left p-2">Event ID</th>
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
                     </tr>
                   </thead>
@@ -2461,7 +2484,24 @@ export default function Page() {
                           <td className="p-2">{r.vesselType}</td>
                           <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                           <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                          <td className="p-2">{isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
+                          <td className="p-2">{isManuallyExcludedCrossingEvent(r) ? <span className="rounded-full border border-amber-700 bg-amber-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-amber-200">manual spoofing exclusion</span> : isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
+                          <td className="p-2">
+                            <button
+                              type="button"
+                              className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const copied = await copyText(r.eventId);
+                                if (copied) {
+                                  setCopiedCrossingEventId(r.eventId);
+                                  setTimeout(() => setCopiedCrossingEventId((prev) => (prev === r.eventId ? null : prev)), 1500);
+                                }
+                              }}
+                              title={r.eventId}
+                            >
+                              {copiedCrossingEventId === r.eventId ? "copied" : "copy id"}
+                            </button>
+                          </td>
                           <td className="p-2">{transitTimeByShip.get(r.shipId) || "-"}</td>
                         </tr>
                       );

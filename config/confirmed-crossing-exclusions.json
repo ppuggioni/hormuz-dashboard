@@ -1,0 +1,22 @@
+{
+  "confirmedCrossingExclusions": [
+    {
+      "eventId": "753601|2026-03-16T01:38:53.278935Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NERO",
+      "excludedAt": "2026-03-16T05:40:00Z"
+    },
+    {
+      "eventId": "8921958|2026-03-16T01:38:53.278935Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PIND",
+      "excludedAt": "2026-03-16T05:40:00Z"
+    },
+    {
+      "eventId": "754035|2026-03-16T01:38:53.278935Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ELIZA",
+      "excludedAt": "2026-03-16T05:53:00Z"
+    }
+  ]
+}

@@ -46,6 +46,48 @@ function hourBin(iso) {
   return d.toISOString();
 }
 
+function normalizeCrossingDirection(direction) {
+  return direction === 'west_to_east' ? 'west_to_east' : 'east_to_west';
+}
+
+function buildCrossingEventId(event) {
+  const shipId = String(event?.shipId || 'unknown').trim() || 'unknown';
+  const timestamp = String(event?.t || '').trim() || 'unknown_time';
+  const direction = normalizeCrossingDirection(event?.direction);
+  return `${shipId}|${timestamp}|${direction}`;
+}
+
+async function loadConfirmedCrossingExclusions(configPath) {
+  try {
+    const raw = JSON.parse(await fs.readFile(configPath, 'utf8'));
+    const items = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.confirmedCrossingExclusions)
+        ? raw.confirmedCrossingExclusions
+        : Array.isArray(raw?.confirmed_crossing_exclusions)
+          ? raw.confirmed_crossing_exclusions
+          : [];
+
+    const normalized = [];
+    const seen = new Set();
+    for (const item of items) {
+      const eventId = String(item?.eventId || item?.event_id || '').trim();
+      if (!eventId || seen.has(eventId)) continue;
+      seen.add(eventId);
+      normalized.push({
+        eventId,
+        reason: String(item?.reason || 'suspected spoofing').trim() || 'suspected spoofing',
+        note: String(item?.note || '').trim(),
+        excludedAt: String(item?.excludedAt || item?.excluded_at || '').trim() || null,
+      });
+    }
+    return normalized;
+  } catch (err) {
+    if (err?.code === 'ENOENT') return [];
+    throw err;
+  }
+}
+
 function sideFromPoint(lat, lon) {
   if (lat < MIN_LAT) return null;
   if (lon >= EAST_LON) return 'east';
@@ -483,6 +525,9 @@ async function main() {
   const crossingEvents = [];
   const crossingShipIds = new Set();
   const crossingPaths = [];
+  const confirmedCrossingExclusionsPath = path.resolve('config/confirmed-crossing-exclusions.json');
+  const confirmedCrossingExclusions = await loadConfirmedCrossingExclusions(confirmedCrossingExclusionsPath);
+  const manualExcludedCrossingEventIds = new Set(confirmedCrossingExclusions.map((item) => item.eventId));
 
   for (const [shipId, obs] of hormuzObservationsByShip.entries()) {
     obs.sort((a, b) => new Date(a.t) - new Date(b.t));
@@ -496,7 +541,7 @@ async function main() {
 
       if (lastDefinedSide && side !== lastDefinedSide) {
         const direction = `${lastDefinedSide}_to_${side}`;
-        crossingEvents.push({
+        const crossingEvent = {
           t: point.t,
           hour: hourBin(point.t),
           shipId,
@@ -504,7 +549,10 @@ async function main() {
           vesselType: shipMeta[shipId]?.vesselType || 'other',
           flag: shipMeta[shipId]?.flag || '',
           direction,
-        });
+        };
+        crossingEvent.eventId = buildCrossingEventId(crossingEvent);
+        crossingEvent.manuallyExcluded = manualExcludedCrossingEventIds.has(crossingEvent.eventId);
+        crossingEvents.push(crossingEvent);
         directionCounts[direction] += 1;
         hasCrossing = true;
       }
@@ -572,7 +620,7 @@ async function main() {
         const directKey = `${shipId}|${direction}|${ev.t}`;
         if (!crossingEvents.some((e) => e.shipId === shipId && e.direction === direction && e.t === ev.t)) {
           inferredCrossingKeys.add(dedupKey);
-          crossingEvents.push({
+          const crossingEvent = {
             t: ev.t,
             hour: hourBin(ev.t),
             shipId,
@@ -581,7 +629,10 @@ async function main() {
             flag: shipMeta[shipId]?.flag || '',
             direction,
             inferred: true,
-          });
+          };
+          crossingEvent.eventId = buildCrossingEventId(crossingEvent);
+          crossingEvent.manuallyExcluded = manualExcludedCrossingEventIds.has(crossingEvent.eventId);
+          crossingEvents.push(crossingEvent);
 
           if (!crossingShipIds.has(shipId)) {
             crossingShipIds.add(shipId);
@@ -736,9 +787,14 @@ async function main() {
 
   const crossingEventKey = (e) => `${e.shipId}|${e.direction}|${e.t}`;
   const mergedCrossingEventMap = new Map();
-  for (const e of [...prevCrossingEvents, ...crossingEvents]) {
-    if (!e?.shipId || !e?.t || !e?.direction) continue;
-    mergedCrossingEventMap.set(crossingEventKey(e), e);
+  for (const rawEvent of [...prevCrossingEvents, ...crossingEvents]) {
+    if (!rawEvent?.shipId || !rawEvent?.t || !rawEvent?.direction) continue;
+    const event = {
+      ...rawEvent,
+      eventId: rawEvent?.eventId || buildCrossingEventId(rawEvent),
+    };
+    event.manuallyExcluded = manualExcludedCrossingEventIds.has(event.eventId);
+    mergedCrossingEventMap.set(crossingEventKey(event), event);
   }
   const mergedCrossingEvents = [...mergedCrossingEventMap.values()].sort((a, b) => +new Date(a.t) - +new Date(b.t));
 
@@ -886,6 +942,16 @@ async function main() {
 
   await fs.mkdir(outDir, { recursive: true });
 
+  await writeJson(
+    'confirmed_crossing_exclusions.json',
+    {
+      schemaVersion: 'v1',
+      generatedAt,
+      sourcePath: 'config/confirmed-crossing-exclusions.json',
+      confirmedCrossingExclusions,
+    },
+  );
+
   async function writeJson(name, obj) {
     const finalPath = path.join(outDir, name);
     const tmpPath = path.join(outDir, `${name}.${process.pid}.${Date.now()}.tmp`);
@@ -916,9 +982,14 @@ async function main() {
         crossingEvents: mergedCrossingEvents,
         crossingsByHour: mergedCrossingsByHour,
         linkageEvents: dedupedLinkageEvents,
+        confirmedCrossingExclusions,
       },
       null,
-      baseMetadata,
+      {
+        ...baseMetadata,
+        confirmedCrossingExclusionCount: confirmedCrossingExclusions.length,
+        manuallyExcludedCrossingEventCount: mergedCrossingEvents.filter((event) => event.manuallyExcluded).length,
+      },
     ),
   );
 

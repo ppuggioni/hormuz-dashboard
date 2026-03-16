@@ -35,6 +35,12 @@
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for OLGA",
       "excludedAt": "2026-03-16T07:58:00Z"
+    },
+    {
+      "eventId": "418637|2026-03-16T08:47:23.943573Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MADHURI",
+      "excludedAt": "2026-03-16T09:58:00Z"
     }
   ]
 }

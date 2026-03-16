@@ -2812,45 +2812,40 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1.8fr]">
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Current fresh summary</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Fresh + rolling day</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No fresh summary yet"}</div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 {newsFeed?.lastUpdateSummary?.body || "The latest run summary will appear here once the next browsing cycle writes it."}
               </p>
+              <div className="mt-4 border-t border-emerald-900/40 pt-4">
+                <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-300/80">Rolling 24h</div>
+                <div className="mt-2 text-sm font-semibold leading-5 text-slate-100">{newsFeed?.last24hSummary?.headline || "No 24h summary yet"}</div>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  {newsFeed?.last24hSummary?.body || "The rolling 24-hour view will appear here once enough collected items exist."}
+                </p>
+              </div>
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Daily summaries</div>
-              <div className="mt-3 grid gap-3 md:grid-cols-3">
-                {[
-                  {
-                    key: "today-24h",
-                    label: "Rolling 24h",
-                    headline: newsFeed?.last24hSummary?.headline || "No 24h summary yet",
-                    body: newsFeed?.last24hSummary?.body || "The rolling 24-hour view will appear here once enough collected items exist.",
-                  },
-                  {
-                    key: "prev-day",
-                    label: "Previous day",
-                    headline: newsFeed?.previousDaySummary?.headline || "No previous-day summary yet",
-                    body: newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it.",
-                  },
-                  ...newsDays.slice(0, 3).map((day) => ({
-                    key: day.day,
-                    label: new Date(day.day).toUTCString().slice(0, 16),
-                    headline: day.headline,
-                    body: `${day.items.length} item${day.items.length === 1 ? "" : "s"} in source log for this day.`,
-                  })),
-                ].slice(0, 3).map((entry) => (
-                  <div key={entry.key} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{entry.label}</div>
-                    <div className="mt-2 text-sm font-semibold leading-5 text-slate-100">{entry.headline}</div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{entry.body}</p>
-                  </div>
-                ))}
-              </div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Previous day</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.previousDaySummary?.headline || "No previous-day summary yet"}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it."}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Earlier day</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsDays[1]?.headline || newsDays[0]?.headline || "No earlier-day summary yet"}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {newsDays[1]
+                  ? `${new Date(newsDays[1].day).toUTCString().slice(0, 16)} — ${newsDays[1].items.length} item${newsDays[1].items.length === 1 ? "" : "s"} in the source log for this day.`
+                  : newsDays[0]
+                    ? `${new Date(newsDays[0].day).toUTCString().slice(0, 16)} — ${newsDays[0].items.length} item${newsDays[0].items.length === 1 ? "" : "s"} in the source log for this day.`
+                    : "As more days accumulate, the next most recent daily summary will appear here."}
+              </p>
             </div>
           </div>
 

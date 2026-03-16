@@ -20,7 +20,7 @@ fi
 : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY missing}"
 
 API_BASE="${SUPABASE_URL%/}/storage/v1"
-CACHE_CONTROL="public, max-age=3600, s-maxage=3600, stale-while-revalidate=300"
+CACHE_CONTROL="public, max-age=900, s-maxage=900, stale-while-revalidate=120"
 
 {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] news upload start"

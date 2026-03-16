@@ -2763,10 +2763,10 @@ export default function Page() {
         <section id="newsfeed" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Newsfeed MVP</div>
-              <h2 className="mt-1 text-xl font-semibold text-slate-100">External narrative and analyst colour</h2>
+              <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Regional news intelligence</div>
+              <h2 className="mt-1 text-xl font-semibold text-slate-100">Fresh summary, daily summaries, and source log</h2>
               <p className="mt-2 max-w-3xl text-sm text-slate-400">
-                A lightweight intelligence layer for commentary, screenshots, blogs, and headline flow sitting on top of the observed AIS crossing data.
+                A cleaner regional intelligence layer: one fresh summary, recent daily summaries, and a source-by-source log of what the dashboard is using over time.
               </p>
             </div>
             <div className="text-xs text-slate-400 md:text-right">
@@ -2777,104 +2777,85 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr_0.8fr]">
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1.8fr]">
             <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Last update summary</div>
-              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No last-update summary yet"}</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Current fresh summary</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No fresh summary yet"}</div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 {newsFeed?.lastUpdateSummary?.body || "The latest run summary will appear here once the next browsing cycle writes it."}
               </p>
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Last 24h summary</div>
-              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.last24hSummary?.headline || "No 24h summary yet"}</div>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                {newsFeed?.last24hSummary?.body || "The rolling 24-hour view will appear here once enough collected items exist."}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Previous day summary</div>
-              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.previousDaySummary?.headline || "No previous-day summary yet"}</div>
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                {newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it."}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Daily headline rail</div>
-              <div className="mt-3 max-h-[260px] space-y-2 overflow-auto pr-1">
-                {newsDays.length ? newsDays.map((day) => {
-                  const active = selectedNewsDayEntry?.day === day.day;
-                  return (
-                    <button
-                      key={day.day}
-                      type="button"
-                      onClick={() => setSelectedNewsDay(day.day)}
-                      className={`w-full rounded-lg border px-3 py-2 text-left transition ${active ? "border-cyan-400 bg-cyan-500/10 text-cyan-100" : "border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/70"}`}
-                    >
-                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{new Date(day.day).toUTCString().slice(0, 16)}</div>
-                      <div className="mt-1 text-sm font-medium leading-5">{day.headline}</div>
-                      <div className="mt-1 text-[11px] text-slate-500">{day.items.length} item{day.items.length === 1 ? "" : "s"}</div>
-                    </button>
-                  );
-                }) : <div className="text-sm text-slate-500">No daily headlines yet.</div>}
-              </div>
-            </div>
-          </div>
-
-          {selectedNewsDayEntry ? (
-            <div className="mt-4 rounded-xl border border-cyan-900/40 bg-cyan-950/20 p-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Selected day</div>
-                  <div className="mt-1 text-lg font-semibold text-slate-100">{new Date(selectedNewsDayEntry.day).toUTCString().slice(0, 16)}</div>
-                  <div className="mt-2 text-base font-semibold text-cyan-100">{selectedNewsDayEntry.headline}</div>
-                </div>
-                <div className="text-xs text-slate-400">{selectedNewsDayEntry.items.length} item{selectedNewsDayEntry.items.length === 1 ? "" : "s"}</div>
-              </div>
-              <div className="mt-4 space-y-3">
-                {selectedNewsDayEntry.items.map((item) => (
-                  <div key={`day-${item.id}`} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                    <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
-                      <a href={item.url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-slate-100 hover:text-cyan-300">{item.title}</a>
-                      <div className="text-xs text-slate-500">{new Date(item.publishedAt).toUTCString()}</div>
-                    </div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.summary}</p>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Daily summaries</div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                {[
+                  {
+                    key: "today-24h",
+                    label: "Rolling 24h",
+                    headline: newsFeed?.last24hSummary?.headline || "No 24h summary yet",
+                    body: newsFeed?.last24hSummary?.body || "The rolling 24-hour view will appear here once enough collected items exist.",
+                  },
+                  {
+                    key: "prev-day",
+                    label: "Previous day",
+                    headline: newsFeed?.previousDaySummary?.headline || "No previous-day summary yet",
+                    body: newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it.",
+                  },
+                  ...newsDays.slice(0, 3).map((day) => ({
+                    key: day.day,
+                    label: new Date(day.day).toUTCString().slice(0, 16),
+                    headline: day.headline,
+                    body: `${day.items.length} item${day.items.length === 1 ? "" : "s"} in source log for this day.`,
+                  })),
+                ].slice(0, 3).map((entry) => (
+                  <div key={entry.key} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                    <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{entry.label}</div>
+                    <div className="mt-2 text-sm font-semibold leading-5 text-slate-100">{entry.headline}</div>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{entry.body}</p>
                   </div>
                 ))}
               </div>
             </div>
-          ) : null}
+          </div>
 
-          <div className="mt-4 space-y-3">
-            {(newsFeed?.items || []).length ? (newsFeed?.items || []).map((item) => (
-              <article key={item.id} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
-                      <span>{item.sourceName}</span>
-                      {item.isNew ? <span className="rounded-full border border-emerald-700 bg-emerald-950/50 px-2 py-1 text-[10px] text-emerald-300">New in last run</span> : null}
-                    </div>
-                    <a href={item.url} target="_blank" rel="noreferrer" className="mt-1 block text-base font-semibold text-slate-100 hover:text-cyan-300">{item.title}</a>
-                  </div>
-                  <div className="text-right text-xs text-slate-500">
-                    <div>{new Date(item.publishedAt).toUTCString()}</div>
-                    {item.isNew && item.lastRunAt ? <div className="mt-1 text-emerald-300">Added {new Date(item.lastRunAt).toUTCString()}</div> : null}
-                  </div>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-300">{item.summary}</p>
-                {item.figureNote ? <p className="mt-3 rounded-lg border border-cyan-900/40 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100">Figure note: {item.figureNote}</p> : null}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.tags.map((tag) => (
-                    <span key={`${item.id}-${tag}`} className="rounded-full border border-slate-700 px-2 py-1 text-[11px] uppercase tracking-wide text-slate-300">{tag}</span>
-                  ))}
-                </div>
-              </article>
-            )) : (
-              <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Source log</div>
+                <div className="mt-1 text-lg font-semibold text-slate-100">Datetime, source link, summary</div>
+              </div>
+              <div className="text-xs text-slate-500">Most recent items first</div>
+            </div>
+
+            {(newsFeed?.items || []).length ? (
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-[0.2em] text-slate-500">
+                      <th className="p-2">Datetime</th>
+                      <th className="p-2">Source</th>
+                      <th className="p-2">Summary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(newsFeed?.items || []).map((item) => (
+                      <tr key={item.id} className="border-t border-slate-800 align-top">
+                        <td className="p-2 whitespace-nowrap text-slate-400">{new Date(item.publishedAt).toUTCString()}</td>
+                        <td className="p-2">
+                          <a href={item.url} target="_blank" rel="noreferrer" className="font-semibold text-cyan-300 underline underline-offset-2 hover:text-cyan-200">
+                            {item.title}
+                          </a>
+                          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</div>
+                        </td>
+                        <td className="p-2 text-slate-300">{item.summary}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
                 No news items yet. Once a manual or automated browsing run publishes <code className="text-slate-300">/data/news_feed.json</code>, this section will populate automatically.
               </div>
             )}

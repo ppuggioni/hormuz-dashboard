@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, Polygon, Polyline, TileLayer, Tooltip } from "react-leaflet";
 import { divIcon } from "leaflet";
+
+import { getPlaybackTriangleIcon } from "@/lib/leafletIcons";
 
 type Point = { shipId: string; shipName: string; vesselType: string; flag?: string; destination?: string; lat: number; lon: number };
 type Snapshot = { t: string; points: Point[] };
@@ -24,14 +26,6 @@ function formatShipDisplayName(shipName: string, flag?: string | null) {
   return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
 }
 
-function triangleIconHtml(color: string, deg: number, size = 14, withCross = false, equilateral = false) {
-  const h = equilateral ? Math.round(size * 0.95) : Math.round(size * 1.1);
-  const w = equilateral ? Math.round(size * 1.1) : Math.round(size * 0.5);
-  const tri = `<div style='transform: rotate(${deg}deg); width:0; height:0; border-left:${w / 2}px solid transparent; border-right:${w / 2}px solid transparent; border-bottom:${h}px solid ${color}; filter: drop-shadow(0 0 1px rgba(2,6,23,0.9));'></div>`;
-  if (!withCross) return tri;
-  return `<div style='position:relative;width:${size + 18}px;height:${size + 18}px;display:flex;align-items:center;justify-content:center;'>${tri}<div style='position:absolute;color:${color};opacity:0.98;font-size:${size + 22}px;font-weight:200;line-height:1;text-shadow:0 0 1px rgba(2,6,23,0.9);'>×</div></div>`;
-}
-
 function directionDegrees(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {
   const dLon = to.lon - from.lon;
   const dLat = to.lat - from.lat;
@@ -48,7 +42,7 @@ function timestampShort(ts: string): string {
   return `${day}/${month} ${hour}:${min} UTC`;
 }
 
-export default function PlaybackMap({
+export default memo(function PlaybackMap({
   points,
   snapshots,
   eastLon,
@@ -74,6 +68,14 @@ export default function PlaybackMap({
   currentTimestamp?: string;
 }) {
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
+  const snapshotIndexByTimestamp = useMemo(
+    () => new Map(snapshots.map((snapshot, index) => [snapshot.t, index])),
+    [snapshots],
+  );
+  const snapshotPointMaps = useMemo(
+    () => snapshots.map((snapshot) => new Map(snapshot.points.map((point) => [point.shipId, point]))),
+    [snapshots],
+  );
 
   const selectedTrail = useMemo(() => {
     if (!selectedShipId || !snapshots?.length) return [] as Array<{ t: string; lat: number; lon: number }>;
@@ -148,7 +150,7 @@ export default function PlaybackMap({
 
   const currentFrameHeadingByShip = useMemo(() => {
     const m = new Map<string, { deg: number; lowMovement: boolean }>();
-    const currentIndex = currentTimestamp ? snapshots.findIndex((s) => s.t === currentTimestamp) : -1;
+    const currentIndex = currentTimestamp ? (snapshotIndexByTimestamp.get(currentTimestamp) ?? -1) : -1;
     const currentByShip = new Map(points.map((p) => [p.shipId, p]));
 
     for (const [shipId, current] of currentByShip.entries()) {
@@ -156,14 +158,14 @@ export default function PlaybackMap({
       let next: Point | null = null;
 
       for (let sIdx = currentIndex - 1; sIdx >= 0; sIdx--) {
-        const hit = snapshots[sIdx].points.find((p) => p.shipId === shipId);
+        const hit = snapshotPointMaps[sIdx]?.get(shipId) || null;
         if (!hit) continue;
         prev = hit;
         if (Math.hypot(current.lat - hit.lat, current.lon - hit.lon) > 0.00005) break;
       }
 
       for (let sIdx = currentIndex + 1; sIdx < snapshots.length; sIdx++) {
-        const hit = snapshots[sIdx].points.find((p) => p.shipId === shipId);
+        const hit = snapshotPointMaps[sIdx]?.get(shipId) || null;
         if (!hit) continue;
         next = hit;
         if (Math.hypot(current.lat - hit.lat, current.lon - hit.lon) > 0.00005) break;
@@ -183,7 +185,7 @@ export default function PlaybackMap({
     }
 
     return m;
-  }, [points, snapshots, currentTimestamp]);
+  }, [points, snapshots, currentTimestamp, snapshotIndexByTimestamp, snapshotPointMaps]);
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
@@ -220,7 +222,7 @@ export default function PlaybackMap({
           </div>
         </div>
       ) : null}
-      <MapContainer center={[26.15, 56.2]} zoom={6} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={[26.15, 56.2]} zoom={6} preferCanvas style={{ height: "100%", width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -311,7 +313,7 @@ export default function PlaybackMap({
         <Marker
           key={`linked-${p.shipId}-${p.region}-${idx}`}
           position={[p.lat, p.lon]}
-          icon={divIcon({ className: "", html: triangleIconHtml(color, heading.deg, 12, false, heading.lowMovement), iconSize: [12, 14], iconAnchor: [6, 10] })}
+          icon={getPlaybackTriangleIcon(color, heading.deg, 12, false, heading.lowMovement)}
         >
           <Tooltip>
             {formatShipDisplayName(p.shipName, p.flag)} ({p.shipId}) — {p.region}
@@ -341,7 +343,7 @@ export default function PlaybackMap({
           <Marker
             key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
             position={[p.lat, p.lon]}
-            icon={divIcon({ className: "", html: triangleIconHtml(color, heading.deg, 8, isCrosser, heading.lowMovement), iconSize: isCrosser ? [16, 16] : [8, 10], iconAnchor: isCrosser ? [8, 8] : [4, 7] })}
+            icon={getPlaybackTriangleIcon(color, heading.deg, 8, isCrosser, heading.lowMovement)}
             eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
           >
             <Tooltip>
@@ -363,4 +365,4 @@ export default function PlaybackMap({
     </MapContainer>
     </div>
   );
-}
+});

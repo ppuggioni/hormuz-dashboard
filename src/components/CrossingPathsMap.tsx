@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useMemo } from "react";
-import { divIcon } from "leaflet";
-import { MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
+import { Fragment, memo, useMemo } from "react";
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMapEvents } from "react-leaflet";
+
+import { getTriangleIcon } from "@/lib/leafletIcons";
 
 type PathPoint = { t: string; lat: number; lon: number };
 type CrossingPath = {
@@ -66,15 +67,44 @@ function formatShipDisplayName(shipName: string, flag?: string | null) {
   return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
 }
 
-function triangleIcon(color: string, deg: number, size = 11) {
-  const h = Math.round(size * 1.15);
-  const w = Math.round(size * 0.5);
-  return divIcon({
-    className: "",
-    html: `<div style='transform: rotate(${deg}deg); width:0;height:0;border-left:${w / 2}px solid transparent;border-right:${w / 2}px solid transparent;border-bottom:${h}px solid ${color};'></div>`,
-    iconSize: [w, h],
-    iconAnchor: [Math.round(w / 2), Math.round(h * 0.75)],
-  });
+const DETAIL_MARKER_LIMIT = 240;
+
+function buildDetailPoints(points: PathPoint[], limit = DETAIL_MARKER_LIMIT) {
+  if (points.length <= limit) return points;
+
+  const sampled: PathPoint[] = [];
+  const seen = new Set<number>();
+  const lastIndex = points.length - 1;
+  const step = lastIndex / Math.max(limit - 1, 1);
+
+  for (let i = 0; i < limit; i++) {
+    const idx = Math.round(i * step);
+    if (seen.has(idx)) continue;
+    seen.add(idx);
+    sampled.push(points[idx]);
+  }
+
+  if (!seen.has(lastIndex)) sampled.push(points[lastIndex]);
+  return sampled;
+}
+
+function headingForPoint(points: PathPoint[], idx: number) {
+  const point = points[idx];
+  for (let j = idx + 1; j < points.length; j++) {
+    const next = points[j];
+    const dist = Math.hypot(next.lat - point.lat, next.lon - point.lon);
+    if (dist > 0.00005) {
+      return headingDeg({ lat: point.lat, lon: point.lon }, { lat: next.lat, lon: next.lon });
+    }
+  }
+  for (let j = idx - 1; j >= 0; j--) {
+    const prev = points[j];
+    const dist = Math.hypot(point.lat - prev.lat, point.lon - prev.lon);
+    if (dist > 0.00005) {
+      return headingDeg({ lat: prev.lat, lon: prev.lon }, { lat: point.lat, lon: point.lon });
+    }
+  }
+  return 0;
 }
 
 function MapResetHandler({ onReset }: { onReset?: () => void }) {
@@ -86,7 +116,7 @@ function MapResetHandler({ onReset }: { onReset?: () => void }) {
   return null;
 }
 
-export default function CrossingPathsMap({
+export default memo(function CrossingPathsMap({
   paths,
   eastLon,
   westLon,
@@ -105,9 +135,10 @@ export default function CrossingPathsMap({
 }) {
   const selectedSet = useMemo(() => new Set(selectedShipIds || []), [selectedShipIds]);
   const hasSelection = selectedSet.size > 0;
+  const detailShipId = selectedSet.size === 1 ? selectedShipIds?.[0] || null : null;
 
   return (
-    <MapContainer center={[26.1, 56.2]} zoom={6} style={{ height: "100%", width: "100%" }}>
+    <MapContainer center={[26.1, 56.2]} zoom={6} preferCanvas style={{ height: "100%", width: "100%" }}>
       <MapResetHandler onReset={onResetSelection} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -141,40 +172,54 @@ export default function CrossingPathsMap({
       {paths.map((ship) => {
         const isSelected = selectedSet.has(ship.shipId);
         const dimmed = hasSelection && !isSelected;
+        const isDetailed = detailShipId === ship.shipId;
         const color = dimmed ? "#64748b" : colorForShip(ship.shipId);
         const markerColor = dimmed ? "#94a3b8" : color;
-        const markerSize = dimmed ? 5 : isSelected ? 11 : 9;
+        const markerSize = dimmed ? 5 : 10;
         const polyline = ship.points.map((p) => [p.lat, p.lon] as [number, number]);
+        const lastPoint = ship.points[ship.points.length - 1];
+        const detailPoints = isDetailed ? buildDetailPoints(ship.points) : [];
+
+        if (!lastPoint) return null;
+
         return (
           <Fragment key={ship.shipId}>
             <Polyline positions={polyline} pathOptions={{ color, weight: isSelected ? 2 : 1.2, opacity: dimmed ? 0.22 : 0.82, dashArray: "4 6" }} eventHandlers={{ click: () => onToggleShip?.(ship.shipId) }} />
-            {ship.points.map((p, idx) => {
-              let deg = 0;
-              let found = false;
-              for (let j = idx + 1; j < ship.points.length; j++) {
-                const q = ship.points[j];
-                const dist = Math.hypot(q.lat - p.lat, q.lon - p.lon);
-                if (dist > 0.00005) {
-                  deg = headingDeg({ lat: p.lat, lon: p.lon }, { lat: q.lat, lon: q.lon });
-                  found = true;
-                  break;
-                }
-              }
-              if (!found) {
-                for (let j = idx - 1; j >= 0; j--) {
-                  const q = ship.points[j];
-                  const dist = Math.hypot(p.lat - q.lat, p.lon - q.lon);
-                  if (dist > 0.00005) {
-                    deg = headingDeg({ lat: q.lat, lon: q.lon }, { lat: p.lat, lon: p.lon });
-                    break;
-                  }
-                }
-              }
-              return (
+            {!isDetailed ? (
+              <CircleMarker
+                center={[lastPoint.lat, lastPoint.lon]}
+                radius={isSelected ? 4 : 3}
+                pathOptions={{
+                  color: markerColor,
+                  fillColor: markerColor,
+                  fillOpacity: dimmed ? 0.35 : 0.85,
+                  opacity: dimmed ? 0.4 : 0.95,
+                  weight: 1,
+                }}
+                eventHandlers={{ click: () => onToggleShip?.(ship.shipId) }}
+              >
+                <Tooltip>
+                  {formatShipDisplayName(ship.shipName, ship.flag)} ({ship.shipId}) — latest point
+                </Tooltip>
+                <Popup>
+                  <div style={{ minWidth: 220 }}>
+                    <div><strong>Name:</strong> {formatShipDisplayName(ship.shipName, ship.flag)}</div>
+                    <div><strong>Ship ID:</strong> {ship.shipId}</div>
+                    <div><strong>Type:</strong> {ship.vesselType}</div>
+                    <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${ship.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
+                    <div><strong>Last point:</strong> {new Date(lastPoint.t).toUTCString()}</div>
+                    <div><strong>Position:</strong> {lastPoint.lat.toFixed(4)}, {lastPoint.lon.toFixed(4)}</div>
+                    <div><strong>Direction:</strong> {ship.primaryDirection.replace("_to_", " → ")}</div>
+                    <div><strong>E→W:</strong> {ship.directionCounts.east_to_west} | <strong>W→E:</strong> {ship.directionCounts.west_to_east}</div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ) : null}
+            {isDetailed ? detailPoints.map((p, idx) => (
               <Marker
                 key={`${ship.shipId}-pt-${idx}`}
                 position={[p.lat, p.lon]}
-                icon={triangleIcon(markerColor, deg, markerSize)}
+                icon={getTriangleIcon(markerColor, headingForPoint(detailPoints, idx), markerSize)}
                 eventHandlers={{ click: () => onToggleShip?.(ship.shipId) }}
               >
                 <Tooltip>
@@ -193,10 +238,10 @@ export default function CrossingPathsMap({
                   </div>
                 </Popup>
               </Marker>
-            )})}
+            )) : null}
           </Fragment>
         );
       })}
     </MapContainer>
   );
-}
+});

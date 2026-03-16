@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import dynamic from "next/dynamic";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SnapshotPoint = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
 type Snapshot = { t: string; points: SnapshotPoint[] };
@@ -219,6 +219,7 @@ type DataShape = {
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
+const EXTERNAL_REGIONS = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai"] as const;
 
 function formatShipDisplayName(shipName: string, flag?: string | null) {
   const cleanName = String(shipName || "Unknown").trim() || "Unknown";
@@ -1171,6 +1172,7 @@ export default function Page() {
     }).length,
     [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidate24hCutoffTs, latestCandidateEventTs],
   );
+  const selectedCrossingShipIdSet = useMemo(() => new Set(selectedCrossingShipIds), [selectedCrossingShipIds]);
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
 
   useEffect(() => {
@@ -1480,10 +1482,8 @@ export default function Page() {
       .slice(0, 800);
   }, [data, selectedTypes, linkSort]);
 
-  const externalRegions = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai"];
-
   const externalLinkRows = useMemo(
-    () => linkageRows.filter((r) => externalRegions.includes(r.otherRegion)),
+    () => linkageRows.filter((r) => EXTERNAL_REGIONS.includes(r.otherRegion as (typeof EXTERNAL_REGIONS)[number])),
     [linkageRows],
   );
 
@@ -1506,6 +1506,14 @@ export default function Page() {
         deltaDh: r.deltaDh,
       }));
   }, [externalLinkRows, crossingVisibleShipIds, data]);
+  const crossingMapPaths = useMemo(() => filteredCrossingPathsForMap.slice(0, 180), [filteredCrossingPathsForMap]);
+  const playbackMonitoredAreas = useMemo(
+    () => [
+      { ...jaskPortAnalytics.bounds, color: "#fbbf24", label: "Jask port area" },
+      { ...jaskFacilitiesAnalytics.bounds, color: "#38bdf8", label: "Jask facilities area" },
+    ],
+    [jaskPortAnalytics.bounds, jaskFacilitiesAnalytics.bounds],
+  );
 
   const crossingSummary = useMemo(() => {
     const uniqueShipIds = new Set(filteredCrossingEvents.map((e) => e.shipId));
@@ -1588,12 +1596,28 @@ export default function Page() {
       return candidateSort.dir === "asc" ? cmp : -cmp;
     });
   }, [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidateSort]);
+  const toggleSelectedCrossingShip = useCallback((shipId: string) => {
+    startTransition(() => {
+      setSelectedCrossingShipIds((prev) => (
+        prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId]
+      ));
+    });
+  }, []);
+  const onlySelectedCrossingShip = useCallback((shipId: string) => {
+    startTransition(() => {
+      setSelectedCrossingShipIds([shipId]);
+    });
+  }, []);
+  const resetSelectedCrossingShips = useCallback(() => {
+    startTransition(() => {
+      setSelectedCrossingShipIds([]);
+    });
+  }, []);
 
-  const playbackLinkedPoints = useMemo(() => {
-    if (!externalPoints?.length || !currentSnapshot?.t || !data?.snapshots?.length) {
-      return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
+  const externalFrameRegionPick = useMemo(() => {
+    if (!externalPoints?.length || !data?.snapshots?.length) {
+      return new Map<string, ExternalPresencePoint[]>();
     }
-
     const MAX_FRAME_DELTA_MS = 30 * 60 * 1000;
     const hormuzFrameTimes = data.snapshots.map((s) => s.t);
     const hormuzFrameEpochs = hormuzFrameTimes.map((t) => +new Date(t));
@@ -1632,11 +1656,18 @@ export default function Page() {
       }
     }
 
+    return new Map([...frameRegionPick.entries()].map(([key, value]) => [key, value.points]));
+  }, [data?.snapshots, externalPoints, showOnlyLinkedExternal]);
+
+  const playbackLinkedPoints = useMemo(() => {
+    if (!currentSnapshot?.t || !externalFrameRegionPick.size) {
+      return [] as { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[];
+    }
     const out: { shipId: string; shipName: string; vesselType: string; region: string; lat: number; lon: number; deltaDh: string }[] = [];
-    for (const region of externalRegions) {
-      const pick = frameRegionPick.get(`${currentSnapshot.t}|${region}`);
+    for (const region of EXTERNAL_REGIONS) {
+      const pick = externalFrameRegionPick.get(`${currentSnapshot.t}|${region}`);
       if (!pick) continue;
-      for (const p of pick.points) {
+      for (const p of pick) {
         if (!selectedTypes.includes(p.vesselType)) continue;
         out.push({
           shipId: p.shipId,
@@ -1651,7 +1682,7 @@ export default function Page() {
     }
 
     return out.slice(0, 4000);
-  }, [data, currentSnapshot?.t, showOnlyLinkedExternal, externalPoints, selectedTypes]);
+  }, [currentSnapshot?.t, externalFrameRegionPick, selectedTypes]);
 
   const freshness = useMemo(() => {
     if (!data) {
@@ -2107,10 +2138,7 @@ export default function Page() {
               showNonCrossing={showNonCrossing}
               linkedPoints={playbackLinkedPoints}
               currentTimestamp={currentSnapshot?.t}
-              monitoredAreas={[
-                { ...jaskPortAnalytics.bounds, color: "#fbbf24", label: "Jask port area" },
-                { ...jaskFacilitiesAnalytics.bounds, color: "#38bdf8", label: "Jask facilities area" },
-              ]}
+              monitoredAreas={playbackMonitoredAreas}
             />
           </div>
         </section>
@@ -2197,15 +2225,12 @@ export default function Page() {
                 </thead>
                 <tbody>
                   {tankerTableRows.filter((r) => !isExcludedCrossingEvent(r)).map((r, idx) => {
-                    const selected = selectedCrossingShipIds.includes(r.shipId);
+                    const selected = selectedCrossingShipIdSet.has(r.shipId);
                     return (
                     <tr
                       key={`${r.shipId}-${r.t}-${idx}`}
                       className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
-                      onClick={() => {
-                        setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId]);
-                        document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
+                      onClick={() => toggleSelectedCrossingShip(r.shipId)}
                     >
                       <td className="p-2">{selected ? "●" : "○"}</td>
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
@@ -2290,15 +2315,12 @@ export default function Page() {
                 </thead>
                 <tbody>
                   {cargoTableRows.filter((r) => !isExcludedCrossingEvent(r)).map((r, idx) => {
-                    const selected = selectedCrossingShipIds.includes(r.shipId);
+                    const selected = selectedCrossingShipIdSet.has(r.shipId);
                     return (
                     <tr
                       key={`${r.shipId}-${r.t}-${idx}`}
                       className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
-                      onClick={() => {
-                        setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId]);
-                        document.getElementById("crossing-paths")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }}
+                      onClick={() => toggleSelectedCrossingShip(r.shipId)}
                     >
                       <td className="p-2">{selected ? "●" : "○"}</td>
                       <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
@@ -2450,20 +2472,20 @@ export default function Page() {
                   <button key={w} onClick={() => setCrossingWindow(w)} className={`px-2 py-1 rounded border ${crossingWindow === w ? "border-emerald-300 text-emerald-200" : "border-slate-700 text-slate-400"}`}>{w}</button>
                 ))}
                 <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>
-                {selectedCrossingShipIds.length ? <button onClick={() => setSelectedCrossingShipIds([])} className="px-2 py-1 rounded border border-slate-600 text-slate-300">reset selection</button> : null}
+                {selectedCrossingShipIds.length ? <button onClick={resetSelectedCrossingShips} className="px-2 py-1 rounded border border-slate-600 text-slate-300">reset selection</button> : null}
               </div>
               <div className="text-xs text-slate-300">
                 Showing {crossingSummary.crossings} crossings across {crossingSummary.ships} ships under the current filters.
               </div>
               <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
                 <CrossingPathsMap
-                  paths={filteredCrossingPathsForMap.slice(0, 180)}
+                  paths={crossingMapPaths}
                   eastLon={data.metadata.eastLon}
                   westLon={data.metadata.westLon}
                   linkLines={crossingMapLinkLines}
                   selectedShipIds={selectedCrossingShipIds}
-                  onToggleShip={(shipId) => setSelectedCrossingShipIds((prev) => prev.includes(shipId) ? prev.filter((id) => id !== shipId) : [...prev, shipId])}
-                  onResetSelection={() => setSelectedCrossingShipIds([])}
+                  onToggleShip={toggleSelectedCrossingShip}
+                  onResetSelection={resetSelectedCrossingShips}
                 />
               </div>
               <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
@@ -2484,12 +2506,12 @@ export default function Page() {
                   </thead>
                   <tbody>
                     {crossingDetailRows.map((r, idx) => {
-                      const selected = selectedCrossingShipIds.includes(r.shipId);
+                      const selected = selectedCrossingShipIdSet.has(r.shipId);
                       return (
                         <tr
                           key={`cross-detail-${r.shipId}-${r.t}-${idx}`}
                           className={`border-t border-slate-800 cursor-pointer ${selected ? "bg-slate-800/70" : "hover:bg-slate-800/40"}`}
-                          onClick={() => setSelectedCrossingShipIds((prev) => prev.includes(r.shipId) ? prev.filter((id) => id !== r.shipId) : [...prev, r.shipId])}
+                          onClick={() => toggleSelectedCrossingShip(r.shipId)}
                         >
                           <td className="p-2">{selected ? "●" : "○"}</td>
                           <td className="p-2">
@@ -2498,7 +2520,7 @@ export default function Page() {
                               className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 hover:border-slate-500"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedCrossingShipIds([r.shipId]);
+                                onlySelectedCrossingShip(r.shipId);
                               }}
                             >
                               only

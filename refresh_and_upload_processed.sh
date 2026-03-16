@@ -34,7 +34,19 @@ fi
 : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY missing}"
 
 API_BASE="${SUPABASE_URL%/}/storage/v1"
-CACHE_CONTROL="public, max-age=900, s-maxage=900, stale-while-revalidate=120"
+LATEST_CACHE_CONTROL="public, max-age=60, s-maxage=60, stale-while-revalidate=30"
+HEAVY_CACHE_CONTROL="public, max-age=300, s-maxage=300, stale-while-revalidate=60"
+
+cache_control_for_object() {
+  case "$1" in
+    processed_playback_24h.json|processed_playback_48h.json|processed_external_24h.json|processed_external_48h.json|processed_shipmeta_24h.json|processed_shipmeta_48h.json)
+      echo "$HEAVY_CACHE_CONTROL"
+      ;;
+    *)
+      echo "$LATEST_CACHE_CONTROL"
+      ;;
+  esac
+}
 
 {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] refresh start"
@@ -58,11 +70,13 @@ CACHE_CONTROL="public, max-age=900, s-maxage=900, stale-while-revalidate=120"
     gz_out="/tmp/hormuz_${obj}.gz"
     gzip -c "$local_path" > "$gz_out"
 
+    cache_control="$(cache_control_for_object "$obj")"
+
     curl -fsS -X POST "${API_BASE}/object/${BUCKET}/multi_region/${obj}" \
       -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
       -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
       -H "Content-Type: application/json" \
-      -H "Cache-Control: ${CACHE_CONTROL}" \
+      -H "Cache-Control: ${cache_control}" \
       -H "x-upsert: true" \
       --data-binary "@${gz_out}" >/tmp/hormuz_processed_upload_${obj}.json
 
@@ -70,7 +84,7 @@ CACHE_CONTROL="public, max-age=900, s-maxage=900, stale-while-revalidate=120"
     gzip_bytes=$(wc -c < "$gz_out")
     total_raw=$((total_raw + raw_bytes))
     total_gzip=$((total_gzip + gzip_bytes))
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] uploaded ${obj} raw=${raw_bytes} gzip=${gzip_bytes}"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] uploaded ${obj} raw=${raw_bytes} gzip=${gzip_bytes} cache=${cache_control}"
   done
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] upload done files=${#OBJECTS[@]} raw_total=${total_raw} gzip_total=${total_gzip} bytes"

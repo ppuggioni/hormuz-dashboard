@@ -830,6 +830,7 @@ export default function Page() {
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newDataAvailable, setNewDataAvailable] = useState(false);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [mapMode, setMapMode] = useState<"confirmed" | "candidates">("confirmed");
   const candidateDefaultsAppliedRef = useRef(false);
   const crossingDefaultsAppliedRef = useRef(false);
@@ -837,99 +838,111 @@ export default function Page() {
   const mountedAtRef = useRef<number>(Date.now());
   const latestGeneratedAtRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
-    const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
+  const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
+  const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
 
-    const fetchJson = async (url: string) => {
-      const r = await fetch(url, { cache: "force-cache" });
-      if (!r.ok) throw new Error(`fetch failed ${r.status}`);
-      const buf = await r.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      let text = "";
-      const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
-      if (isGzip && typeof DecompressionStream !== "undefined") {
-        const ds = new DecompressionStream("gzip");
-        const stream = new Blob([bytes]).stream().pipeThrough(ds);
-        text = await new Response(stream).text();
-      } else {
-        text = new TextDecoder().decode(bytes);
-      }
-      return JSON.parse(text);
-    };
-
-    const loadNews = async () => {
-      try {
-        const news = await fetchJson(remoteNewsUrl);
-        setNewsFeed(news as NewsFeedShape);
-        return;
-      } catch {
-        // fall through to local artifact
-      }
-      try {
-        const news = await fetchJson(`${root}/news_feed.json`);
-        setNewsFeed(news as NewsFeedShape);
-      } catch {
-        setNewsFeed(null);
-      }
-    };
-
-    const load = async () => {
-      await loadNews();
-      try {
-        const core = await fetchJson(`${root}/processed_core.json`);
-        const paths = await fetchJson(`${root}/processed_paths.json`);
-        const candidates = await fetchJson(`${root}/processed_candidates.json`);
-        const latestPlayback = await fetchJson(`${root}/processed_playback_latest.json`);
-        const latestShipmeta = await fetchJson(`${root}/processed_shipmeta_latest.json`);
-
-        const normalized: DataShape = {
-          metadata: core?.metadata || {
-            generatedAt: new Date().toISOString(),
-            eastLon: 56.4,
-            westLon: 56.15,
-            minLat: 24,
-            fileCount: 0,
-            shipCount: 0,
-            crossingShipCount: 0,
-            crossingEventCount: 0,
-          },
-          vesselTypes: Array.isArray(core?.data?.vesselTypes) ? core.data.vesselTypes : [],
-          shipMeta: latestShipmeta?.data?.shipMeta || core?.data?.shipMeta || {},
-          snapshots: Array.isArray(latestPlayback?.data?.snapshots) ? latestPlayback.data.snapshots : [],
-          crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
-          crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
-          crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
-          linkageEvents: Array.isArray(core?.data?.linkageEvents) ? core.data.linkageEvents : [],
-          externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
-          confirmedCrossingExclusions: Array.isArray(core?.data?.confirmedCrossingExclusions) ? core.data.confirmedCrossingExclusions : [],
-        };
-
-        setSplitMode(true);
-        setData(normalized);
-        setTankerCandidatesData(Array.isArray(candidates?.data?.tankerCandidates) ? candidates.data.tankerCandidates : []);
-        setCargoCandidatesData(Array.isArray(candidates?.data?.cargoCandidates) ? candidates.data.cargoCandidates : []);
-        setTankerCandidateEventsData(Array.isArray(candidates?.data?.tankerCandidateEvents) ? candidates.data.tankerCandidateEvents : []);
-        setCargoCandidateEventsData(Array.isArray(candidates?.data?.cargoCandidateEvents) ? candidates.data.cargoCandidateEvents : []);
-        setExternalPoints(Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : []);
-        const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
-        setSelectedTypes(defaults);
-        setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
-        setPlaybackDataMode("latest");
-        setFrameIndex(normalized.snapshots.length ? normalized.snapshots.length - 1 : 0);
-        return;
-      } catch (err) {
-        console.error("Failed to load split dashboard artifacts", err);
-      }
-    };
-
-    load();
+  const fetchJson = useMemo(() => async (url: string, options?: { fresh?: boolean }) => {
+    const fresh = Boolean(options?.fresh);
+    const resolvedUrl = fresh ? `${url}${url.includes("?") ? "&" : "?"}_ts=${Date.now()}` : url;
+    const r = await fetch(resolvedUrl, { cache: fresh ? "no-store" : "force-cache" });
+    if (!r.ok) throw new Error(`fetch failed ${r.status}`);
+    const buf = await r.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let text = "";
+    const isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    if (isGzip && typeof DecompressionStream !== "undefined") {
+      const ds = new DecompressionStream("gzip");
+      const stream = new Blob([bytes]).stream().pipeThrough(ds);
+      text = await new Response(stream).text();
+    } else {
+      text = new TextDecoder().decode(bytes);
+    }
+    return JSON.parse(text);
   }, []);
+
+  const loadNews = useMemo(() => async (fresh = false) => {
+    try {
+      const news = await fetchJson(remoteNewsUrl, { fresh });
+      setNewsFeed(news as NewsFeedShape);
+      return;
+    } catch {
+      // fall through to local artifact
+    }
+    try {
+      const news = await fetchJson(`${root}/news_feed.json`, { fresh });
+      setNewsFeed(news as NewsFeedShape);
+    } catch {
+      setNewsFeed(null);
+    }
+  }, [fetchJson, remoteNewsUrl, root]);
+
+  const loadDashboardData = useMemo(() => async (fresh = false) => {
+    await loadNews(fresh);
+    try {
+      const core = await fetchJson(`${root}/processed_core.json`, { fresh });
+      const paths = await fetchJson(`${root}/processed_paths.json`, { fresh });
+      const candidates = await fetchJson(`${root}/processed_candidates.json`, { fresh });
+      const latestPlayback = await fetchJson(`${root}/processed_playback_latest.json`, { fresh });
+      const latestShipmeta = await fetchJson(`${root}/processed_shipmeta_latest.json`, { fresh });
+
+      const normalized: DataShape = {
+        metadata: core?.metadata || {
+          generatedAt: new Date().toISOString(),
+          eastLon: 56.4,
+          westLon: 56.15,
+          minLat: 24,
+          fileCount: 0,
+          shipCount: 0,
+          crossingShipCount: 0,
+          crossingEventCount: 0,
+        },
+        vesselTypes: Array.isArray(core?.data?.vesselTypes) ? core.data.vesselTypes : [],
+        shipMeta: latestShipmeta?.data?.shipMeta || core?.data?.shipMeta || {},
+        snapshots: Array.isArray(latestPlayback?.data?.snapshots) ? latestPlayback.data.snapshots : [],
+        crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
+        crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
+        crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
+        linkageEvents: Array.isArray(core?.data?.linkageEvents) ? core.data.linkageEvents : [],
+        externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
+        confirmedCrossingExclusions: Array.isArray(core?.data?.confirmedCrossingExclusions) ? core.data.confirmedCrossingExclusions : [],
+      };
+
+      setSplitMode(true);
+      setData(normalized);
+      setTankerCandidatesData(Array.isArray(candidates?.data?.tankerCandidates) ? candidates.data.tankerCandidates : []);
+      setCargoCandidatesData(Array.isArray(candidates?.data?.cargoCandidates) ? candidates.data.cargoCandidates : []);
+      setTankerCandidateEventsData(Array.isArray(candidates?.data?.tankerCandidateEvents) ? candidates.data.tankerCandidateEvents : []);
+      setCargoCandidateEventsData(Array.isArray(candidates?.data?.cargoCandidateEvents) ? candidates.data.cargoCandidateEvents : []);
+      setExternalPoints(Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : []);
+      const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
+      setSelectedTypes(defaults);
+      setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
+      setPlaybackDataMode("latest");
+      setFrameIndex(normalized.snapshots.length ? normalized.snapshots.length - 1 : 0);
+      setNewDataAvailable(false);
+      return;
+    } catch (err) {
+      console.error("Failed to load split dashboard artifacts", err);
+    }
+  }, [fetchJson, loadNews, root]);
+
+  useEffect(() => {
+    void loadDashboardData(false);
+  }, [loadDashboardData]);
 
   useEffect(() => {
     if (!data?.metadata?.generatedAt) return;
     latestGeneratedAtRef.current = data.metadata.generatedAt;
   }, [data?.metadata?.generatedAt]);
+
+  const handleRefreshData = async () => {
+    setIsRefreshingData(true);
+    try {
+      await loadDashboardData(true);
+    } finally {
+      setIsRefreshingData(false);
+    }
+  };
 
   useEffect(() => {
     const bump = () => {
@@ -1798,15 +1811,26 @@ export default function Page() {
             <div className="mb-3 rounded-lg border border-cyan-300/60 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-100 flex items-center justify-between gap-3">
               <span>New dashboard data is available. Page will refresh automatically when idle.</span>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => { void handleRefreshData(); }}
                 className="rounded-md border border-cyan-300/60 px-2 py-1"
+                disabled={isRefreshingData}
               >
-                Refresh now
+                {isRefreshingData ? "Refreshing..." : "Refresh now"}
               </button>
             </div>
           ) : null}
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Strait of Hormuz Traffic Intelligence</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-xl border border-slate-700 bg-slate-950/50 px-3 py-2 text-xs text-slate-300">
+              Data updated: {data?.metadata?.generatedAt ? new Date(data.metadata.generatedAt).toUTCString() : "unknown"}
+            </div>
+            <button
+              onClick={() => { void handleRefreshData(); }}
+              disabled={isRefreshingData}
+              className="inline-flex items-center rounded-xl border border-cyan-400/50 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60"
+            >
+              {isRefreshingData ? "Refreshing data..." : "Refresh data"}
+            </button>
             <div className="inline-flex items-center rounded-xl border border-amber-300/70 bg-amber-400/15 px-4 py-2 text-sm font-semibold text-amber-100 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
               BLK - SET team
             </div>

@@ -1426,6 +1426,7 @@ export default function Page() {
       .filter((e) => {
         if (!crossingMapTypes.includes(e.vesselType)) return false;
         if (crossingDirectionFilter !== "all" && e.direction !== crossingDirectionFilter) return false;
+        if (isExcludedCrossingEvent(e)) return false;
         const ts = +new Date(e.t);
         return ts >= cutoff24 && ts <= latestTs;
       })
@@ -1443,7 +1444,7 @@ export default function Page() {
       if (stillValid.length === 0 && last24hIds.length) return last24hIds;
       return stillValid;
     });
-  }, [data, crossingMapTypes, crossingDirectionFilter]);
+  }, [data, crossingMapTypes, crossingDirectionFilter, suspectedSpoofingEventKeys]);
 
   const filteredCrossingPathsForMap = useMemo(() => {
     if (!data) return [] as CrossingPath[];

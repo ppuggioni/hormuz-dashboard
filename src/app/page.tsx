@@ -866,6 +866,7 @@ export default function Page() {
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
+  const [newsSourceFilter, setNewsSourceFilter] = useState<string>("all");
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [mapMode, setMapMode] = useState<"confirmed" | "candidates">("confirmed");
@@ -1179,6 +1180,15 @@ export default function Page() {
     if (!selectedNewsDay) return newsDays[0];
     return newsDays.find((d) => d.day === selectedNewsDay) || newsDays[0];
   }, [newsDays, selectedNewsDay]);
+  const newsSourceOptions = useMemo(() => {
+    const labels = [...new Set((newsFeed?.items || []).map((item) => deriveNewsDisplaySource(item)).filter(Boolean))];
+    return labels.sort((a, b) => a.localeCompare(b));
+  }, [newsFeed]);
+  const filteredNewsItems = useMemo(() => {
+    const items = newsFeed?.items || [];
+    if (newsSourceFilter === "all") return items;
+    return items.filter((item) => deriveNewsDisplaySource(item) === newsSourceFilter);
+  }, [newsFeed, newsSourceFilter]);
   const candidateDailyHigh = useMemo(
     () => aggregateCandidatesToDailyBins(highConfidenceCandidateEventsForCharts),
     [highConfidenceCandidateEventsForCharts],
@@ -2814,7 +2824,7 @@ export default function Page() {
 
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">Fresh + rolling day</div>
+              <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">LATEST NEWS</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No fresh summary yet"}</div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 {newsFeed?.lastUpdateSummary?.body || "The latest run summary will appear here once the next browsing cycle writes it."}
@@ -2850,12 +2860,27 @@ export default function Page() {
           </div>
 
           <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Source log</div>
                 <div className="mt-1 text-lg font-semibold text-slate-100">Datetime, source link, summary</div>
               </div>
-              <div className="text-xs text-slate-500">Most recent items first</div>
+              <div className="flex flex-col gap-2 md:items-end">
+                <div className="text-xs text-slate-500">Most recent items first</div>
+                <label className="text-xs text-slate-400">
+                  <span className="mr-2">Filter by source</span>
+                  <select
+                    value={newsSourceFilter}
+                    onChange={(e) => setNewsSourceFilter(e.target.value)}
+                    className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                  >
+                    <option value="all">All sources</option>
+                    {newsSourceOptions.map((source) => (
+                      <option key={source} value={source}>{source}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
 
             {(newsFeed?.items || []).length ? (
@@ -2869,7 +2894,7 @@ export default function Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(newsFeed?.items || []).map((item) => (
+                    {filteredNewsItems.map((item) => (
                       <tr key={item.id} className="border-t border-slate-800 align-top">
                         <td className="p-2 whitespace-nowrap text-slate-400">{new Date(item.publishedAt).toUTCString()}</td>
                         <td className="p-2">

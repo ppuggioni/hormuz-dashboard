@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "updatedAt": "2026-03-15T18:42:00Z",
+  "updatedAt": "2026-03-16T11:55:00Z",
   "profile": "hormuz-news",
-  "notes": "MVP watchlist for Hormuz dashboard newsfeed. Future dedicated 6h agent should browse these sources with the hormuz-news browser profile, store only high-signal items, update data/news-seed-items.json or a future DB-backed store, then run npm run build:news.",
+  "notes": "Hormuz dashboard newsfeed watchlist. The 6h agent should browse these sources with the hormuz-news browser profile, store high-signal items and extracted evidence in data/news-seed-items.json or a future DB-backed store, then run npm run build:news. Very important: when Windward or related reporting contains structured operational figures, store both the raw data points and commentary. Always preserve notable stats and commentary on dark fleet / AIS disruption plus alternative-route and bypass-flow context including Red Sea, Yanbu and Fujairah when present.",
   "sources": [
     {
       "id": "tankertrackers-x",
@@ -53,12 +53,28 @@
       "tags": ["blog", "analytics", "energy", "shipping"]
     },
     {
+      "id": "windward-blog",
+      "type": "website",
+      "name": "Windward maritime intelligence",
+      "url": "https://windward.ai/blog/",
+      "priority": 1,
+      "tags": ["windward", "analytics", "dark-fleet", "ais", "yanbu", "fujairah", "red-sea"]
+    },
+    {
       "id": "google-research",
       "type": "search_query",
       "name": "Fresh web research: hormuz shadow fleet",
       "url": "https://www.google.com/search?q=hormuz+shadow+fleet",
       "priority": 2,
       "tags": ["research", "search", "shadow-fleet", "last-24h"]
+    },
+    {
+      "id": "google-bypass-research",
+      "type": "search_query",
+      "name": "Fresh web research: Red Sea Yanbu Fujairah Hormuz bypass flows",
+      "url": "https://www.google.com/search?q=Red+Sea+Yanbu+Fujairah+Hormuz+shipping+March+2026",
+      "priority": 1,
+      "tags": ["research", "search", "red-sea", "yanbu", "fujairah", "bypass-flows", "last-24h"]
     },
     {
       "id": "staunovo-x",

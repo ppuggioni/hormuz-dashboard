@@ -1152,25 +1152,26 @@ export default function Page() {
     () => tankerCandidateEventsData.length ? Math.max(...tankerCandidateEventsData.map((c) => +new Date(c.lastSeenAt))) : null,
     [tankerCandidateEventsData],
   );
+  const candidateReferenceTs = latestCandidateSnapshotTs || latestCandidateEventTs;
   const candidate24hCutoffTs = useMemo(
-    () => latestCandidateEventTs == null ? null : latestCandidateEventTs - 24 * 60 * 60 * 1000,
-    [latestCandidateEventTs],
+    () => candidateReferenceTs == null ? null : candidateReferenceTs - 24 * 60 * 60 * 1000,
+    [candidateReferenceTs],
   );
   const candidateLast24hHighCount = useMemo(
-    () => candidate24hCutoffTs == null ? 0 : highConfidenceCandidateEventsForCharts.filter((c) => {
+    () => candidate24hCutoffTs == null || candidateReferenceTs == null ? 0 : highConfidenceCandidateEventsForCharts.filter((c) => {
       const ts = +new Date(c.lastSeenAt);
-      return ts >= candidate24hCutoffTs && ts <= latestCandidateEventTs!;
+      return ts >= candidate24hCutoffTs && ts <= candidateReferenceTs;
     }).length,
-    [highConfidenceCandidateEventsForCharts, candidate24hCutoffTs, latestCandidateEventTs],
+    [highConfidenceCandidateEventsForCharts, candidate24hCutoffTs, candidateReferenceTs],
   );
   const candidateLast24hLowCount = useMemo(
-    () => candidate24hCutoffTs == null ? 0 : tankerCandidateEventsData.filter((c) => {
+    () => candidate24hCutoffTs == null || candidateReferenceTs == null ? 0 : tankerCandidateEventsData.filter((c) => {
       if (c.confidenceBand !== "low") return false;
       if (discardSuspectedSpoofing && suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`)) return false;
       const ts = +new Date(c.lastSeenAt);
-      return ts >= candidate24hCutoffTs && ts <= latestCandidateEventTs!;
+      return ts >= candidate24hCutoffTs && ts <= candidateReferenceTs;
     }).length,
-    [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidate24hCutoffTs, latestCandidateEventTs],
+    [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidate24hCutoffTs, candidateReferenceTs],
   );
   const selectedCrossingShipIdSet = useMemo(() => new Set(selectedCrossingShipIds), [selectedCrossingShipIds]);
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
@@ -1911,6 +1912,9 @@ export default function Page() {
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
               <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
               <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
+              <div className="mt-1 text-[10px] leading-relaxed text-amber-100/80">
+                Window anchored to latest dashboard snapshot, not the latest candidate event.
+              </div>
               <button
                 onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"

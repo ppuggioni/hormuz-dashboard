@@ -2172,7 +2172,7 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tankerTableRows.filter((r) => !isSuspectedSpoofingEvent(r)).map((r, idx) => {
+                  {tankerTableRows.filter((r) => !isExcludedCrossingEvent(r)).map((r, idx) => {
                     const selected = selectedCrossingShipIds.includes(r.shipId);
                     return (
                     <tr
@@ -2265,7 +2265,7 @@ export default function Page() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cargoTableRows.filter((r) => !isSuspectedSpoofingEvent(r)).map((r, idx) => {
+                  {cargoTableRows.filter((r) => !isExcludedCrossingEvent(r)).map((r, idx) => {
                     const selected = selectedCrossingShipIds.includes(r.shipId);
                     return (
                     <tr

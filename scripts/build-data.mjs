@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Papa from 'papaparse';
 
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
+const DEFAULT_SOURCE_ROOT = path.resolve(REPO_ROOT, '..');
 const INDEX_URLS = {
   hormuz:
     process.env.HORMUZ_INDEX_URL ||
@@ -25,6 +29,11 @@ const INDEX_URLS = {
     process.env.MUMBAI_INDEX_URL ||
     'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/mumbai/index.json',
 };
+const SOURCE_MODE = String(process.env.HORMUZ_SOURCE_MODE || 'local').trim().toLowerCase() === 'remote' ? 'remote' : 'local';
+const SOURCE_ROOT = path.resolve(process.env.HORMUZ_SOURCE_ROOT || DEFAULT_SOURCE_ROOT);
+const rawSourceMinAgeSeconds = Number(process.env.HORMUZ_SOURCE_MIN_AGE_SECONDS ?? '120');
+const SOURCE_MIN_AGE_SECONDS = Number.isFinite(rawSourceMinAgeSeconds) && rawSourceMinAgeSeconds >= 0 ? rawSourceMinAgeSeconds : 120;
+const SOURCE_MIN_AGE_MS = SOURCE_MIN_AGE_SECONDS * 1000;
 
 const EAST_LON = 56.4;
 const WEST_LON = 56.15;
@@ -347,22 +356,110 @@ function classifyVesselType(_gtShipType, shipTypeCode) {
   return map[n] || 'other';
 }
 
+function buildRegionFileRegex(regionId) {
+  const esc = regionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${esc}_(\\d{4})_(\\d{2})_(\\d{2})_(\\d{2})_(\\d{2})_(\\d{2})\\.csv$`);
+}
+
+function parseRunTimeFromFile(regionId, name) {
+  const m = name.match(buildRegionFileRegex(regionId));
+  if (!m) return null;
+  return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+}
+
 async function fetchIndexFiles(url) {
   if (!url) return [];
   const indexRes = await fetch(url);
   if (!indexRes.ok) throw new Error(`Failed to fetch index ${url}: ${indexRes.status}`);
   const index = await indexRes.json();
-  return (index.files || []).slice().sort((a, b) => new Date(a.run_utc) - new Date(b.run_utc));
+  return (index.files || [])
+    .map((file) => ({ ...file, source: 'remote' }))
+    .slice()
+    .sort((a, b) => new Date(a.run_utc) - new Date(b.run_utc));
+}
+
+async function loadLocalRegionFiles(regionId) {
+  const entries = await fs.readdir(SOURCE_ROOT, { withFileTypes: true });
+  const fileRe = buildRegionFileRegex(regionId);
+  const cutoff = Date.now() - SOURCE_MIN_AGE_MS;
+  const candidates = entries.filter((entry) => entry.isFile() && fileRe.test(entry.name));
+  const files = await Promise.all(candidates.map(async (entry) => {
+    const localPath = path.join(SOURCE_ROOT, entry.name);
+    const st = await fs.stat(localPath);
+    return {
+      file: entry.name,
+      run_utc: parseRunTimeFromFile(regionId, entry.name),
+      bytes: st.size,
+      mtime_utc: st.mtime.toISOString(),
+      local_path: localPath,
+      source: 'local',
+      isStable: st.mtimeMs <= cutoff,
+    };
+  }));
+  const stableFiles = files
+    .filter((file) => file.run_utc && file.isStable)
+    .map((file) => ({
+      file: file.file,
+      run_utc: file.run_utc,
+      bytes: file.bytes,
+      mtime_utc: file.mtime_utc,
+      local_path: file.local_path,
+      source: file.source,
+    }))
+    .sort((a, b) => new Date(a.run_utc) - new Date(b.run_utc));
+  return {
+    files: stableFiles,
+    source: 'local',
+    totalDiscovered: files.filter((file) => file.run_utc).length,
+    skippedRecentCount: files.filter((file) => file.run_utc && !file.isStable).length,
+  };
+}
+
+async function loadRegionFiles(regionId, indexUrl) {
+  if (SOURCE_MODE !== 'remote') {
+    try {
+      const local = await loadLocalRegionFiles(regionId);
+      if (local.files.length > 0) return local;
+      console.warn(`No stable local files for ${regionId} in ${SOURCE_ROOT}; falling back to remote index`);
+    } catch (err) {
+      console.warn(`Local source scan failed for ${regionId}: ${err.message}. Falling back to remote index`);
+    }
+  }
+
+  const remoteFiles = await fetchIndexFiles(indexUrl);
+  return {
+    files: remoteFiles,
+    source: 'remote',
+    totalDiscovered: remoteFiles.length,
+    skippedRecentCount: 0,
+  };
+}
+
+async function loadCsvText(file) {
+  if (file.local_path) return fs.readFile(file.local_path, 'utf8');
+  const res = await fetch(file.public_url);
+  if (!res.ok) return null;
+  return res.text();
 }
 
 async function main() {
   const regionFiles = {};
+  const sourceModesByRegion = {};
+  const regionDiscoveredFileCounts = {};
+  const regionSkippedRecentCounts = {};
   for (const [regionId, indexUrl] of Object.entries(INDEX_URLS)) {
     try {
-      regionFiles[regionId] = await fetchIndexFiles(indexUrl);
+      const catalog = await loadRegionFiles(regionId, indexUrl);
+      regionFiles[regionId] = catalog.files;
+      sourceModesByRegion[regionId] = catalog.source;
+      regionDiscoveredFileCounts[regionId] = catalog.totalDiscovered;
+      regionSkippedRecentCounts[regionId] = catalog.skippedRecentCount;
     } catch (err) {
       console.warn(`Skipping region ${regionId}: ${err.message}`);
       regionFiles[regionId] = [];
+      sourceModesByRegion[regionId] = 'unavailable';
+      regionDiscoveredFileCounts[regionId] = 0;
+      regionSkippedRecentCounts[regionId] = 0;
     }
   }
 
@@ -380,10 +477,15 @@ async function main() {
   const hormuzFiles = regionFiles.hormuz || [];
 
   for (const [regionId, files] of Object.entries(regionFiles)) {
-    for (const [i, file] of files.entries()) {
-      const res = await fetch(file.public_url);
-      if (!res.ok) continue;
-      const csvText = await res.text();
+    for (const [index, file] of files.entries()) {
+      let csvText = null;
+      try {
+        csvText = await loadCsvText(file);
+      } catch (err) {
+        console.warn(`Skipping unreadable ${regionId} source ${file.file || file.object_path || file.public_url}: ${err.message}`);
+        continue;
+      }
+      if (!csvText) continue;
       const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
 
       const points = [];
@@ -462,8 +564,8 @@ async function main() {
         snapshots.push({ t: file.run_utc, points });
       }
 
-      if ((i + 1) % 10 === 0 || i + 1 === files.length) {
-        console.log(`Processed ${regionId} ${i + 1}/${files.length} files`);
+      if ((index + 1) % 10 === 0 || index + 1 === files.length) {
+        console.log(`Processed ${regionId} ${index + 1}/${files.length} files`);
       }
     }
   }
@@ -859,14 +961,23 @@ async function main() {
 
   const baseMetadata = {
     generatedAt,
-    sourceIndexUrl: INDEX_URLS.hormuz,
-    sourceIndexes: INDEX_URLS,
+    sourceModeRequested: SOURCE_MODE,
+    sourceModeUsedByRegion: sourceModesByRegion,
+    sourceRoot: SOURCE_MODE === 'remote' ? null : SOURCE_ROOT,
+    sourceMinAgeSeconds: SOURCE_MIN_AGE_SECONDS,
+    sourceIndexUrl: sourceModesByRegion.hormuz === 'remote' ? INDEX_URLS.hormuz : null,
+    sourceIndexes: Object.fromEntries(Object.entries(INDEX_URLS).map(([regionId, indexUrl]) => [
+      regionId,
+      sourceModesByRegion[regionId] === 'remote' ? indexUrl : null,
+    ])),
     eastLon: EAST_LON,
     westLon: WEST_LON,
     westMinLon: WEST_MIN_LON,
     minLat: MIN_LAT,
     fileCount: hormuzFiles.length,
     regionFileCounts: Object.fromEntries(Object.entries(regionFiles).map(([k, v]) => [k, v.length])),
+    regionDiscoveredFileCounts,
+    regionSkippedRecentCounts,
     latestByRegion,
     shipCount: Object.keys(shipMeta).length,
     crossingShipCount: mergedCrossingShipIds.size,
@@ -1096,7 +1207,7 @@ async function main() {
     );
   }
 
-  console.log('Wrote public/data split v2 files');
+  console.log(`Wrote public/data split v2 files (source=${SOURCE_MODE}, root=${SOURCE_MODE === 'remote' ? 'remote' : SOURCE_ROOT})`);
 }
 
 main().catch((err) => {

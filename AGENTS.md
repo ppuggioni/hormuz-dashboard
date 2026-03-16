@@ -9,7 +9,7 @@ This dashboard is backed by a local capture/sync/build pipeline and a Vercel fro
 The intended production runtime path is:
 - source CSV capture
 - source CSV sync to Supabase Storage
-- processed artifact build
+- processed artifact build from local workspace CSVs by default, with remote-index fallback if local files are unavailable
 - processed artifact upload to `x-scrapes-public/multi_region/*`
 - Vercel runtime fetch of split artifacts
 

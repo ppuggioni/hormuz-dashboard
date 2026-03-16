@@ -29,6 +29,7 @@ The frontend loads split files first and only falls back to legacy `processed.js
 1. Regional capture jobs write fresh CSV snapshots.
 2. Regional sync jobs upload source CSVs to Supabase Storage.
 3. `refresh_and_upload_processed.sh` runs `npm run build:data`.
+   The build now reads local CSV snapshots from the workspace root by default and only falls back to remote Supabase indexes if local source files are unavailable.
 4. Processed artifacts are uploaded to Supabase Storage under:
    - `x-scrapes-public/multi_region/*`
 5. Vercel fetches those artifacts at runtime.
@@ -39,7 +40,7 @@ Production refresh is handled locally via `launchd`, not just GitHub Actions.
 
 Important job:
 - `com.ppbot.hormuz.dashboard.refresh`
-- `StartInterval = 295` seconds
+- `StartInterval = 900` seconds
 
 That job runs:
 - `refresh_and_upload_processed.sh`
@@ -71,6 +72,11 @@ Do not commit regenerated data files to GitHub. Some exceed GitHub's 100 MB obje
 ```bash
 npm run build:data
 ```
+
+Optional source controls:
+- `HORMUZ_SOURCE_MODE=local|remote` defaults to `local`
+- `HORMUZ_SOURCE_ROOT=/Users/pp-bot/.openclaw/workspace_2` points the build at the local CSV workspace
+- `HORMUZ_SOURCE_MIN_AGE_SECONDS=120` skips very fresh files so the build does not read a CSV while capture is still writing it
 
 - Rebuild + upload processed artifacts to Supabase:
 ```bash

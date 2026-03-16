@@ -116,7 +116,7 @@ There are **two different scheduling systems** in play:
 - `com.ppbot.mumbai.supabase.sync` — `347s`
 
 ### Processed dashboard publish job
-- `com.ppbot.hormuz.dashboard.refresh` — `295s`
+- `com.ppbot.hormuz.dashboard.refresh` — `900s`
 
 ### Hardening choices
 - Per-region lock files prevent overlapping capture runs
@@ -185,7 +185,11 @@ These publish source-region raw data under:
 Script:
 - `scripts/build-data.mjs`
 
-This reads the regional indexes and raw CSVs, then produces processed dashboard artifacts in:
+This reads local regional CSV snapshots from the workspace root by default and only falls back to the remote regional indexes if local source files are unavailable.
+
+To avoid partial reads while capture is still writing a file, the builder skips very fresh CSVs using a configurable stability window.
+
+It then produces processed dashboard artifacts in:
 - `public/data/`
 
 ## Step 4 — processed artifact publish to Supabase

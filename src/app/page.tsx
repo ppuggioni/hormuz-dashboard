@@ -1906,7 +1906,7 @@ export default function Page() {
             <button
               onClick={() => { void handleRefreshData(); }}
               disabled={isRefreshingData}
-              className="inline-flex items-center rounded-xl border border-cyan-400/50 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100 disabled:opacity-60"
+              className="inline-flex items-center rounded-xl border border-cyan-200/90 bg-cyan-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-[0_0_0_1px_rgba(165,243,252,0.45),0_12px_28px_rgba(34,211,238,0.35)] transition hover:bg-cyan-300 disabled:opacity-60 disabled:hover:bg-cyan-400"
             >
               {isRefreshingData ? "Refreshing data..." : "Refresh data"}
             </button>
@@ -1998,16 +1998,6 @@ export default function Page() {
               <button
                 onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="mt-2 rounded-md border border-purple-300/60 px-2 py-1 text-[11px] text-purple-100"
-              >
-                Jump to news section
-              </button>
-            </div>
-            <div className="rounded-xl border border-violet-300/60 bg-violet-500/10 p-3 md:col-span-2">
-              <div className="text-xs text-violet-200">News — previous day</div>
-              <div className="mt-1 text-sm font-semibold leading-snug text-violet-100">{newsFeed?.previousDaySummary?.headline || "No previous-day summary yet"}</div>
-              <button
-                onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-violet-300/60 px-2 py-1 text-[11px] text-violet-100"
               >
                 Jump to news section
               </button>

@@ -17,6 +17,24 @@
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for ELIZA",
       "excludedAt": "2026-03-16T05:53:00Z"
+    },
+    {
+      "eventId": "685331|2026-03-16T01:55:39.262054Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PACIFIC STAR I",
+      "excludedAt": "2026-03-16T07:58:00Z"
+    },
+    {
+      "eventId": "712384|2026-03-16T01:38:53.278935Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for REX 1",
+      "excludedAt": "2026-03-16T07:58:00Z"
+    },
+    {
+      "eventId": "327287|2026-03-14T03:51:18.732055Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for OLGA",
+      "excludedAt": "2026-03-16T07:58:00Z"
     }
   ]
 }

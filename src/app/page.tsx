@@ -228,6 +228,41 @@ function formatShipDisplayName(shipName: string, flag?: string | null) {
   return cleanFlag ? `${cleanName} [${cleanFlag}]` : cleanName;
 }
 
+function deriveNewsDisplaySource(item: NewsItem) {
+  const url = item.url || item.canonicalUrl || "";
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (host === "x.com") {
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const account = parts[0];
+      return account ? `X: ${account}` : "X";
+    }
+
+    const labels: Record<string, string> = {
+      "windward.ai": "Windward",
+      "maritime-executive.com": "Maritime Executive",
+      "theguardian.com": "The Guardian",
+      "japantoday.com": "Japan Today",
+      "straitstimes.com": "The Straits Times",
+      "financialpost.com": "Financial Post",
+      "lloydslist.com": "Lloyd's List",
+      "kpler.com": "Kpler",
+      "fortune.com": "Fortune",
+      "hindustantimes.com": "Hindustan Times",
+      "hellenicshippingnews.com": "Hellenic Shipping News",
+      "hormuzstraitmonitor.com": "Hormuz Strait Monitor",
+      "marineindustrynews.co.uk": "Marine Industry News",
+      "rivieramm.com": "Riviera",
+      "thehindu.com": "The Hindu",
+    };
+
+    return labels[host] || item.sourceName || host;
+  } catch {
+    return item.sourceName || "Unknown source";
+  }
+}
 
 function alignHours(
   source: { hour: string; east_to_west: number; west_to_east: number }[],
@@ -2846,7 +2881,7 @@ export default function Page() {
                           <a href={item.url} target="_blank" rel="noreferrer" className="font-semibold text-cyan-300 underline underline-offset-2 hover:text-cyan-200">
                             {item.title}
                           </a>
-                          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</div>
+                          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{deriveNewsDisplaySource(item)}</div>
                         </td>
                         <td className="p-2 text-slate-300">{item.summary}</td>
                       </tr>

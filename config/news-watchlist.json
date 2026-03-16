@@ -2,7 +2,7 @@
   "version": 1,
   "updatedAt": "2026-03-16T11:55:00Z",
   "profile": "hormuz-news",
-  "notes": "Hormuz dashboard newsfeed watchlist. The 6h agent should browse these sources with the hormuz-news browser profile, store high-signal items and extracted evidence in data/news-seed-items.json or a future DB-backed store, then run npm run build:news. Very important: when Windward or related reporting contains structured operational figures, store both the raw data points and commentary. Always preserve notable stats and commentary on dark fleet / AIS disruption plus alternative-route and bypass-flow context including Red Sea, Yanbu and Fujairah when present.",
+  "notes": "Hormuz dashboard newsfeed watchlist. The 6h agent should browse these sources with the hormuz-news browser profile, store high-signal items and extracted evidence in data/news-seed-items.json or a future DB-backed store, then run npm run build:news. Very important: always preserve notable data and commentary on Hormuz itself, including flow levels, waiting fleet, sanctions-linked movement, dark fleet / AIS disruption, and alternative-route and bypass-flow context including Red Sea, Yanbu and Fujairah when present. When Windward or related reporting contains structured operational figures, store both the raw data points and commentary. Also, on the first successful update of each UTC day, write a full previous-day summary suitable for direct display in the webapp, combining the prior day’s key operational data points and analyst commentary into a durable summary object.",
   "sources": [
     {
       "id": "tankertrackers-x",

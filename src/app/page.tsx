@@ -170,6 +170,7 @@ type NewsFeedShape = {
   };
   lastUpdateSummary: NewsSummary;
   last24hSummary: NewsSummary;
+  previousDaySummary?: NewsSummary | null;
   sources: NewsSource[];
   items: NewsItem[];
 };
@@ -1956,6 +1957,16 @@ export default function Page() {
                 Jump to news section
               </button>
             </div>
+            <div className="rounded-xl border border-violet-300/60 bg-violet-500/10 p-3 md:col-span-2">
+              <div className="text-xs text-violet-200">News — previous day</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-violet-100">{newsFeed?.previousDaySummary?.headline || "No previous-day summary yet"}</div>
+              <button
+                onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-violet-300/60 px-2 py-1 text-[11px] text-violet-100"
+              >
+                Jump to news section
+              </button>
+            </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -2780,6 +2791,14 @@ export default function Page() {
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.last24hSummary?.headline || "No 24h summary yet"}</div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
                 {newsFeed?.last24hSummary?.body || "The rolling 24-hour view will appear here once enough collected items exist."}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Previous day summary</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.previousDaySummary?.headline || "No previous-day summary yet"}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it."}
               </p>
             </div>
 

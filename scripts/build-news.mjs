@@ -61,6 +61,7 @@ const payload = {
   },
   lastUpdateSummary: latestRun.lastUpdateSummary,
   last24hSummary: latestRun.last24hSummary,
+  previousDaySummary: latestRun.previousDaySummary || null,
   sources: (watchlist.sources || []).map((source) => ({
     id: source.id,
     name: source.name,

@@ -74,6 +74,7 @@ const latestRun = {
     body: 'Populate data/news-inbox.json before ingest.',
     generatedAt: runAt,
   },
+  previousDaySummary: inbox.previousDaySummary || previousLatestRun.previousDaySummary || null,
   newItems: newIds,
 };
 

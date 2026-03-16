@@ -11,6 +11,41 @@ type Snapshot = { t: string; points: Point[] };
 type LinkedPoint = { shipId: string; shipName: string; vesselType: string; flag?: string; region: string; lat: number; lon: number; deltaDh: string };
 type MonitoredArea = { minLat: number; maxLat: number; minLon: number; maxLon: number; color?: string; label?: string };
 
+const RED_SEA_REFERENCE_AREAS: MonitoredArea[] = [
+  {
+    label: "rs-south-out",
+    minLon: 43.8,
+    maxLon: 44.7194,
+    minLat: 11.8478,
+    maxLat: 12.7522,
+    color: "#d1d5db",
+  },
+  {
+    label: "rs-south-in",
+    minLon: 41.7777,
+    maxLon: 42.7,
+    minLat: 13.1,
+    maxLat: 14.0044,
+    color: "#d1d5db",
+  },
+  {
+    label: "rs-north-in",
+    minLon: 32.65,
+    maxLon: 33.1632,
+    minLat: 28.0256,
+    maxLat: 28.93,
+    color: "#d1d5db",
+  },
+  {
+    label: "rs-north-out",
+    minLon: 31.9209,
+    maxLon: 32.95,
+    minLat: 29.2,
+    maxLat: 30.1044,
+    color: "#d1d5db",
+  },
+];
+
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
   cargo: "#22c55e",
@@ -187,6 +222,11 @@ export default memo(function PlaybackMap({
     return m;
   }, [points, snapshots, currentTimestamp, snapshotIndexByTimestamp, snapshotPointMaps]);
 
+  const displayAreas = useMemo(
+    () => [...(monitoredAreas || []), ...RED_SEA_REFERENCE_AREAS],
+    [monitoredAreas],
+  );
+
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
       {selectedShipMeta ? (
@@ -231,11 +271,11 @@ export default memo(function PlaybackMap({
       <Polyline positions={[[25.2, eastLon], [27.3, eastLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
       <Polyline positions={[[25.2, westLon], [27.3, westLon]]} pathOptions={{ color: "#cbd5e1", weight: 1, dashArray: "4 6" }} />
 
-      {(monitoredAreas || []).map((area, idx) => (
+      {displayAreas.map((area, idx) => (
         <Polygon
           key={`monitored-area-${idx}`}
           positions={[[area.minLat, area.minLon], [area.minLat, area.maxLon], [area.maxLat, area.maxLon], [area.maxLat, area.minLon]]}
-          pathOptions={{ color: area.color || "#fbbf24", weight: 2, opacity: 0.95, fillColor: area.color || "#fbbf24", fillOpacity: 0.05 }}
+          pathOptions={{ color: area.color || "#fbbf24", weight: 1.5, opacity: 0.8, fillColor: area.color || "#fbbf24", fillOpacity: area.color === "#d1d5db" ? 0.12 : 0.05 }}
         >
           {area.label ? (
             <Popup>

@@ -105,6 +105,7 @@ There are **two different scheduling systems** in play:
 - `com.ppbot.yemenchannel15m` — `StartInterval=941`
 - `com.ppbot.southsrilanka15m` — `StartInterval=947`
 - `com.ppbot.mumbai15m` — `StartInterval=953`
+- `com.ppbot.redsea15m` — `StartInterval=959`
 
 ### Supabase regional CSV sync jobs
 - `com.ppbot.hormuz.supabase.sync` — `300s`
@@ -114,6 +115,7 @@ There are **two different scheduling systems** in play:
 - `com.ppbot.yemenchannel.supabase.sync` — `337s`
 - `com.ppbot.southsrilanka.supabase.sync` — `341s`
 - `com.ppbot.mumbai.supabase.sync` — `347s`
+- `com.ppbot.redsea.supabase.sync` — `353s`
 
 ### Processed dashboard publish job
 - `com.ppbot.hormuz.dashboard.refresh` — `900s`
@@ -157,12 +159,14 @@ Per-region shell wrappers like:
 - `hormuz_capture_via_cli.sh`
 - `suez_capture_via_cli.sh`
 - `mumbai_capture_via_cli.sh`
+- `red_sea_capture_via_cli.sh`
 
 all delegate to:
 - `region_capture_via_cli.sh`
 
 This step:
 - opens MarineTraffic with the region-specific browser profile
+- for Red Sea, uses the dedicated OpenClaw browser profile `red-sea`
 - scrapes the configured tile area
 - writes local CSV snapshots:
   - `<region>_YYYY_MM_DD_HH_MM_SS.csv`
@@ -175,6 +179,7 @@ Per-region sync wrappers upload the local CSVs to Supabase Storage and maintain 
 Examples:
 - `hormuz_supabase_sync.sh`
 - `mumbai_supabase_sync.sh`
+- `red_sea_supabase_sync.sh`
 
 These publish source-region raw data under:
 - bucket: `x-scrapes-public`

@@ -79,7 +79,8 @@ cache_control_for_object() {
     curl -fsS -X POST "${API_BASE}/object/${BUCKET}/multi_region/${obj}" \
       -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
       -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-      -H "Content-Type: application/json" \
+      -H "Content-Type: application/octet-stream" \
+      -H "Content-Encoding: gzip" \
       -H "Cache-Control: ${cache_control}" \
       -H "x-upsert: true" \
       --data-binary "@${gz_out}" >/tmp/hormuz_processed_upload_${obj}.json

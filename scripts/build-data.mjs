@@ -28,6 +28,9 @@ const INDEX_URLS = {
   mumbai:
     process.env.MUMBAI_INDEX_URL ||
     'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/mumbai/index.json',
+  red_sea:
+    process.env.RED_SEA_INDEX_URL ||
+    'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/red_sea/index.json',
 };
 const SOURCE_MODE = String(process.env.HORMUZ_SOURCE_MODE || 'local').trim().toLowerCase() === 'remote' ? 'remote' : 'local';
 const SOURCE_ROOT = path.resolve(process.env.HORMUZ_SOURCE_ROOT || DEFAULT_SOURCE_ROOT);
@@ -683,7 +686,7 @@ async function main() {
   // --- Inferred crossings from zone presence ---
   // If a vessel is seen in hormuz_west and then in ANY eastern region (or vice versa),
   // that confirms a strait crossing even if direct boundary observations were missed.
-  const EASTERN_REGIONS = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'];
+  const EASTERN_REGIONS = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai', 'red_sea'];
   const inferredCrossingKeys = new Set();
 
   // Build zone timeline per ship across ALL regions for inference
@@ -778,7 +781,7 @@ async function main() {
         const side = sideFromPoint(obs.lat, obs.lon);
         if (side === 'west') regionDetected = 'hormuz_west';
         if (side === 'east') regionDetected = 'hormuz_east';
-      } else if (['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'].includes(obs.sourceRegion)) {
+      } else if (['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai', 'red_sea'].includes(obs.sourceRegion)) {
         regionDetected = obs.sourceRegion;
       }
 
@@ -789,7 +792,7 @@ async function main() {
   }
 
   const linkageEvents = [];
-  const targetRegions = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'];
+  const targetRegions = ['hormuz_east', 'suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai', 'red_sea'];
 
   for (const [shipId, events] of zonePresenceByShip.entries()) {
     const sorted = events.slice().sort((a, b) => new Date(a.t) - new Date(b.t));
@@ -856,7 +859,7 @@ async function main() {
   const externalPresencePoints = [];
   for (const [shipId, obsList] of observationsByShip.entries()) {
     for (const o of obsList) {
-      if (!['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai'].includes(o.sourceRegion)) continue;
+      if (!['suez', 'malacca', 'cape_good_hope', 'yemen_channel', 'south_sri_lanka', 'mumbai', 'red_sea'].includes(o.sourceRegion)) continue;
       externalPresencePoints.push({
         shipId,
         shipName: shipMeta[shipId]?.shipName || 'Unknown',
@@ -1021,6 +1024,7 @@ async function main() {
       suezIndexRunCount: regionFiles.suez?.length || 0,
       malaccaIndexRunCount: regionFiles.malacca?.length || 0,
       capeIndexRunCount: regionFiles.cape_good_hope?.length || 0,
+      redSeaIndexRunCount: regionFiles.red_sea?.length || 0,
     },
     metadata,
     data,

@@ -13,6 +13,18 @@ The intended production runtime path is:
 - processed artifact upload to `x-scrapes-public/multi_region/*`
 - Vercel runtime fetch of split artifacts
 
+Current source regions include:
+- `hormuz`
+- `suez`
+- `malacca`
+- `cape_good_hope`
+- `yemen_channel`
+- `south_sri_lanka`
+- `mumbai`
+- `red_sea`
+
+Region-specific browser sessions can use dedicated OpenClaw-managed profiles; the Red Sea collector uses profile `red-sea`.
+
 ## Processed artifacts
 
 Preferred artifacts:
@@ -55,9 +67,10 @@ Avoid deleting or renaming stable fields unless the frontend and pipeline are up
 
 If someone asks whether production is healthy, verify:
 1. `launchd` job `com.ppbot.hormuz.dashboard.refresh` is loaded and exiting cleanly
-2. `refresh_and_upload_processed.sh` logs show recent successful uploads
-3. frontend still loads split artifacts first
-4. Supabase Storage contains fresh `multi_region/*` files
+2. region capture/sync jobs for the region in question are loaded and running cleanly (for Red Sea: `com.ppbot.redsea15m` and `com.ppbot.redsea.supabase.sync`)
+3. `refresh_and_upload_processed.sh` logs show recent successful uploads
+4. frontend still loads split artifacts first
+5. Supabase Storage contains fresh `multi_region/*` files
 
 ## Documentation hygiene
 

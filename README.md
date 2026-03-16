@@ -34,6 +34,16 @@ The frontend loads split files first and only falls back to legacy `processed.js
    - `x-scrapes-public/multi_region/*`
 5. Vercel fetches those artifacts at runtime.
 
+Current source regions in the live pipeline include:
+- `hormuz`
+- `suez`
+- `malacca`
+- `cape_good_hope`
+- `yemen_channel`
+- `south_sri_lanka`
+- `mumbai`
+- `red_sea`
+
 ## Scheduler / refresh cadence
 
 Production refresh is handled locally via `launchd`, not just GitHub Actions.
@@ -41,6 +51,11 @@ Production refresh is handled locally via `launchd`, not just GitHub Actions.
 Important job:
 - `com.ppbot.hormuz.dashboard.refresh`
 - `StartInterval = 900` seconds
+
+Region-specific examples now also include the Red Sea additions:
+- capture: `com.ppbot.redsea15m`
+- sync: `com.ppbot.redsea.supabase.sync`
+- browser profile: `red-sea`
 
 That job runs:
 - `refresh_and_upload_processed.sh`

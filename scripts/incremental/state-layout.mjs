@@ -14,6 +14,7 @@ export const DEFAULT_REGIONS = Object.freeze([
   'yemen_channel',
   'south_sri_lanka',
   'mumbai',
+  'red_sea',
 ]);
 
 export const STATE_FILE_NAMES = Object.freeze({

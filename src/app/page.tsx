@@ -220,7 +220,7 @@ type DataShape = {
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
-const EXTERNAL_REGIONS = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai"] as const;
+const EXTERNAL_REGIONS = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai", "red_sea"] as const;
 
 function formatShipDisplayName(shipName: string, flag?: string | null) {
   const cleanName = String(shipName || "Unknown").trim() || "Unknown";
@@ -1744,6 +1744,7 @@ export default function Page() {
           yemen_channel: null,
           south_sri_lanka: null,
           mumbai: null,
+          red_sea: null,
         } as Record<string, string | null>,
         regionFileCounts: {},
       };
@@ -1757,6 +1758,7 @@ export default function Page() {
       yemen_channel: null,
       south_sri_lanka: null,
       mumbai: null,
+      red_sea: null,
       ...(data.metadata as any)?.latestByRegion,
     };
 
@@ -2919,6 +2921,7 @@ export default function Page() {
               ["yemen_channel", "Yemen Channel"],
               ["south_sri_lanka", "South Sri Lanka"],
               ["mumbai", "Mumbai"],
+              ["red_sea", "Red Sea"],
             ].map(([key, label]) => (
               <div key={key}>Latest {label}: {freshness.latestByRegion[key] ? new Date(freshness.latestByRegion[key] as string).toUTCString() : "-"}</div>
             ))}

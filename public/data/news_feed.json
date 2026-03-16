@@ -1,21 +1,21 @@
 {
   "metadata": {
-    "generatedAt": "2026-03-15T02:11:55.199Z",
+    "generatedAt": "2026-03-16T07:33:26.020Z",
     "profile": "hormuz-news",
-    "sourceCount": 7,
-    "itemCount": 9,
-    "lastRunAt": "2026-03-15T00:43:00Z",
-    "newItemCount": 2
+    "sourceCount": 11,
+    "itemCount": 16,
+    "lastRunAt": "2026-03-16T00:57:00Z",
+    "newItemCount": 1
   },
   "lastUpdateSummary": {
-    "headline": "Two new operating signals point to passage becoming negotiated and war-risk support becoming more explicit.",
-    "body": "This pass found two genuinely new and dashboard-relevant developments beyond the existing history set. First, reporting on two India-operated LPG carriers clearing Hormuz after Iranian approval suggests that some movements are now being decided case by case through nationality, operator and diplomatic channels rather than broad commercial reopening. Second, maritime reporting on Washington's push for tanker escorts and state-backed maritime insurance clarifies that insurance and naval cover are moving closer to policy tools, but that shipowner risk tolerance is still likely to remain selective rather than restoring normal flows quickly.",
-    "generatedAt": "2026-03-15T00:43:00Z"
+    "headline": "Another 2 million barrels cleared Iranian export channels while visible Hormuz traffic stayed subdued.",
+    "body": "A TankerTrackers post on 15 March says another 2 million barrels of Iranian crude departed even as the strait remained very quiet. For the dashboard, that strengthens the emerging read from the prior Windward and Maritime Executive coverage: low visible crossings are not the same as zero effective flow, because Iranian-linked liftings can still clear cargo under selective or lower-visibility conditions while mainstream Gulf tanker traffic remains heavily suppressed.",
+    "generatedAt": "2026-03-16T00:57:00Z"
   },
   "last24hSummary": {
-    "headline": "Over the last 24 hours, the freshest shift is from pure closure language toward selective access, escorts and negotiated passage.",
-    "body": "The cross-source picture still shows thin compliant traffic, strong shadow-fleet or Iran-linked activity, and degraded visibility from AIS-off behavior or interference. What changed in this run is the emergence of a more political operating pattern: India-linked LPG cargoes reportedly cleared Hormuz under an exceptional arrangement, while US-backed escort and maritime-insurance proposals are being framed as ways to push some traffic back into the corridor. For the dashboard, that means the next meaningful movements may depend less on nominal market demand and more on flag, operator, cargo sensitivity, and access to state protection or diplomatic clearance.",
-    "generatedAt": "2026-03-15T00:43:00Z"
+    "headline": "The last 24 hours still point to selective, politically filtered flow rather than a broad reopening.",
+    "body": "Across the sources reviewed, the pattern remains consistent: zero or near-zero visible crossings can coexist with continued Kharg liftings, selective approvals for favoured operators, dark or partially visible movement, and a large waiting fleet outside the strait. The most useful fresh confirmation this round is that Iranian-linked crude is still clearing in cargo-sized increments even while compliant commercial traffic remains exceptionally thin.",
+    "generatedAt": "2026-03-16T00:57:00Z"
   },
   "sources": [
     {
@@ -104,9 +104,217 @@
         "shadow-fleet",
         "last-24h"
       ]
+    },
+    {
+      "id": "staunovo-x",
+      "name": "staunovo",
+      "type": "x_account",
+      "url": "https://x.com/staunovo",
+      "priority": 2,
+      "tags": [
+        "x",
+        "energy",
+        "shipping",
+        "market-commentary"
+      ]
+    },
+    {
+      "id": "hormuz-monitor-home",
+      "name": "Hormuz Strait Monitor",
+      "type": "website",
+      "url": "https://hormuzstraitmonitor.com/",
+      "priority": 2,
+      "tags": [
+        "external-baseline",
+        "hormuz",
+        "analysis",
+        "crisis-monitoring"
+      ]
+    },
+    {
+      "id": "hormuz-monitor-newsfeed",
+      "name": "Hormuz Strait Monitor Newsfeed",
+      "type": "website_section",
+      "url": "https://hormuzstraitmonitor.com/newsfeed/",
+      "priority": 2,
+      "tags": [
+        "external-baseline",
+        "newsfeed",
+        "hormuz",
+        "analysis"
+      ]
+    },
+    {
+      "id": "hormuz-monitor-crisis-timeline",
+      "name": "Hormuz Strait Monitor Crisis Timeline",
+      "type": "website_section",
+      "url": "https://hormuzstraitmonitor.com/crisis-timeline/",
+      "priority": 2,
+      "tags": [
+        "external-baseline",
+        "timeline",
+        "hormuz",
+        "crisis"
+      ]
     }
   ],
   "items": [
+    {
+      "id": "live-bennikim-gulf-storage-production-cuts",
+      "canonicalUrl": "https://x.com/BenniKim/status/2033230143943225747",
+      "url": "https://x.com/BenniKim/status/2033230143943225747",
+      "title": "Storage saturation is spreading from Saudi and Kuwaiti terminals into confirmed Gulf production cuts",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-15T17:13:36.000Z",
+      "firstSeenAt": "2026-03-15T18:59:30Z",
+      "lastSeenAt": "2026-03-15T18:59:30Z",
+      "summary": "Kim BENNI says Ras Tanura and Ju'aymah were already about 70% full as of two days ago, with Kuwait showing the same pattern, and argues that further Saudi and Kuwaiti production cuts are likely. The same post says Qatar, the UAE and Iraq are no longer building inventories because production cuts there are already confirmed, with the Middle East as a whole having added 26.7 million barrels. For the dashboard, the useful point is that storage utilisation is becoming a live operational constraint across multiple exporters, which helps explain why low crossing counts are now feeding directly into upstream output losses rather than just voyage delays.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "x",
+        "storage",
+        "saudi",
+        "kuwait"
+      ],
+      "figureNote": "The main figures are about 70% storage utilisation at Ras Tanura and Ju'aymah two days ago and a cumulative 26.7 million-barrel inventory build across the Middle East.",
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
+    {
+      "id": "live-bennikim-kharg-inventory-buildup",
+      "canonicalUrl": "https://x.com/BenniKim/status/2033228393953562720",
+      "url": "https://x.com/BenniKim/status/2033228393953562720",
+      "title": "Kharg inventories are rising quickly even while tankers remain visible at the berths",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-15T17:06:39.000Z",
+      "firstSeenAt": "2026-03-15T18:59:30Z",
+      "lastSeenAt": "2026-03-15T18:59:30Z",
+      "summary": "Kim BENNI says Iran added 4.33 million barrels of inland crude inventory week on week, including 3.2 million barrels in just two days on Kharg Island. The post says ships remain visible at the Kharg berths, but low flaring suggests production is below normal and the fast stock build implies a mismatch between upstream supply and export clearance. For the dashboard, that matters because visible loading activity at Kharg may now overstate effective flow throughput if inland tanks are filling faster than cargoes are leaving.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "x",
+        "kharg",
+        "inventory",
+        "storage"
+      ],
+      "figureNote": "The key figures are a 4.33 million-barrel week-on-week rise in inland Iranian inventories and a 3.2 million-barrel increase on Kharg in just two days, despite tankers remaining visible at the berths.",
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
+    {
+      "id": "live-tankertrackers-iranian-crude-2m-departed",
+      "canonicalUrl": "https://x.com/TankerTrackers/status/2033194182395711670",
+      "url": "https://x.com/TankerTrackers/status/2033194182395711670",
+      "title": "Another 2 million barrels of Iranian crude departed while visible Hormuz traffic stayed subdued",
+      "sourceId": "tankertrackers-x",
+      "sourceName": "TankerTrackers.com, Inc.",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-15T14:21:27.000Z",
+      "firstSeenAt": "2026-03-16T00:57:00Z",
+      "lastSeenAt": "2026-03-16T00:57:00Z",
+      "summary": "TankerTrackers says another 2 million barrels of Iranian crude departed on 15 March while the Strait of Hormuz remained very quiet. For the dashboard, the operational point is that Iranian-linked export flow is still clearing cargo in meaningful increments even when visible commercial transit remains thin, which means low crossing counts can still understate residual throughput tied to sanctioned or selectively tolerated movements.",
+      "tags": [
+        "x",
+        "tankers",
+        "sanctions",
+        "shadow-fleet",
+        "tankertrackers",
+        "iran",
+        "kharg",
+        "exports"
+      ],
+      "figureNote": "The key hard figure is the additional 2 million barrels of Iranian crude reported as departed on 15 March despite still-quiet visible traffic through Hormuz.",
+      "isNew": true,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
+    {
+      "id": "live-guardian-storage-shutins",
+      "canonicalUrl": "https://www.theguardian.com/business/2026/mar/15/middle-east-oilfield-shutdowns-prices-high-iran-war-strait-of-hormuz",
+      "url": "https://www.theguardian.com/business/2026/mar/15/middle-east-oilfield-shutdowns-prices-high-iran-war-strait-of-hormuz",
+      "title": "Storage limits and bypass bottlenecks are becoming a bigger constraint than passage alone",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-15T09:00:19.000Z",
+      "firstSeenAt": "2026-03-15T12:21:06Z",
+      "lastSeenAt": "2026-03-15T12:21:06Z",
+      "summary": "The Guardian reports that as Hormuz disruption persists, Gulf producers are running harder on bypass routes but still nearing storage limits that could force more shut-ins. It says Saudi pipeline exports to Yanbu have doubled to about 3 million barrels per day with a target of 5 million, UAE pipeline crude to Fujairah has climbed to about 1.6 million barrels per day, and at least 25 large tankers are already heading to Yanbu, yet analysts still estimate only about seven days of storage for Aramco and less than 20 days for the UAE. For the dashboard, the important point is that weak crossings now understate total system stress because barrels can remain trapped upstream even when some alternative loadings continue outside the strait itself.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "storage",
+        "shut-ins",
+        "yanbu",
+        "fujairah"
+      ],
+      "figureNote": "The key operational figures are roughly 3 million barrels per day already moving by Saudi pipeline to Yanbu, about 1.6 million barrels per day via the UAE pipeline to Fujairah, at least 25 tankers heading for Yanbu, and only days to weeks of spare storage for major Gulf producers if the strait remains constrained.",
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
+    {
+      "id": "live-windward-zero-crossings-kharg",
+      "canonicalUrl": "https://windward.ai/blog/march-15-maritime-intelligence-daily/",
+      "url": "https://windward.ai/blog/march-15-maritime-intelligence-daily/",
+      "title": "Zero AIS-confirmed crossings are now coinciding with a large waiting fleet and continued Kharg liftings",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-15T06:00:00Z",
+      "firstSeenAt": "2026-03-15T18:17:00Z",
+      "lastSeenAt": "2026-03-15T18:17:00Z",
+      "summary": "Windward’s 15 March maritime intelligence update says 14 March was the first full day of the conflict with no AIS-confirmed crossings through Hormuz in either direction, while remote-sensing still detected roughly 400 vessels operating in the Gulf of Oman and at least eight vessels positioned east of the strait. It also says Kharg remained active, with the sanctioned tankers SERENA and ARK III departing after 11 March carrying a combined estimated 2.68 million barrels, and satellite imagery showing a heavy tanker presence around the terminal. For the dashboard, the useful point is that a zero-crossing day no longer means the wider system is empty: it can reflect a combination of waiting tonnage, lower-visibility movement and resilient Iranian-linked export handling at Kharg.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "windward",
+        "ais",
+        "kharg",
+        "waiting-fleet"
+      ],
+      "figureNote": "The key operational figures are zero AIS-confirmed crossings on 14 March, about 400 vessels in the Gulf of Oman, at least eight vessels positioned east of the strait, and an estimated 2.68 million barrels lifted by SERENA and ARK III from Kharg after 11 March.",
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
+    {
+      "id": "live-maritime-executive-selective-access",
+      "canonicalUrl": "https://maritime-executive.com/article/iran-is-making-unimpeded-use-of-the-strait-of-hormuz",
+      "url": "https://maritime-executive.com/article/iran-is-making-unimpeded-use-of-the-strait-of-hormuz",
+      "title": "Selective clearances and dark-fleet movements are keeping a narrow flow alive through Hormuz",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-15T06:00:00Z",
+      "firstSeenAt": "2026-03-15T19:12:30Z",
+      "lastSeenAt": "2026-03-15T19:12:30Z",
+      "summary": "The Maritime Executive reports that Iranian or Iranian-approved ships are still making use of Hormuz while most other traffic remains effectively choked off. It names the Indian-flagged LPG carriers Shivalik and Nanda Devi as approved passages, identifies the Saudi-laden VLCC Smyrni and sanctioned product tankers Ocean Guardian and Blooming Dale among vessels that appear to have transited, and says Lloyd’s List Intelligence has detected nine dark-fleet transits in March while assessing about 45 in total. For the dashboard, the useful point is that passage is increasingly being rationed by political approval and low-visibility tactics rather than restored on a broad commercial basis.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "selective-access",
+        "ais-off",
+        "india",
+        "sanctions"
+      ],
+      "figureNote": "The key hard figures are nine dark-fleet Hormuz transits detected in March versus an estimated total of about 45, plus the named examples of approved Indian LPG passages and sanctioned product-tanker movements.",
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
     {
       "id": "live-kpler-x",
       "canonicalUrl": "https://x.com/Kpler/status/2032851790861885716",
@@ -130,7 +338,7 @@
       ],
       "figureNote": "The useful number here is the lost inflow into Southeast Asia, which turns a crossings story into a demand-side stress story.",
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-tankertrackers-x",
@@ -156,7 +364,7 @@
       ],
       "figureNote": "The most useful hard figure here is the 2.7 million barrels loading across two NITC tankers, which helps explain why Iranian-linked flows can stay resilient while compliant traffic remains thin.",
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-lloyds-shadow-fleet",
@@ -180,7 +388,7 @@
       ],
       "figureNote": "Jask loadings are operationally slow, but their reappearance is a specific clue for interpreting eastbound tanker movements near southern Iran.",
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-kpler-charterers",
@@ -206,7 +414,7 @@
       ],
       "figureNote": "The headline number is the 92% collapse in tanker transits versus the prior week, paired with large volumes of trapped or idle Gulf tonnage.",
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-google-research",
@@ -230,7 +438,7 @@
       ],
       "figureNote": "The operational takeaway is that crossing counts should be read alongside interference and waiting-fleet conditions, not as a perfect census of all movement.",
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-google-research-india-lpg-passage",
@@ -255,8 +463,8 @@
         "diplomacy"
       ],
       "figureNote": "India consumes more than 30 million tonnes of cooking gas a year, with about 60% imported and roughly 90% of those imports sourced from the Middle East, which helps explain why even a small number of cleared LPG passages can matter operationally.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-google-research-escort-insurance",
@@ -281,8 +489,34 @@
         "risk"
       ],
       "figureNote": "The operational point is not a single transit count but the widening split between ships that may re-enter under escort or public backstop and the larger pool of owners still likely to stand off outside the Gulf.",
-      "isNew": true,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
+    },
+    {
+      "id": "live-thehindu-india-queue-detail",
+      "canonicalUrl": "https://www.thehindu.com/news/national/indian-lpg-carriers-strait-of-hormuz/article70743116.ece",
+      "url": "https://www.thehindu.com/news/national/indian-lpg-carriers-strait-of-hormuz/article70743116.ece",
+      "title": "India’s cleared LPG passage comes with a detailed picture of the waiting queue west of Hormuz",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research",
+      "sourceType": "article",
+      "publishedAt": "2026-03-14T06:00:00Z",
+      "firstSeenAt": "2026-03-15T06:17:00Z",
+      "lastSeenAt": "2026-03-15T06:17:00Z",
+      "summary": "The Hindu reports that after Shivalik and Nanda Devi crossed Hormuz, 22 Indian-flagged vessels with 611 seafarers remained on standby west of the strait, including six LPG carriers, one LNG tanker, four crude tankers and one chemical-products tanker. It also says Nanda Devi crossed during the day with AIS transmitting, which is useful for the dashboard because it suggests some politically cleared voyages may move openly rather than as dark transits, while the composition of the remaining queue gives a concrete read on how much India-linked energy tonnage is still waiting for permission or risk conditions to change.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "last-24h",
+        "india",
+        "lpg",
+        "ais",
+        "queue"
+      ],
+      "figureNote": "The most useful hard figures are the 22 Indian-flagged vessels still waiting west of Hormuz and their cargo mix, because that turns a one-off passage story into a measurable pipeline of still-delayed energy traffic.",
+      "isNew": false,
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-marinetraffic-x",
@@ -306,7 +540,7 @@
       ],
       "figureNote": "The useful quantitative anchor here is the 15-laden-tanker count over the period, which gives a very sparse baseline for comparing dashboard-observed crossings.",
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     },
     {
       "id": "live-lloyds-daily-briefing",
@@ -330,7 +564,7 @@
       ],
       "figureNote": null,
       "isNew": false,
-      "lastRunAt": "2026-03-15T00:43:00Z"
+      "lastRunAt": "2026-03-16T00:57:00Z"
     }
   ]
 }

@@ -1,52 +1,15 @@
 {
   "version": 1,
-  "runAt": "2026-03-15T00:43:00Z",
+  "runAt": "2026-03-16T07:02:50Z",
   "lastUpdateSummary": {
-    "headline": "Two new operating signals point to passage becoming negotiated and war-risk support becoming more explicit.",
-    "body": "This pass found two genuinely new and dashboard-relevant developments beyond the existing history set. First, reporting on two India-operated LPG carriers clearing Hormuz after Iranian approval suggests that some movements are now being decided case by case through nationality, operator and diplomatic channels rather than broad commercial reopening. Second, maritime reporting on Washington's push for tanker escorts and state-backed maritime insurance clarifies that insurance and naval cover are moving closer to policy tools, but that shipowner risk tolerance is still likely to remain selective rather than restoring normal flows quickly.",
-    "generatedAt": "2026-03-15T00:43:00Z"
+    "headline": "Visible Hormuz conditions still point to a near-standstill with selective Iranian-linked flow as the key exception.",
+    "body": "Across the tracked sources reviewed this round, no new item added stronger operational evidence than the prior confirmed Iranian-linked liftings and selective-passage pattern already in history. The most durable dashboard read remains that mainstream commercial traffic is still heavily suppressed while residual movement is concentrated in politically approved, sanctioned, dark or partially visible channels.",
+    "generatedAt": "2026-03-16T07:02:50Z"
   },
   "last24hSummary": {
-    "headline": "Over the last 24 hours, the freshest shift is from pure closure language toward selective access, escorts and negotiated passage.",
-    "body": "The cross-source picture still shows thin compliant traffic, strong shadow-fleet or Iran-linked activity, and degraded visibility from AIS-off behavior or interference. What changed in this run is the emergence of a more political operating pattern: India-linked LPG cargoes reportedly cleared Hormuz under an exceptional arrangement, while US-backed escort and maritime-insurance proposals are being framed as ways to push some traffic back into the corridor. For the dashboard, that means the next meaningful movements may depend less on nominal market demand and more on flag, operator, cargo sensitivity, and access to state protection or diplomatic clearance.",
-    "generatedAt": "2026-03-15T00:43:00Z"
+    "headline": "The last 24 hours reinforce the split between near-zero visible transit and lower-visibility or selectively cleared movement.",
+    "body": "TankerTrackers, MarineTraffic, Kpler, Giovanni Staunovo, recent research coverage and the Hormuz Strait Monitor baseline all continue to support the same operational picture: visible tanker and gas-carrier transit remains close to zero, coalition escort capacity is still uncertain, and the signal that matters most for the dashboard is the gap between suppressed compliant traffic and residual Iranian-linked or politically filtered movement. No additional source reviewed this round cleared the threshold for a genuinely new promoted item by canonical URL and analytical value.",
+    "generatedAt": "2026-03-16T07:02:50Z"
   },
-  "items": [
-    {
-      "id": "live-google-research-india-lpg-passage",
-      "canonicalUrl": "https://gcaptain.com/indias-tanker-escape-rare-hormuz-passage-signals-new-political-reality-for-global-shipping/",
-      "sourceId": "google-research",
-      "sourceName": "Fresh web research",
-      "sourceType": "article",
-      "publishedAt": "2026-03-14",
-      "title": "India-operated LPG carriers clear Hormuz under rare Iran-approved arrangement",
-      "summary": "gCaptain, citing Reuters reporting, says the LPG carriers Shivalik and Nanda Devi, both operated by Shipping Corporation of India, were allowed through Hormuz after high-level India-Iran contacts. That is useful for the dashboard because it suggests passage is no longer simply open or shut: selected cargoes can still move when nationality, operator profile and diplomatic leverage line up, implying that future counts may hinge on negotiated access rather than a broad return of commercial confidence.",
-      "tags": [
-        "research",
-        "india",
-        "lpg",
-        "escort",
-        "diplomacy"
-      ],
-      "figureNote": "India consumes more than 30 million tonnes of cooking gas a year, with about 60% imported and roughly 90% of those imports sourced from the Middle East, which helps explain why even a small number of cleared LPG passages can matter operationally."
-    },
-    {
-      "id": "live-google-research-escort-insurance",
-      "canonicalUrl": "https://www.rivieramm.com/news-content-hub/trump-directs-us-government-to-sell-maritime-insurance-escort-vessels-through-strait-of-hormuz-if-necessary-88009",
-      "sourceId": "google-research",
-      "sourceName": "Fresh web research",
-      "sourceType": "article",
-      "publishedAt": "2026-03-14",
-      "title": "Escort and maritime-insurance plans move closer to being active routing variables",
-      "summary": "Riviera reports that the US administration is explicitly pairing possible naval escorts with maritime-insurance support for Hormuz transits, while Bimco argues escorts could reduce threat for some ships but cannot realistically cover all tanker demand in the current threat environment. For the dashboard, the main implication is that any recovery in compliant traffic may arrive unevenly by operator and risk appetite, with state-backed cover helping a subset of voyages rather than restoring normal volumes across the board.",
-      "tags": [
-        "research",
-        "insurance",
-        "escort",
-        "bimco",
-        "risk"
-      ],
-      "figureNote": "The operational point is not a single transit count but the widening split between ships that may re-enter under escort or public backstop and the larger pool of owners still likely to stand off outside the Gulf."
-    }
-  ]
+  "items": []
 }

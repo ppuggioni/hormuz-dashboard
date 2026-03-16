@@ -1,18 +1,17 @@
 {
   "version": 1,
-  "runAt": "2026-03-15T00:43:00Z",
+  "runAt": "2026-03-16T00:57:00Z",
   "lastUpdateSummary": {
-    "headline": "Two new operating signals point to passage becoming negotiated and war-risk support becoming more explicit.",
-    "body": "This pass found two genuinely new and dashboard-relevant developments beyond the existing history set. First, reporting on two India-operated LPG carriers clearing Hormuz after Iranian approval suggests that some movements are now being decided case by case through nationality, operator and diplomatic channels rather than broad commercial reopening. Second, maritime reporting on Washington's push for tanker escorts and state-backed maritime insurance clarifies that insurance and naval cover are moving closer to policy tools, but that shipowner risk tolerance is still likely to remain selective rather than restoring normal flows quickly.",
-    "generatedAt": "2026-03-15T00:43:00Z"
+    "headline": "Another 2 million barrels cleared Iranian export channels while visible Hormuz traffic stayed subdued.",
+    "body": "A TankerTrackers post on 15 March says another 2 million barrels of Iranian crude departed even as the strait remained very quiet. For the dashboard, that strengthens the emerging read from the prior Windward and Maritime Executive coverage: low visible crossings are not the same as zero effective flow, because Iranian-linked liftings can still clear cargo under selective or lower-visibility conditions while mainstream Gulf tanker traffic remains heavily suppressed.",
+    "generatedAt": "2026-03-16T00:57:00Z"
   },
   "last24hSummary": {
-    "headline": "Over the last 24 hours, the freshest shift is from pure closure language toward selective access, escorts and negotiated passage.",
-    "body": "The cross-source picture still shows thin compliant traffic, strong shadow-fleet or Iran-linked activity, and degraded visibility from AIS-off behavior or interference. What changed in this run is the emergence of a more political operating pattern: India-linked LPG cargoes reportedly cleared Hormuz under an exceptional arrangement, while US-backed escort and maritime-insurance proposals are being framed as ways to push some traffic back into the corridor. For the dashboard, that means the next meaningful movements may depend less on nominal market demand and more on flag, operator, cargo sensitivity, and access to state protection or diplomatic clearance.",
-    "generatedAt": "2026-03-15T00:43:00Z"
+    "headline": "The last 24 hours still point to selective, politically filtered flow rather than a broad reopening.",
+    "body": "Across the sources reviewed, the pattern remains consistent: zero or near-zero visible crossings can coexist with continued Kharg liftings, selective approvals for favoured operators, dark or partially visible movement, and a large waiting fleet outside the strait. The most useful fresh confirmation this round is that Iranian-linked crude is still clearing in cargo-sized increments even while compliant commercial traffic remains exceptionally thin.",
+    "generatedAt": "2026-03-16T00:57:00Z"
   },
   "newItems": [
-    "live-google-research-india-lpg-passage",
-    "live-google-research-escort-insurance"
+    "live-tankertrackers-iranian-crude-2m-departed"
   ]
 }

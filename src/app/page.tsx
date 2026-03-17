@@ -176,6 +176,7 @@ type NewsSource = {
   url: string;
   priority: number;
   tags: string[];
+  collectionRule?: string | null;
 };
 
 type NewsItem = {
@@ -213,6 +214,7 @@ type NewsFeedShape = {
   };
   lastUpdateSummary: NewsSummary;
   last24hSummary: NewsSummary;
+  vesselAttacks24hSummary?: NewsSummary | null;
   previousDaySummary?: NewsSummary | null;
   sources: NewsSource[];
   items: NewsItem[];
@@ -3055,7 +3057,15 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid gap-4 md:grid-cols-4">
+            <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-4 md:col-span-2">
+              <div className="text-xs uppercase tracking-[0.2em] text-rose-300">VESSEL ATTACKS · LAST 24H</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.vesselAttacks24hSummary?.headline || "No vessel-attack summary yet"}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {newsFeed?.vesselAttacks24hSummary?.body || "The collector will write a dedicated 24-hour attacks summary here, including a clear no-credible-fresh-attacks read when appropriate."}
+              </p>
+            </div>
+
             <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-emerald-300">LATEST NEWS</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.lastUpdateSummary?.headline || "No fresh summary yet"}</div>
@@ -3078,7 +3088,9 @@ export default function Page() {
                 {newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it."}
               </p>
             </div>
+          </div>
 
+          <div className="mt-4 grid gap-4 md:grid-cols-1">
             <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Earlier day</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsDays[1]?.headline || newsDays[0]?.headline || "No earlier-day summary yet"}</div>

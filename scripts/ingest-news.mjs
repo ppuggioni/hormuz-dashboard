@@ -74,6 +74,11 @@ const latestRun = {
     body: 'Populate data/news-inbox.json before ingest.',
     generatedAt: runAt,
   },
+  vesselAttacks24hSummary: inbox.vesselAttacks24hSummary || previousLatestRun.vesselAttacks24hSummary || {
+    headline: 'No vessel-attack summary provided',
+    body: 'Populate data/news-inbox.json with a dedicated last-24h vessel-attacks summary, even if the answer is that there were no credible fresh attacks.',
+    generatedAt: runAt,
+  },
   previousDaySummary: inbox.previousDaySummary || previousLatestRun.previousDaySummary || null,
   newItems: newIds,
 };

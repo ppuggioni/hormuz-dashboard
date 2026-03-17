@@ -1,15 +1,50 @@
 {
   "version": 1,
-  "runAt": "2026-03-16T07:02:50Z",
+  "runAt": "2026-03-17T02:05:20Z",
   "lastUpdateSummary": {
-    "headline": "Visible Hormuz conditions still point to a near-standstill with selective Iranian-linked flow as the key exception.",
-    "body": "Across the tracked sources reviewed this round, no new item added stronger operational evidence than the prior confirmed Iranian-linked liftings and selective-passage pattern already in history. The most durable dashboard read remains that mainstream commercial traffic is still heavily suppressed while residual movement is concentrated in politically approved, sanctioned, dark or partially visible channels.",
-    "generatedAt": "2026-03-16T07:02:50Z"
+    "headline": "Selective Hormuz passage is widening a little, but only under tightly managed and still dangerous conditions.",
+    "body": "A fresh Lloyd's List read of the 16 March Hormuz cluster shows Karachi was not an isolated anomaly: the India-flagged LPG carriers Shivalik and Nanda Devi and the Pakistan-owned crude tanker Karachi all made eastbound passages in recent days, with Lloyd's saying some outbound ships routed around Larak Island inside Iranian territorial waters. But the same Lloyd's package says crews and insurers still refuse to treat the corridor as reopened, with seven Dynacom tankers stuck, one attempted exit reportedly turned back after an Iranian challenge, and passage decisions still being made ship by ship rather than by any blanket nationality-based clearance.",
+    "generatedAt": "2026-03-17T02:05:20Z"
   },
   "last24hSummary": {
-    "headline": "The last 24 hours reinforce the split between near-zero visible transit and lower-visibility or selectively cleared movement.",
-    "body": "TankerTrackers, MarineTraffic, Kpler, Giovanni Staunovo, recent research coverage and the Hormuz Strait Monitor baseline all continue to support the same operational picture: visible tanker and gas-carrier transit remains close to zero, coalition escort capacity is still uncertain, and the signal that matters most for the dashboard is the gap between suppressed compliant traffic and residual Iranian-linked or politically filtered movement. No additional source reviewed this round cleared the threshold for a genuinely new promoted item by canonical URL and analytical value.",
-    "generatedAt": "2026-03-16T07:02:50Z"
+    "headline": "The latest 24-hour picture is a controlled trickle through Hormuz layered on top of persistent crew, insurance and interference risk.",
+    "body": "Across MarineTraffic, Kpler, Windward, CNBC and newly opened Lloyd's List article pages, the best evidence still points to selective negotiated movement rather than normal market reopening. Fresh Lloyd's reporting adds vessel-level color: Shivalik, Nanda Devi and Karachi all transited eastbound; the Dynacom-operated Smyrni appears to have crossed after loading Saudi crude for India with AIS interruptions and GNSS interference; and owners still describe transits as case-by-case permissions in a corridor where insurers remain hesitant and crews are reluctant to gamble despite high freight incentives.",
+    "generatedAt": "2026-03-17T02:05:20Z"
   },
-  "items": []
+  "vesselAttacks24hSummary": {
+    "headline": "No credible fresh vessel attacks were confirmed in the last 24 hours around the Persian Gulf and Strait of Hormuz.",
+    "body": "This run explicitly checked TankerTrackers, MarineTraffic, Kpler and staunovo on X; Lloyd's List's Hormuz crisis and Daily Briefing result sets, with relevant 16-17 March Lloyd's article pages opened directly; Windward's 16 March maritime intelligence daily; CNBC's Bessent interview; and fresh web research on vessel attacks, including follow-up reporting on the 12 March attack on the Thai cargo ship Mayuree Naree. The result was no credible newly reported 24-hour vessel strike, boarding or mining incident in or immediately around Hormuz. The newest attack-related color was follow-up only: 20 Mayuree Naree crew returned to Thailand while three remained unaccounted for after the earlier 12 March attack; Lloyd's still describes ships as moving only case by case after the 11-12 March attack wave; Kpler and Lloyd's both continue to flag GPS/GNSS disruption and AIS reliability problems; and Lloyd's notes one Dynacom tanker crew reportedly tried to leave but turned back after an Iranian challenge. So the operational risk picture remains severe, but this run did not surface a fresh verified vessel attack inside the last 24 hours.",
+    "generatedAt": "2026-03-17T02:05:20Z"
+  },
+  "previousDaySummary": {
+    "headline": "March 16 showed a politically managed trickle through Hormuz, not a return to normal traffic.",
+    "body": "The day began with the operating picture still dominated by extreme scarcity of visible movement: Windward's 16 March update recorded only three outbound Hormuz crossings and no inbound transits on 15 March, including the sanctioned VLCC NORA after loading about 2.01 million barrels at Kharg for China. Broader route-capacity reporting still put effective Middle East exports at only about one-third of normal levels despite record use of alternative outlets, with roughly 350 tankers stranded, Saudi western-port exports reaching 5.9 million barrels per day on 9 March and Fujairah's crude bypass capacity still limited to roughly 1.5-1.8 million barrels per day. Later on 16 March, MarineTraffic and Kpler flagged the Aframax Karachi carrying Das crude as the first non-Iranian cargo tanker seen clearing Hormuz with AIS active since the crisis escalated, while CNBC reported Treasury Secretary Scott Bessent saying Washington is tolerating ongoing Iranian oil tanker departures and that India is still seeking clearance for 22 additional ships. The combined signal from the day was that some cargoes can move, but only through selective diplomatic or political permission layered on top of a system that remains far from commercially normalized across Hormuz, Kharg, Yanbu, Fujairah and the waiting fleet offshore.",
+    "generatedAt": "2026-03-17T02:05:20Z"
+  },
+  "items": [
+    {
+      "id": "live-lloyds-india-pakistan-transits-larak-route",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156631/India--and-Pakistan-owned-ships-transit-Strait-of-Hormuz",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "title": "Lloyd's List says Indian and Pakistan state-linked ships are now among the few eastbound vessels transiting Hormuz",
+      "summary": "Lloyd's List reports that the India-flagged LPG carriers Shivalik and Nanda Devi and the Pakistan-owned crude tanker Karachi all transited the Strait of Hormuz around 13-15 March, with all three voyages eastbound. The article adds useful route color beyond the earlier Karachi post: Karachi and the bulker Minoan Sky reportedly routed around Larak Island inside Iranian territorial waters, Nanda Devi's patchy AIS also suggests a Larak loop, and the previously attacked Star Gwyneth may have hugged the Iranian shoreline as well. For the dashboard, the important read is that some non-Iranian traffic is getting through, but by visibly cautious routing and still within a transit pattern dominated by Iranian-, Greek- and Chinese-linked tonnage rather than by a broad reopening.",
+      "tags": ["lloyds-list", "india", "pakistan", "karachi", "shivalik", "nanda-devi", "larak-island", "selective-passage"],
+      "figureNote": "Lloyd's says vessels linked to Iran, Greece and China still accounted for about 47%, 17% and 9% of all transits respectively, while the newly noted India/Pakistan passages were all eastbound between roughly 13 and 15 March."
+    },
+    {
+      "id": "live-lloyds-crews-insurers-gulf-standoff",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156630/Crews-and-insurers-reluctant-to-gamble-in-Gulf-standoff",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "title": "Lloyd's List says crews and insurers still see Hormuz as too dangerous for any normal resumption of trade",
+      "summary": "Lloyd's List reports that most vessels trapped in the Gulf are still not moving, with one owner quoted saying there is still no insurance and no crew agreement to run the strait routinely. The piece says seven Dynacom tankers remain among the trapped fleet, at least 11 seafarers have been killed in Iranian rocket and drone attacks during the crisis, and one Dynacom crew reportedly tried to exit but turned back after being challenged by Iranian forces. For the dashboard, this matters because it sharpens the difference between a few politically tolerated passages and any true normalization: even where cargo economics are attractive, crew consent, war-risk cover and Iranian control of who can pass remain binding constraints.",
+      "tags": ["lloyds-list", "insurance", "crew-safety", "dynacom", "war-risk", "attacks", "hormuz"],
+      "figureNote": "Useful hard color: seven Dynacom tankers are cited as trapped in the Gulf and Lloyd's says at least 11 seafarers have been killed in Iranian rocket and drone attacks during the crisis."
+    }
+  ]
 }

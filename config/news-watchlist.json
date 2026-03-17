@@ -2,7 +2,7 @@
   "version": 1,
   "updatedAt": "2026-03-16T11:55:00Z",
   "profile": "hormuz-news",
-  "notes": "Hormuz dashboard newsfeed watchlist. The 6h agent should browse these sources with the hormuz-news browser profile, store high-signal items and extracted evidence in data/news-seed-items.json or a future DB-backed store, then run npm run build:news. Very important: always preserve notable data and commentary on Hormuz itself, including flow levels, waiting fleet, sanctions-linked movement, dark fleet / AIS disruption, and alternative-route and bypass-flow context including Red Sea, Yanbu and Fujairah when present. When Windward or related reporting contains structured operational figures, store both the raw data points and commentary. Also, on the first successful update of each UTC day, write a full previous-day summary suitable for direct display in the webapp, combining the prior day’s key operational data points and analyst commentary into a durable summary object.",
+  "notes": "Hormuz dashboard newsfeed watchlist. The 6h agent should browse these sources with the hormuz-news browser profile, store high-signal items and extracted evidence in data/news-seed-items.json or a future DB-backed store, then run npm run build:news. Very important: always preserve notable data and commentary on Hormuz itself, including flow levels, waiting fleet, sanctions-linked movement, dark fleet / AIS disruption, and alternative-route and bypass-flow context including Red Sea, Yanbu and Fujairah when present. Across all sources, pay special attention to attacks on vessels in or around the Persian Gulf and Strait of Hormuz, including missile/drone/boarding/mining/interference incidents, near-misses, damage, casualties, escorts, detentions, and any operational color on who was hit, where, when, and how traffic behavior changed afterward. For Google research, actively look for fresh vessel-attack reporting and not just flow/capacity analysis. Lloyd's List rule: for Lloyd's List search/result pages, especially https://www.lloydslist.com/search#?topic=Strait%20of%20Hormuz%20crisis, do not stop at the search page or a teaser. Open every relevant article result, read the article page itself, and collect all fresh information exposed there, especially structured operational data, figures, counts, dates, vessel names, route shifts, and analyst commentary. When Windward or related reporting contains structured operational figures, store both the raw data points and commentary. Every run should also write a dedicated last-24h vessel-attacks summary object for display in a separate top card, even if the summary is that there were no credible fresh attack reports in the last 24 hours. Also, on the first successful update of each UTC day, write a full previous-day summary suitable for direct display in the webapp, combining the prior day’s key operational data points and analyst commentary into a durable summary object.",
   "sources": [
     {
       "id": "tankertrackers-x",
@@ -42,7 +42,8 @@
       "name": "Lloyd's List Hormuz Crisis",
       "url": "https://www.lloydslist.com/search#?topic=Strait%20of%20Hormuz%20crisis",
       "priority": 1,
-      "tags": ["lloyds-list", "hormuz", "geopolitics"]
+      "tags": ["lloyds-list", "hormuz", "geopolitics"],
+      "collectionRule": "Open every relevant result from this search page, read each article page itself, and capture all new information and especially all exposed data points before deciding whether to promote or skip it. Do not treat the search page teaser text as sufficient."
     },
     {
       "id": "kpler-blog",
@@ -63,18 +64,18 @@
     {
       "id": "google-research",
       "type": "search_query",
-      "name": "Fresh web research: hormuz shadow fleet",
-      "url": "https://www.google.com/search?q=hormuz+shadow+fleet",
-      "priority": 2,
-      "tags": ["research", "search", "shadow-fleet", "last-24h"]
+      "name": "Fresh web research: Hormuz shadow fleet and vessel attacks",
+      "url": "https://www.google.com/search?q=hormuz+shadow+fleet+vessel+attack",
+      "priority": 1,
+      "tags": ["research", "search", "shadow-fleet", "vessel-attacks", "persian-gulf", "last-24h"]
     },
     {
       "id": "google-bypass-research",
       "type": "search_query",
-      "name": "Fresh web research: Red Sea Yanbu Fujairah Hormuz bypass flows",
-      "url": "https://www.google.com/search?q=Red+Sea+Yanbu+Fujairah+Hormuz+shipping+March+2026",
+      "name": "Fresh web research: Red Sea Yanbu Fujairah Hormuz bypass flows and vessel attacks",
+      "url": "https://www.google.com/search?q=Red+Sea+Yanbu+Fujairah+Hormuz+shipping+vessel+attacks+March+2026",
       "priority": 1,
-      "tags": ["research", "search", "red-sea", "yanbu", "fujairah", "bypass-flows", "last-24h"]
+      "tags": ["research", "search", "red-sea", "yanbu", "fujairah", "bypass-flows", "vessel-attacks", "last-24h"]
     },
     {
       "id": "staunovo-x",

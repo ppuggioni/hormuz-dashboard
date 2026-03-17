@@ -1,21 +1,31 @@
 {
   "metadata": {
-    "generatedAt": "2026-03-16T07:33:26.020Z",
+    "generatedAt": "2026-03-17T02:06:34.177Z",
     "profile": "hormuz-news",
-    "sourceCount": 11,
-    "itemCount": 16,
-    "lastRunAt": "2026-03-16T00:57:00Z",
-    "newItemCount": 1
+    "sourceCount": 13,
+    "itemCount": 23,
+    "lastRunAt": "2026-03-17T02:05:20Z",
+    "newItemCount": 2
   },
   "lastUpdateSummary": {
-    "headline": "Another 2 million barrels cleared Iranian export channels while visible Hormuz traffic stayed subdued.",
-    "body": "A TankerTrackers post on 15 March says another 2 million barrels of Iranian crude departed even as the strait remained very quiet. For the dashboard, that strengthens the emerging read from the prior Windward and Maritime Executive coverage: low visible crossings are not the same as zero effective flow, because Iranian-linked liftings can still clear cargo under selective or lower-visibility conditions while mainstream Gulf tanker traffic remains heavily suppressed.",
-    "generatedAt": "2026-03-16T00:57:00Z"
+    "headline": "Selective Hormuz passage is widening a little, but only under tightly managed and still dangerous conditions.",
+    "body": "A fresh Lloyd's List read of the 16 March Hormuz cluster shows Karachi was not an isolated anomaly: the India-flagged LPG carriers Shivalik and Nanda Devi and the Pakistan-owned crude tanker Karachi all made eastbound passages in recent days, with Lloyd's saying some outbound ships routed around Larak Island inside Iranian territorial waters. But the same Lloyd's package says crews and insurers still refuse to treat the corridor as reopened, with seven Dynacom tankers stuck, one attempted exit reportedly turned back after an Iranian challenge, and passage decisions still being made ship by ship rather than by any blanket nationality-based clearance.",
+    "generatedAt": "2026-03-17T02:05:20Z"
   },
   "last24hSummary": {
-    "headline": "The last 24 hours still point to selective, politically filtered flow rather than a broad reopening.",
-    "body": "Across the sources reviewed, the pattern remains consistent: zero or near-zero visible crossings can coexist with continued Kharg liftings, selective approvals for favoured operators, dark or partially visible movement, and a large waiting fleet outside the strait. The most useful fresh confirmation this round is that Iranian-linked crude is still clearing in cargo-sized increments even while compliant commercial traffic remains exceptionally thin.",
-    "generatedAt": "2026-03-16T00:57:00Z"
+    "headline": "The latest 24-hour picture is a controlled trickle through Hormuz layered on top of persistent crew, insurance and interference risk.",
+    "body": "Across MarineTraffic, Kpler, Windward, CNBC and newly opened Lloyd's List article pages, the best evidence still points to selective negotiated movement rather than normal market reopening. Fresh Lloyd's reporting adds vessel-level color: Shivalik, Nanda Devi and Karachi all transited eastbound; the Dynacom-operated Smyrni appears to have crossed after loading Saudi crude for India with AIS interruptions and GNSS interference; and owners still describe transits as case-by-case permissions in a corridor where insurers remain hesitant and crews are reluctant to gamble despite high freight incentives.",
+    "generatedAt": "2026-03-17T02:05:20Z"
+  },
+  "vesselAttacks24hSummary": {
+    "headline": "No credible fresh vessel attacks were confirmed in the last 24 hours around the Persian Gulf and Strait of Hormuz.",
+    "body": "This run explicitly checked TankerTrackers, MarineTraffic, Kpler and staunovo on X; Lloyd's List's Hormuz crisis and Daily Briefing result sets, with relevant 16-17 March Lloyd's article pages opened directly; Windward's 16 March maritime intelligence daily; CNBC's Bessent interview; and fresh web research on vessel attacks, including follow-up reporting on the 12 March attack on the Thai cargo ship Mayuree Naree. The result was no credible newly reported 24-hour vessel strike, boarding or mining incident in or immediately around Hormuz. The newest attack-related color was follow-up only: 20 Mayuree Naree crew returned to Thailand while three remained unaccounted for after the earlier 12 March attack; Lloyd's still describes ships as moving only case by case after the 11-12 March attack wave; Kpler and Lloyd's both continue to flag GPS/GNSS disruption and AIS reliability problems; and Lloyd's notes one Dynacom tanker crew reportedly tried to leave but turned back after an Iranian challenge. So the operational risk picture remains severe, but this run did not surface a fresh verified vessel attack inside the last 24 hours.",
+    "generatedAt": "2026-03-17T02:05:20Z"
+  },
+  "previousDaySummary": {
+    "headline": "March 16 showed a politically managed trickle through Hormuz, not a return to normal traffic.",
+    "body": "The day began with the operating picture still dominated by extreme scarcity of visible movement: Windward's 16 March update recorded only three outbound Hormuz crossings and no inbound transits on 15 March, including the sanctioned VLCC NORA after loading about 2.01 million barrels at Kharg for China. Broader route-capacity reporting still put effective Middle East exports at only about one-third of normal levels despite record use of alternative outlets, with roughly 350 tankers stranded, Saudi western-port exports reaching 5.9 million barrels per day on 9 March and Fujairah's crude bypass capacity still limited to roughly 1.5-1.8 million barrels per day. Later on 16 March, MarineTraffic and Kpler flagged the Aframax Karachi carrying Das crude as the first non-Iranian cargo tanker seen clearing Hormuz with AIS active since the crisis escalated, while CNBC reported Treasury Secretary Scott Bessent saying Washington is tolerating ongoing Iranian oil tanker departures and that India is still seeking clearance for 22 additional ships. The combined signal from the day was that some cargoes can move, but only through selective diplomatic or political permission layered on top of a system that remains far from commercially normalized across Hormuz, Kharg, Yanbu, Fujairah and the waiting fleet offshore.",
+    "generatedAt": "2026-03-17T02:05:20Z"
   },
   "sources": [
     {
@@ -29,7 +39,8 @@
         "tankers",
         "sanctions",
         "shadow-fleet"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "marinetraffic-x",
@@ -41,7 +52,8 @@
         "x",
         "shipping-data",
         "ais"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "kpler-x",
@@ -53,7 +65,8 @@
         "x",
         "analytics",
         "energy"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "lloyds-briefing",
@@ -65,7 +78,8 @@
         "lloyds-list",
         "briefing",
         "shipping-news"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "lloyds-hormuz",
@@ -77,7 +91,8 @@
         "lloyds-list",
         "hormuz",
         "geopolitics"
-      ]
+      ],
+      "collectionRule": "Open every relevant result from this search page, read each article page itself, and capture all new information and especially all exposed data points before deciding whether to promote or skip it. Do not treat the search page teaser text as sufficient."
     },
     {
       "id": "kpler-blog",
@@ -90,20 +105,59 @@
         "analytics",
         "energy",
         "shipping"
-      ]
+      ],
+      "collectionRule": null
+    },
+    {
+      "id": "windward-blog",
+      "name": "Windward maritime intelligence",
+      "type": "website",
+      "url": "https://windward.ai/blog/",
+      "priority": 1,
+      "tags": [
+        "windward",
+        "analytics",
+        "dark-fleet",
+        "ais",
+        "yanbu",
+        "fujairah",
+        "red-sea"
+      ],
+      "collectionRule": null
     },
     {
       "id": "google-research",
-      "name": "Fresh web research: hormuz shadow fleet",
+      "name": "Fresh web research: Hormuz shadow fleet and vessel attacks",
       "type": "search_query",
-      "url": "https://www.google.com/search?q=hormuz+shadow+fleet",
-      "priority": 2,
+      "url": "https://www.google.com/search?q=hormuz+shadow+fleet+vessel+attack",
+      "priority": 1,
       "tags": [
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h"
-      ]
+      ],
+      "collectionRule": null
+    },
+    {
+      "id": "google-bypass-research",
+      "name": "Fresh web research: Red Sea Yanbu Fujairah Hormuz bypass flows and vessel attacks",
+      "type": "search_query",
+      "url": "https://www.google.com/search?q=Red+Sea+Yanbu+Fujairah+Hormuz+shipping+vessel+attacks+March+2026",
+      "priority": 1,
+      "tags": [
+        "research",
+        "search",
+        "red-sea",
+        "yanbu",
+        "fujairah",
+        "bypass-flows",
+        "vessel-attacks",
+        "last-24h"
+      ],
+      "collectionRule": null
     },
     {
       "id": "staunovo-x",
@@ -116,7 +170,8 @@
         "energy",
         "shipping",
         "market-commentary"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "hormuz-monitor-home",
@@ -129,7 +184,8 @@
         "hormuz",
         "analysis",
         "crisis-monitoring"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "hormuz-monitor-newsfeed",
@@ -142,7 +198,8 @@
         "newsfeed",
         "hormuz",
         "analysis"
-      ]
+      ],
+      "collectionRule": null
     },
     {
       "id": "hormuz-monitor-crisis-timeline",
@@ -155,10 +212,193 @@
         "timeline",
         "hormuz",
         "crisis"
-      ]
+      ],
+      "collectionRule": null
     }
   ],
   "items": [
+    {
+      "id": "live-marinetraffic-karachi-first-non-iranian-ais-transit",
+      "canonicalUrl": "https://x.com/MarineTraffic/status/2033490585298915497",
+      "url": "https://x.com/MarineTraffic/status/2033490585298915497",
+      "title": "MarineTraffic says the Aframax Karachi became the first non-Iranian cargo tanker seen clearing Hormuz with AIS still active since the crisis escalated",
+      "sourceId": "marinetraffic-x",
+      "sourceName": "MarineTraffic",
+      "sourceType": "x_post",
+      "publishedAt": "2026-03-16T10:28:00Z",
+      "firstSeenAt": "2026-03-17T00:20:00Z",
+      "lastSeenAt": "2026-03-17T00:20:00Z",
+      "summary": "MarineTraffic says the 237-metre Aframax Karachi, carrying Abu Dhabi's Das crude for Pakistan, entered Iran's Exclusive Economic Zone at 11:33 UTC on 15 March, crossed the Strait of Hormuz at 14:43 UTC and then continued through the Gulf of Oman at about 9.6 knots with AIS still on. The post also says more than 20 long-range tankers have now exited the Gulf. For the dashboard, the useful point is that movement is no longer completely frozen, but the first openly visible non-Iranian cargo transit appears to have happened under a selective and tightly managed routing pattern rather than under any broad restoration of normal commercial passage.",
+      "tags": [
+        "x",
+        "shipping-data",
+        "ais",
+        "marinetraffic",
+        "karachi",
+        "pakistan",
+        "das-crude",
+        "selective-passage"
+      ],
+      "figureNote": "Key figures: Karachi is a 237-metre Aframax; entered Iran's EEZ at 11:33 UTC on 15 March; crossed Hormuz at 14:43 UTC; continued at about 9.6 knots; MarineTraffic also says more than 20 long-range tankers have exited the Gulf.",
+      "isNew": false,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
+    {
+      "id": "live-fujairah-oil-loadings-suspended-after-drone-attack",
+      "canonicalUrl": "https://www.straitstimes.com/world/middle-east/oil-loading-operations-suspended-at-uaes-fujairah-port-sources-say",
+      "url": "https://www.straitstimes.com/world/middle-east/oil-loading-operations-suspended-at-uaes-fujairah-port-sources-say",
+      "title": "A second Fujairah disruption briefly halted oil loadings at one of the UAE’s main Hormuz bypass outlets",
+      "sourceId": "google-bypass-research",
+      "sourceName": "Fresh web research: Red Sea Yanbu Fujairah Hormuz bypass flows",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-16T12:15:00Z",
+      "lastSeenAt": "2026-03-16T12:15:00Z",
+      "summary": "Reuters-reported coverage says oil loading operations at Fujairah were suspended on 16 March after another drone attack triggered fires in the petroleum industrial zone. Fujairah typically handles about 1 million barrels per day of the UAE’s Murban crude and had only just resumed operations after a previous strike, so the new halt matters because it shows that relief routes outside Hormuz are now directly exposed to repeated attack and cannot be treated as stable spare capacity.",
+      "tags": [
+        "research",
+        "search",
+        "red-sea",
+        "yanbu",
+        "fujairah",
+        "bypass-flows",
+        "vessel-attacks",
+        "last-24h"
+      ],
+      "figureNote": "The key operational figure is roughly 1 million barrels per day of Murban crude typically moving via Fujairah, one of the UAE’s few export outlets outside Hormuz.",
+      "isNew": false,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
+    {
+      "id": "live-japan-no-hormuz-escort-mission",
+      "canonicalUrl": "https://japantoday.com/category/politics/japan-not-yet-planning-hormuz-escort-mission-pm-takaichi-says",
+      "url": "https://japantoday.com/category/politics/japan-not-yet-planning-hormuz-escort-mission-pm-takaichi-says",
+      "title": "Japan is not yet planning a Hormuz escort mission despite heavy Middle East energy dependence",
+      "sourceId": "google-research",
+      "sourceName": "Fresh web research: hormuz shadow fleet",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-16T12:15:00Z",
+      "lastSeenAt": "2026-03-16T12:15:00Z",
+      "summary": "Reuters-reported coverage says Prime Minister Sanae Takaichi told parliament that Japan has made no decision to dispatch escort ships and is still examining what is possible within its legal framework. For the dashboard, that matters because Japan is one of the large Asian importers most exposed to Hormuz disruption, and its reluctance to commit naval cover suggests that any escort-led normalization in compliant tanker and gas-carrier traffic will remain limited even among states with strong energy incentives to reopen the route.",
+      "tags": [
+        "research",
+        "search",
+        "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
+        "last-24h",
+        "japan",
+        "escort"
+      ],
+      "figureNote": "The practical signal is that a major Hormuz-dependent importer is still not committing escort vessels, which keeps the ceiling low for any near-term coalition-backed recovery in compliant traffic.",
+      "isNew": false,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
+    {
+      "id": "live-windward-march-16-three-outbound-nora",
+      "canonicalUrl": "https://windward.ai/blog/march-16-maritime-intelligence-daily/",
+      "url": "https://windward.ai/blog/march-16-maritime-intelligence-daily/",
+      "title": "Windward says Hormuz managed only three outbound crossings on 15 March while Kharg-linked liftings and regional congestion kept building",
+      "sourceId": "windward-blog",
+      "sourceName": "Windward maritime intelligence",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-16T18:18:51Z",
+      "lastSeenAt": "2026-03-16T18:18:51Z",
+      "summary": "Windward’s 16 March maritime intelligence update says only three outbound vessels and no inbound transits were recorded through Hormuz on 15 March, with one of the crossings being the sanctioned VLCC NORA after loading about 2.01 million barrels at Kharg and heading for Ningbo. The same update puts confirmed maritime-security incidents since the start of the war at 20, shows weekly tanker port calls at Saudi Red Sea ports rising from about 58 in late December to more than 90 by early March, and flags worsening transshipment pressure at Salalah and Karachi. For the dashboard, the useful point is that the system is not simply shut: a small number of politically tolerable or sanctioned cargoes still move, while the workaround network outside Hormuz is getting more congested and operationally important.",
+      "tags": [
+        "windward",
+        "analytics",
+        "dark-fleet",
+        "ais",
+        "yanbu",
+        "fujairah",
+        "red-sea",
+        "hormuz"
+      ],
+      "figureNote": "Key figures: 3 outbound and 0 inbound Hormuz crossings on 15 March; NORA loaded about 2.01 million barrels at Kharg; 20 confirmed maritime-security incidents since 28 February; Saudi Red Sea tanker port calls rose from roughly 58 in late December 2025 to more than 90 by early March 2026.",
+      "isNew": false,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
+    {
+      "id": "live-bypass-routes-one-third-normal-march-16",
+      "canonicalUrl": "https://www.straitstimes.com/world/europe/hormuz-alternative-oil-routes-inadequate-to-cope-with-demand",
+      "url": "https://www.straitstimes.com/world/europe/hormuz-alternative-oil-routes-inadequate-to-cope-with-demand",
+      "title": "Record Yanbu and Fujairah use is still leaving effective Middle East exports at only about one-third of normal levels",
+      "sourceId": "google-bypass-research",
+      "sourceName": "Fresh web research: Red Sea Yanbu Fujairah Hormuz bypass flows",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-16T18:18:51Z",
+      "lastSeenAt": "2026-03-16T18:18:51Z",
+      "summary": "Fresh reporting citing the IEA and Kpler says Hormuz workarounds remain materially inadequate even after record diversion use. The piece says about 350 oil tankers are currently stranded in the area, only around 80 ships have transited the strait since the war began on 28 February, Saudi western-port exports hit a record 5.9 million barrels per day on 9 March with East-West pipeline capacity heading toward 7 million barrels per day, and Fujairah can raise crude throughput only from about 1.5 to 1.8 million barrels per day. For the dashboard, the important point is that bypass infrastructure is helping but still cannot absorb the lost system volume, so regional flow stress remains spread across Yanbu, Fujairah, waiting fleets and long-haul replacement sourcing rather than easing cleanly.",
+      "tags": [
+        "research",
+        "search",
+        "red-sea",
+        "yanbu",
+        "fujairah",
+        "bypass-flows",
+        "vessel-attacks",
+        "last-24h"
+      ],
+      "figureNote": "Key figures: effective Middle Eastern exports at about one-third of normal levels; around 350 oil tankers stranded; only about 80 ships through Hormuz since 28 February; Saudi western-port exports at 5.9 mb/d on 9 March with 7 mb/d pipeline capacity in sight; Fujairah crude capacity around 1.5-1.8 mb/d.",
+      "isNew": false,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
+    {
+      "id": "live-lloyds-india-pakistan-transits-larak-route",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156631/India--and-Pakistan-owned-ships-transit-Strait-of-Hormuz",
+      "url": "https://www.lloydslist.com/LL1156631/India--and-Pakistan-owned-ships-transit-Strait-of-Hormuz",
+      "title": "Lloyd's List says Indian and Pakistan state-linked ships are now among the few eastbound vessels transiting Hormuz",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-17T02:05:20Z",
+      "lastSeenAt": "2026-03-17T02:05:20Z",
+      "summary": "Lloyd's List reports that the India-flagged LPG carriers Shivalik and Nanda Devi and the Pakistan-owned crude tanker Karachi all transited the Strait of Hormuz around 13-15 March, with all three voyages eastbound. The article adds useful route color beyond the earlier Karachi post: Karachi and the bulker Minoan Sky reportedly routed around Larak Island inside Iranian territorial waters, Nanda Devi's patchy AIS also suggests a Larak loop, and the previously attacked Star Gwyneth may have hugged the Iranian shoreline as well. For the dashboard, the important read is that some non-Iranian traffic is getting through, but by visibly cautious routing and still within a transit pattern dominated by Iranian-, Greek- and Chinese-linked tonnage rather than by a broad reopening.",
+      "tags": [
+        "lloyds-list",
+        "hormuz",
+        "geopolitics",
+        "india",
+        "pakistan",
+        "karachi",
+        "shivalik",
+        "nanda-devi"
+      ],
+      "figureNote": "Lloyd's says vessels linked to Iran, Greece and China still accounted for about 47%, 17% and 9% of all transits respectively, while the newly noted India/Pakistan passages were all eastbound between roughly 13 and 15 March.",
+      "isNew": true,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
+    {
+      "id": "live-lloyds-crews-insurers-gulf-standoff",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156630/Crews-and-insurers-reluctant-to-gamble-in-Gulf-standoff",
+      "url": "https://www.lloydslist.com/LL1156630/Crews-and-insurers-reluctant-to-gamble-in-Gulf-standoff",
+      "title": "Lloyd's List says crews and insurers still see Hormuz as too dangerous for any normal resumption of trade",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-17T02:05:20Z",
+      "lastSeenAt": "2026-03-17T02:05:20Z",
+      "summary": "Lloyd's List reports that most vessels trapped in the Gulf are still not moving, with one owner quoted saying there is still no insurance and no crew agreement to run the strait routinely. The piece says seven Dynacom tankers remain among the trapped fleet, at least 11 seafarers have been killed in Iranian rocket and drone attacks during the crisis, and one Dynacom crew reportedly tried to exit but turned back after being challenged by Iranian forces. For the dashboard, this matters because it sharpens the difference between a few politically tolerated passages and any true normalization: even where cargo economics are attractive, crew consent, war-risk cover and Iranian control of who can pass remain binding constraints.",
+      "tags": [
+        "lloyds-list",
+        "hormuz",
+        "geopolitics",
+        "insurance",
+        "crew-safety",
+        "dynacom",
+        "war-risk",
+        "attacks"
+      ],
+      "figureNote": "Useful hard color: seven Dynacom tankers are cited as trapped in the Gulf and Lloyd's says at least 11 seafarers have been killed in Iranian rocket and drone attacks during the crisis.",
+      "isNew": true,
+      "lastRunAt": "2026-03-17T02:05:20Z"
+    },
     {
       "id": "live-bennikim-gulf-storage-production-cuts",
       "canonicalUrl": "https://x.com/BenniKim/status/2033230143943225747",
@@ -175,15 +415,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "x",
-        "storage",
-        "saudi",
-        "kuwait"
+        "storage"
       ],
       "figureNote": "The main figures are about 70% storage utilisation at Ras Tanura and Ju'aymah two days ago and a cumulative 26.7 million-barrel inventory build across the Middle East.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-bennikim-kharg-inventory-buildup",
@@ -201,15 +441,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "x",
-        "kharg",
-        "inventory",
-        "storage"
+        "kharg"
       ],
       "figureNote": "The key figures are a 4.33 million-barrel week-on-week rise in inland Iranian inventories and a 3.2 million-barrel increase on Kharg in just two days, despite tankers remaining visible at the berths.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-tankertrackers-iranian-crude-2m-departed",
@@ -234,8 +474,8 @@
         "exports"
       ],
       "figureNote": "The key hard figure is the additional 2 million barrels of Iranian crude reported as departed on 15 March despite still-quiet visible traffic through Hormuz.",
-      "isNew": true,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "isNew": false,
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-guardian-storage-shutins",
@@ -253,15 +493,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "storage",
-        "shut-ins",
-        "yanbu",
-        "fujairah"
+        "shut-ins"
       ],
       "figureNote": "The key operational figures are roughly 3 million barrels per day already moving by Saudi pipeline to Yanbu, about 1.6 million barrels per day via the UAE pipeline to Fujairah, at least 25 tankers heading for Yanbu, and only days to weeks of spare storage for major Gulf producers if the strait remains constrained.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-windward-zero-crossings-kharg",
@@ -279,15 +519,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "windward",
-        "ais",
-        "kharg",
-        "waiting-fleet"
+        "ais"
       ],
       "figureNote": "The key operational figures are zero AIS-confirmed crossings on 14 March, about 400 vessels in the Gulf of Oman, at least eight vessels positioned east of the strait, and an estimated 2.68 million barrels lifted by SERENA and ARK III from Kharg after 11 March.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-maritime-executive-selective-access",
@@ -305,15 +545,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "selective-access",
-        "ais-off",
-        "india",
-        "sanctions"
+        "ais-off"
       ],
       "figureNote": "The key hard figures are nine dark-fleet Hormuz transits detected in March versus an estimated total of about 45, plus the named examples of approved Indian LPG passages and sanctioned product-tanker movements.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-kpler-x",
@@ -338,7 +578,7 @@
       ],
       "figureNote": "The useful number here is the lost inflow into Southeast Asia, which turns a crossings story into a demand-side stress story.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-tankertrackers-x",
@@ -364,7 +604,7 @@
       ],
       "figureNote": "The most useful hard figure here is the 2.7 million barrels loading across two NITC tankers, which helps explain why Iranian-linked flows can stay resilient while compliant traffic remains thin.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-lloyds-shadow-fleet",
@@ -388,7 +628,7 @@
       ],
       "figureNote": "Jask loadings are operationally slow, but their reappearance is a specific clue for interpreting eastbound tanker movements near southern Iran.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-kpler-charterers",
@@ -414,13 +654,13 @@
       ],
       "figureNote": "The headline number is the 92% collapse in tanker transits versus the prior week, paired with large volumes of trapped or idle Gulf tonnage.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-google-research",
       "canonicalUrl": "https://marineindustrynews.co.uk/oil-tankers-hit-gps-spoofed-and-ships-stranded-confusion-spreads-across-strait-of-hormuz/",
       "url": "https://marineindustrynews.co.uk/oil-tankers-hit-gps-spoofed-and-ships-stranded-confusion-spreads-across-strait-of-hormuz/",
-      "title": "Fresh web research: hormuz shadow fleet",
+      "title": "Fresh web research: Hormuz shadow fleet and vessel attacks",
       "sourceId": "google-research",
       "sourceName": "Fresh web research",
       "sourceType": "article",
@@ -432,13 +672,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "gps-spoofing",
         "attacks"
       ],
       "figureNote": "The operational takeaway is that crossing counts should be read alongside interference and waiting-fleet conditions, not as a perfect census of all movement.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-google-research-india-lpg-passage",
@@ -456,15 +698,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "india",
-        "lpg",
-        "escort",
-        "diplomacy"
+        "lpg"
       ],
       "figureNote": "India consumes more than 30 million tonnes of cooking gas a year, with about 60% imported and roughly 90% of those imports sourced from the Middle East, which helps explain why even a small number of cleared LPG passages can matter operationally.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-google-research-escort-insurance",
@@ -482,15 +724,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "insurance",
-        "escort",
-        "bimco",
-        "risk"
+        "escort"
       ],
       "figureNote": "The operational point is not a single transit count but the widening split between ships that may re-enter under escort or public backstop and the larger pool of owners still likely to stand off outside the Gulf.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-thehindu-india-queue-detail",
@@ -508,15 +750,15 @@
         "research",
         "search",
         "shadow-fleet",
+        "vessel-attacks",
+        "persian-gulf",
         "last-24h",
         "india",
-        "lpg",
-        "ais",
-        "queue"
+        "lpg"
       ],
       "figureNote": "The most useful hard figures are the 22 Indian-flagged vessels still waiting west of Hormuz and their cargo mix, because that turns a one-off passage story into a measurable pipeline of still-delayed energy traffic.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-marinetraffic-x",
@@ -540,7 +782,7 @@
       ],
       "figureNote": "The useful quantitative anchor here is the 15-laden-tanker count over the period, which gives a very sparse baseline for comparing dashboard-observed crossings.",
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     },
     {
       "id": "live-lloyds-daily-briefing",
@@ -564,7 +806,7 @@
       ],
       "figureNote": null,
       "isNew": false,
-      "lastRunAt": "2026-03-16T00:57:00Z"
+      "lastRunAt": "2026-03-17T02:05:20Z"
     }
   ]
 }

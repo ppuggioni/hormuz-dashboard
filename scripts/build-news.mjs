@@ -61,6 +61,7 @@ const payload = {
   },
   lastUpdateSummary: latestRun.lastUpdateSummary,
   last24hSummary: latestRun.last24hSummary,
+  vesselAttacks24hSummary: latestRun.vesselAttacks24hSummary || null,
   previousDaySummary: latestRun.previousDaySummary || null,
   sources: (watchlist.sources || []).map((source) => ({
     id: source.id,
@@ -69,6 +70,7 @@ const payload = {
     url: source.url,
     priority: source.priority || 0,
     tags: source.tags || [],
+    collectionRule: source.collectionRule || null,
   })),
   items,
 };

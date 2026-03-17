@@ -156,23 +156,6 @@ type CandidateCrosser = {
 };
 
 
-type AreaEntryEvent = {
-  t: string;
-  hour: string;
-  shipId: string;
-  shipName: string;
-  vesselType: string;
-  location: string;
-  eventType: "entry";
-};
-
-type AreaPath = {
-  shipId: string;
-  shipName: string;
-  vesselType: string;
-  points: PathPoint[];
-};
-
 type ShipMeta = {
   shipName: string;
   vesselType: string;
@@ -383,30 +366,6 @@ function classForType(type: string) {
   if (type === "tanker") return "bg-rose-500";
   if (type === "cargo") return "bg-green-500";
   return "bg-amber-500";
-}
-
-function formatHourTick(iso: string) {
-  const d = new Date(iso);
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const hour = String(d.getUTCHours()).padStart(2, "0");
-  return `${day}/${month} ${hour}:00`;
-}
-
-function buildReadableTicks(hours: string[]) {
-  if (!hours.length) return [] as string[];
-  const total = hours.length;
-  const step = total <= 72 ? 3 : total <= 168 ? 6 : total <= 336 ? 12 : 24;
-
-  const ticks: string[] = [];
-  for (const h of hours) {
-    const d = new Date(h);
-    if (d.getUTCHours() % step === 0) ticks.push(h);
-  }
-
-  if (ticks[0] !== hours[0]) ticks.unshift(hours[0]);
-  if (ticks[ticks.length - 1] !== hours[hours.length - 1]) ticks.push(hours[hours.length - 1]);
-  return ticks;
 }
 
 function aggregateToDailyBins(rows: CrossingHour[]) {
@@ -823,143 +782,6 @@ function computeLikelyDarkCrossers(
 }
 
 
-function kmToLatDegrees(km: number) {
-  return km / 110.574;
-}
-
-function kmToLonDegrees(km: number, lat: number) {
-  return km / (111.320 * Math.cos((lat * Math.PI) / 180));
-}
-
-function computeAreaEntryAnalytics(
-  snapshots: Snapshot[],
-  centerLat: number,
-  centerLon: number,
-  widthKm: number,
-  heightKm: number,
-  allowedTypes: string[] = ["tanker", "cargo"],
-  location = "monitored_area",
-) {
-  if (!snapshots?.length) {
-    return {
-      bounds: { minLat: centerLat, maxLat: centerLat, minLon: centerLon, maxLon: centerLon },
-      events: [] as AreaEntryEvent[],
-      paths: [] as AreaPath[],
-    };
-  }
-
-  const halfHeightKm = heightKm / 2;
-  const halfWidthKm = widthKm / 2;
-  const latDelta = kmToLatDegrees(halfHeightKm);
-  const lonDelta = kmToLonDegrees(halfWidthKm, centerLat);
-  const bounds = {
-    minLat: centerLat - latDelta,
-    maxLat: centerLat + latDelta,
-    minLon: centerLon - lonDelta,
-    maxLon: centerLon + lonDelta,
-  };
-
-  const inside = (lat: number, lon: number) =>
-    lat >= bounds.minLat && lat <= bounds.maxLat && lon >= bounds.minLon && lon <= bounds.maxLon;
-
-  const shipPoints = new Map<string, { shipName: string; vesselType: string; points: PathPoint[] }>();
-  const prevInside = new Map<string, boolean>();
-  const events: AreaEntryEvent[] = [];
-
-  const sortedSnapshots = [...snapshots].sort((a, b) => +new Date(a.t) - +new Date(b.t));
-  for (const s of sortedSnapshots) {
-    const present = new Set<string>();
-    for (const p of s.points) {
-      if (!allowedTypes.includes(p.vesselType)) continue;
-      present.add(p.shipId);
-      if (!shipPoints.has(p.shipId)) shipPoints.set(p.shipId, { shipName: p.shipName, vesselType: p.vesselType, points: [] });
-      shipPoints.get(p.shipId)!.points.push({ t: s.t, lat: p.lat, lon: p.lon });
-
-      const isInside = inside(p.lat, p.lon);
-      const wasInside = prevInside.get(p.shipId) || false;
-      if (isInside && !wasInside) {
-        events.push({
-          t: s.t,
-          hour: toHourStartIso(s.t),
-          shipId: p.shipId,
-          shipName: p.shipName,
-          vesselType: p.vesselType,
-          location,
-          eventType: "entry",
-        });
-      }
-      prevInside.set(p.shipId, isInside);
-    }
-
-    for (const shipId of [...prevInside.keys()]) {
-      if (!present.has(shipId)) prevInside.set(shipId, false);
-    }
-  }
-
-  const shipsInArea = new Set(events.map((e) => e.shipId));
-  const paths: AreaPath[] = [...shipPoints.entries()]
-    .filter(([shipId]) => shipsInArea.has(shipId))
-    .map(([shipId, v]) => ({
-      shipId,
-      shipName: v.shipName,
-      vesselType: v.vesselType,
-      points: v.points.sort((a, b) => +new Date(a.t) - +new Date(b.t)),
-    }))
-    .sort((a, b) => a.shipName.localeCompare(b.shipName));
-
-  return { bounds, events, paths };
-}
-
-function computeAreaUnionAnalytics(
-  analytics: { bounds: { minLat: number; maxLat: number; minLon: number; maxLon: number }; events: AreaEntryEvent[]; paths: AreaPath[] }[],
-  location = "monitored_area_union",
-) {
-  const nonEmpty = analytics.filter(Boolean);
-  if (!nonEmpty.length) {
-    return {
-      bounds: { minLat: 0, maxLat: 0, minLon: 0, maxLon: 0 },
-      events: [] as AreaEntryEvent[],
-      paths: [] as AreaPath[],
-    };
-  }
-
-  const bounds = {
-    minLat: Math.min(...nonEmpty.map((a) => a.bounds.minLat)),
-    maxLat: Math.max(...nonEmpty.map((a) => a.bounds.maxLat)),
-    minLon: Math.min(...nonEmpty.map((a) => a.bounds.minLon)),
-    maxLon: Math.max(...nonEmpty.map((a) => a.bounds.maxLon)),
-  };
-
-  const eventMap = new Map<string, AreaEntryEvent>();
-  for (const a of nonEmpty) {
-    for (const e of a.events) {
-      const key = `${e.shipId}|${e.t}|${e.location}`;
-      eventMap.set(key, { ...e, location });
-    }
-  }
-  const events = [...eventMap.values()].sort((a, b) => +new Date(a.t) - +new Date(b.t));
-
-  const pathMap = new Map<string, AreaPath>();
-  for (const a of nonEmpty) {
-    for (const p of a.paths) {
-      if (!pathMap.has(p.shipId)) {
-        pathMap.set(p.shipId, { ...p, points: [...p.points] });
-      } else {
-        const existing = pathMap.get(p.shipId)!;
-        const pts = [...existing.points, ...p.points];
-        const uniq = new Map(pts.map((pt) => [`${pt.t}|${pt.lat}|${pt.lon}`, pt]));
-        existing.points = [...uniq.values()].sort((x, y) => +new Date(x.t) - +new Date(y.t));
-      }
-    }
-  }
-
-  return {
-    bounds,
-    events,
-    paths: [...pathMap.values()].sort((a, b) => a.shipName.localeCompare(b.shipName)),
-  };
-}
-
 export default function Page() {
   const [data, setData] = useState<DataShape | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -967,8 +789,6 @@ export default function Page() {
   const [playing, setPlaying] = useState(false);
   const [selectedTankerHour, setSelectedTankerHour] = useState<string | null>(null);
   const [selectedCargoHour, setSelectedCargoHour] = useState<string | null>(null);
-  const [selectedJaskTankerHour, setSelectedJaskTankerHour] = useState<string | null>(null);
-  const [selectedJaskCargoHour, setSelectedJaskCargoHour] = useState<string | null>(null);
   const [showEastToWest, setShowEastToWest] = useState(true);
   const [showWestToEast, setShowWestToEast] = useState(true);
   const [showCrossing, setShowCrossing] = useState(true);
@@ -1277,40 +1097,10 @@ export default function Page() {
   const cargoCandidateCrossers = useMemo(() => cargoCandidatesData || [], [cargoCandidatesData]);
 
   const candidateCrossersForDisplay = useMemo(() => candidateCrossers, [candidateCrossers]);
-
-  const jaskCenter = useMemo(() => ({ lat: 25.65, lon: 57.78 }), []);
-  const jaskFacilitiesCenter = useMemo(() => ({ lat: 25.82, lon: 57.28 }), []);
-  const jaskPortAnalytics = useMemo(
-    () => computeAreaEntryAnalytics(data?.snapshots || [], jaskCenter.lat, jaskCenter.lon, 26.7, 26.7, ["tanker", "cargo"], "jask_port_area"),
-    [data?.snapshots, jaskCenter],
-  );
-  const jaskFacilitiesAnalytics = useMemo(
-    () => computeAreaEntryAnalytics(data?.snapshots || [], jaskFacilitiesCenter.lat, jaskFacilitiesCenter.lon, 13, 20, ["tanker", "cargo"], "jask_port_facilities"),
-    [data?.snapshots, jaskFacilitiesCenter],
-  );
-  const jaskAnalytics = useMemo(
-    () => computeAreaUnionAnalytics([jaskPortAnalytics, jaskFacilitiesAnalytics], "jask_combined_area"),
-    [jaskPortAnalytics, jaskFacilitiesAnalytics],
-  );
-
-  const jaskEvents = jaskAnalytics.events;
-  const jaskPaths = jaskAnalytics.paths;
   const latestCandidateSnapshotTs = useMemo(
     () => (data?.snapshots?.length ? +new Date(data.snapshots[data.snapshots.length - 1].t) : +new Date(data?.metadata?.generatedAt || 0)),
     [data?.snapshots, data?.metadata?.generatedAt],
   );
-  const jaskCutoffTs = latestCandidateSnapshotTs - 24 * 60 * 60 * 1000;
-  const jaskLast48hCounts = useMemo(() => {
-    const tankerIds = new Set<string>();
-    const cargoIds = new Set<string>();
-    for (const e of jaskEvents) {
-      const ts = +new Date(e.t);
-      if (ts < jaskCutoffTs || ts > latestCandidateSnapshotTs) continue;
-      if (e.vesselType === "tanker") tankerIds.add(e.shipId);
-      if (e.vesselType === "cargo") cargoIds.add(e.shipId);
-    }
-    return { tanker: tankerIds.size, cargo: cargoIds.size };
-  }, [jaskEvents, jaskCutoffTs, latestCandidateSnapshotTs]);
 
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
   const highConfidenceCandidates = useMemo(
@@ -1455,6 +1245,14 @@ export default function Page() {
     };
   }, [filteredRedSeaCrossingEvents]);
   const redSeaWindowLabel = redSeaWindow === "all" ? "All visible" : `Last ${redSeaWindow}`;
+  const redSeaMatrixVesselLabel = useMemo(() => {
+    const hasTanker = selectedRedSeaVesselTypeSet.has("tanker");
+    const hasCargo = selectedRedSeaVesselTypeSet.has("cargo");
+    if (hasTanker && hasCargo) return "all vessels";
+    if (hasTanker) return "Tankers";
+    if (hasCargo) return "Cargos";
+    return "No vessels selected";
+  }, [selectedRedSeaVesselTypeSet]);
   const redSeaEventRows = useMemo(() => {
     const rows = [...filteredRedSeaCrossingEvents];
     rows.sort((a, b) => {
@@ -1542,41 +1340,21 @@ export default function Page() {
   const tankerHourly = useMemo(() => hourlyFromEvents("tanker"), [crossingEventsForCharts]);
   const cargoHourly = useMemo(() => hourlyFromEvents("cargo"), [crossingEventsForCharts]);
 
-  const hourlyFromAreaEntries = (events: AreaEntryEvent[], vesselType: string) => {
-    if (!events?.length) return [] as CrossingHour[];
-    const byHour = new Map<string, { hour: string; east_to_west: number; west_to_east: number }>();
-    for (const e of events) {
-      if (e.vesselType !== vesselType) continue;
-      if (!byHour.has(e.hour)) byHour.set(e.hour, { hour: e.hour, east_to_west: 0, west_to_east: 0 });
-      byHour.get(e.hour)!.east_to_west += 1;
-    }
-    return [...byHour.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
-  };
-
-  const jaskTankerHourly = useMemo(() => hourlyFromAreaEntries(jaskEvents, "tanker"), [jaskEvents]);
-  const jaskCargoHourly = useMemo(() => hourlyFromAreaEntries(jaskEvents, "cargo"), [jaskEvents]);
-
   const sharedHours = useMemo(() => {
-    const eventHours = [
-      ...crossingEventsForCharts.map((e) => e.hour),
-      ...jaskEvents.map((e) => e.hour),
-    ].sort((a, b) => +new Date(a) - +new Date(b));
+    const eventHours = crossingEventsForCharts
+      .map((e) => e.hour)
+      .sort((a, b) => +new Date(a) - +new Date(b));
     if (!eventHours.length) return [] as string[];
     const start = toHourStartIso(eventHours[0]);
     const end = toHourStartIso(eventHours[eventHours.length - 1]);
     return buildContinuousHourRange(start, end);
-  }, [crossingEventsForCharts, jaskEvents]);
+  }, [crossingEventsForCharts]);
 
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
   const tankerDaily = useMemo(() => aggregateToDailyBins(tankerHourlyAligned), [tankerHourlyAligned]);
   const cargoDaily = useMemo(() => aggregateToDailyBins(cargoHourlyAligned), [cargoHourlyAligned]);
-  const jaskTankerHourlyAligned = useMemo(() => alignHours(jaskTankerHourly, sharedHours), [jaskTankerHourly, sharedHours]);
-  const jaskCargoHourlyAligned = useMemo(() => alignHours(jaskCargoHourly, sharedHours), [jaskCargoHourly, sharedHours]);
-  const jaskTankerSixHour = useMemo(() => aggregateToDailyBins(jaskTankerHourlyAligned), [jaskTankerHourlyAligned]);
-  const jaskCargoSixHour = useMemo(() => aggregateToDailyBins(jaskCargoHourlyAligned), [jaskCargoHourlyAligned]);
   const chartTicks = useMemo(() => tankerDaily.map((x) => x.hour), [tankerDaily]);
-  const jaskChartTicks = useMemo(() => jaskTankerSixHour.map((x) => x.hour), [jaskTankerSixHour]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
@@ -1593,26 +1371,6 @@ export default function Page() {
       .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
       .sort((a, b) => +new Date(a.t) - +new Date(b.t));
   }, [crossingEventsForCharts, data, selectedCargoHour]);
-
-  const jaskTankerNamesAtSelectedHour = useMemo(() => {
-    if (!selectedJaskTankerHour) return [] as { shipName: string; shipId: string }[];
-    const rows = jaskEvents
-      .filter((e) => e.hour === selectedJaskTankerHour && e.vesselType === "tanker")
-      .map((e) => ({ shipName: e.shipName, shipId: e.shipId }));
-    const uniq = new Map<string, { shipName: string; shipId: string }>();
-    for (const r of rows) uniq.set(r.shipId, r);
-    return [...uniq.values()].sort((a, b) => a.shipName.localeCompare(b.shipName));
-  }, [jaskEvents, selectedJaskTankerHour]);
-
-  const jaskCargoNamesAtSelectedHour = useMemo(() => {
-    if (!selectedJaskCargoHour) return [] as { shipName: string; shipId: string }[];
-    const rows = jaskEvents
-      .filter((e) => e.hour === selectedJaskCargoHour && e.vesselType === "cargo")
-      .map((e) => ({ shipName: e.shipName, shipId: e.shipId }));
-    const uniq = new Map<string, { shipName: string; shipId: string }>();
-    for (const r of rows) uniq.set(r.shipId, r);
-    return [...uniq.values()].sort((a, b) => a.shipName.localeCompare(b.shipName));
-  }, [jaskEvents, selectedJaskCargoHour]);
 
   const tankerTableRows = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
@@ -1675,18 +1433,6 @@ export default function Page() {
       return cargoSort.dir === "asc" ? cmp : -cmp;
     });
   }, [data, selectedCargoHour, cargoSort, crossingWindow, crossingDirectionFilter]);
-
-  const jaskTankerTableRows = useMemo(() => {
-    const rows = jaskEvents.filter((e) => e.vesselType === "tanker");
-    return (selectedJaskTankerHour ? rows.filter((e) => e.hour === selectedJaskTankerHour) : rows)
-      .sort((a, b) => +new Date(b.t) - +new Date(a.t));
-  }, [jaskEvents, selectedJaskTankerHour]);
-
-  const jaskCargoTableRows = useMemo(() => {
-    const rows = jaskEvents.filter((e) => e.vesselType === "cargo");
-    return (selectedJaskCargoHour ? rows.filter((e) => e.hour === selectedJaskCargoHour) : rows)
-      .sort((a, b) => +new Date(b.t) - +new Date(a.t));
-  }, [jaskEvents, selectedJaskCargoHour]);
 
   const last24hCrossingCounts = useMemo(() => {
     if (!crossingEventsForCharts.length || !data) return { tanker: 0, cargo: 0, other: 0 };
@@ -1827,14 +1573,6 @@ export default function Page() {
       }));
   }, [externalLinkRows, crossingVisibleShipIds, data]);
   const crossingMapPaths = useMemo(() => filteredCrossingPathsForMap.slice(0, 180), [filteredCrossingPathsForMap]);
-  const playbackMonitoredAreas = useMemo(
-    () => [
-      { ...jaskPortAnalytics.bounds, color: "#fbbf24", label: "Jask port area" },
-      { ...jaskFacilitiesAnalytics.bounds, color: "#38bdf8", label: "Jask facilities area" },
-    ],
-    [jaskPortAnalytics.bounds, jaskFacilitiesAnalytics.bounds],
-  );
-
   const crossingSummary = useMemo(() => {
     const uniqueShipIds = new Set(filteredCrossingEvents.map((e) => e.shipId));
     return {
@@ -2114,29 +1852,7 @@ export default function Page() {
         notes: "High-confidence heuristic candidate: approaching strait, dark >6h, no detected U-turn",
       }));
 
-    const jaskRows = jaskEvents.map((e) => ({
-      sort_date_utc: e.t,
-      record_type: "jask_port_entry",
-      confidence: "observed",
-      ship_type: e.vesselType,
-      ship_name: e.shipName,
-      ship_id: e.shipId,
-      ship_url: `https://www.marinetraffic.com/en/ais/details/ships/shipid:${e.shipId}`,
-      event_time_utc: e.t,
-      hour_bucket_utc: e.hour,
-      direction: "entering_jask_port_area",
-      dark_hours: "",
-      score: "",
-      last_seen_utc: "",
-      last_lat: "",
-      last_lon: "",
-      aligned_points: "",
-      speed_quality: "",
-      approach_confidence: "",
-      notes: `Observed entry into expanded combined Jask monitoring area centered on ${jaskCenter.lat}, ${jaskCenter.lon}`,
-    }));
-
-    const rows = [...confirmedRows, ...candidateRows, ...jaskRows].sort((a, b) => {
+    const rows = [...confirmedRows, ...candidateRows].sort((a, b) => {
       const typeCmp = String(a.ship_type).localeCompare(String(b.ship_type));
       if (typeCmp !== 0) return typeCmp;
       const recordCmp = String(a.record_type).localeCompare(String(b.record_type));
@@ -2146,7 +1862,7 @@ export default function Page() {
 
     const generatedAtCompact = new Date().toISOString().replace(/[:.]/g, "-");
     downloadCsv(
-      `hormuz-crossings-high-confidence-candidates-and-jask-entries-${generatedAtCompact}.csv`,
+      `hormuz-crossings-and-high-confidence-candidates-${generatedAtCompact}.csv`,
       rows.map(({ sort_date_utc, ...row }) => row),
     );
   };
@@ -2235,7 +1951,7 @@ export default function Page() {
           <p className="mt-3 text-xs text-slate-300">
             Tanker data is generally more reliable for our purposes because tankers are the vessels most likely to carry oil and gas. Cargo traffic is more frequent, but also a noisier signal.
           </p>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-8 gap-3 text-sm">
+          <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-7">
             <Stat label="Vessels" value={String(data.metadata.shipCount)} />
             <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
               <div className="text-xs text-emerald-200">Crossing Tankers (last 24h | baseline pre-war: 30/day each way)</div>
@@ -2258,19 +1974,6 @@ export default function Page() {
                 className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
               >
                 Jump to candidate section
-              </button>
-            </div>
-            <div className="rounded-xl border border-cyan-300/60 bg-cyan-500/10 p-3">
-              <div className="text-xs text-cyan-200">Tankers in the Jask port area (last 24h)*</div>
-              <div className="text-lg font-semibold text-cyan-100">{String(jaskLast48hCounts.tanker)}</div>
-              <div className="mt-1 text-[10px] leading-relaxed text-cyan-100/80">
-                * Important because Iran may resume oil operations there, so we monitor this area closely.
-              </div>
-              <button
-                onClick={() => document.getElementById("jask-port")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-cyan-300/60 px-2 py-1 text-[11px] text-cyan-100"
-              >
-                Jump to Jask section
               </button>
             </div>
             <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3 md:col-span-2">
@@ -2298,9 +2001,9 @@ export default function Page() {
             <button
               onClick={downloadCrossingsCsv}
               className="inline-flex items-center rounded-xl border border-cyan-400/50 bg-cyan-500/15 px-3 py-2 text-sm font-semibold text-cyan-100"
-              title="Download CSV of confirmed crossings, high-confidence likely dark crossings, and Jask port entries"
+              title="Download CSV of confirmed crossings and high-confidence likely dark crossings"
             >
-              Download CSV — crossings + likely crossings + Jask entries
+              Download CSV — crossings + likely crossings
             </button>
           </div>
           <p className="mt-2 text-xs text-slate-400">Baseline reference: pre-war traffic was roughly 30 tanker crossings per day in each direction.</p>
@@ -2349,16 +2052,6 @@ export default function Page() {
                 <p className="mt-3 leading-relaxed">
                   No. We mainly focus on tankers because they are the vessels most directly tied to oil and gas flows. Cargo vessels are more frequent,
                   but they also create a noisier signal, so they are shown for context and comparison rather than being reviewed with the same level of attention.
-                </p>
-              </details>
-
-              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-                <summary className="cursor-pointer select-none font-medium text-slate-100">
-                  Why are we monitoring the Jask port area?
-                </summary>
-                <p className="mt-3 leading-relaxed">
-                  Jask matters because Iran may resume or expand oil operations there, so we monitor the area closely as a possible signal of changing export activity.
-                  The dashboard tracks unique tankers and cargo vessels entering the monitored Jask box to help spot early movement.
                 </p>
               </details>
 
@@ -2480,7 +2173,6 @@ export default function Page() {
               showNonCrossing={showNonCrossing}
               linkedPoints={playbackLinkedPoints}
               currentTimestamp={currentSnapshot?.t}
-              monitoredAreas={playbackMonitoredAreas}
             />
           </div>
         </section>
@@ -3012,80 +2704,6 @@ export default function Page() {
           )}
         </section>
 
-        <section id="jask-port" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
-          <h2 className="text-lg font-medium">Jask Port Area Monitoring</h2>
-          <p className="text-xs text-slate-400">We count unique tanker vessels entering the combined Jask monitoring area. This starts from the main Jask port box and also includes the nearby facilities area. Bounds used: lat {jaskAnalytics.bounds.minLat.toFixed(4)} to {jaskAnalytics.bounds.maxLat.toFixed(4)}, lon {jaskAnalytics.bounds.minLon.toFixed(4)} to {jaskAnalytics.bounds.maxLon.toFixed(4)}.</p>
-
-          <div className="grid grid-cols-1 gap-6">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-              <h3 className="text-lg font-medium mb-3">Jask entries in 6-hour bins — Tanker</h3>
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={jaskTankerSixHour}
-                    onClick={(state: any) => {
-                      if (state?.activeLabel) setSelectedJaskTankerHour(state.activeLabel as string);
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis
-                      dataKey="hour"
-                      ticks={jaskChartTicks}
-                      tickFormatter={(v) => formatHourTick(v as string)}
-                      minTickGap={40}
-                      angle={-35}
-                      textAnchor="end"
-                      height={56}
-                      tick={{ fontSize: 11 }}
-                      stroke="#94a3b8"
-                    />
-                    <YAxis stroke="#94a3b8" allowDecimals={false} />
-                    <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
-                    <Legend />
-                    <Bar dataKey="east_to_west" fill="#06b6d4" name="Entries" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-3 text-xs text-slate-300">
-                <div className="font-medium text-slate-200">
-                  {selectedJaskTankerHour ? `Clicked hour: ${new Date(selectedJaskTankerHour).toUTCString()}` : "Click a Jask tanker bar to list ship names"}
-                </div>
-                {selectedJaskTankerHour ? (
-                  jaskTankerNamesAtSelectedHour.length ? (
-                    <ul className="mt-2 space-y-1">
-                      {jaskTankerNamesAtSelectedHour.map((r) => (
-                        <li key={r.shipId}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-2 text-slate-400">No tanker entries in this 6-hour window.</div>
-                  )
-                ) : null}
-              </div>
-              <div className="mt-4 max-h-56 overflow-auto border border-slate-800 rounded-lg">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-900 sticky top-0">
-                    <tr>
-                      <th className="text-left p-2">Tanker ship</th>
-                      <th className="text-left p-2">Entry timestamp (UTC)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {jaskTankerTableRows.map((r, idx) => (
-                      <tr key={`${r.shipId}-${r.t}-${idx}`} className="border-t border-slate-800">
-                        <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${r.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(r.shipName, data?.shipMeta?.[r.shipId]?.flag)} ({r.shipId})</a></td>
-                        <td className="p-2">{new Date(r.t).toUTCString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-
-        </section>
-
         <section id="red-sea-crossings" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -3179,12 +2797,12 @@ export default function Page() {
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-medium text-slate-100">Daily crossing counts</h3>
-                <p className="text-xs text-slate-400">Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket.</p>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-medium text-slate-100">Daily crossing counts — Red Sea crossings [{redSeaMatrixVesselLabel}]</h3>
+                  <p className="text-xs text-slate-400">Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket.</p>
+                </div>
               </div>
-            </div>
             <div className="grid gap-4 md:grid-cols-2">
               {RED_SEA_CROSSING_CHART_MATRIX.map(({ crossingType, side, flow }) => (
                 <div key={`red-sea-chart-${crossingType}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">

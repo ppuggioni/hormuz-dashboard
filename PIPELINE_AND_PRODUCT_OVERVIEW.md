@@ -216,6 +216,10 @@ Current live-published AIS artifacts are:
 - `processed_shipmeta_24h.json`
 - `processed_shipmeta_48h.json`
 
+Published cache policy:
+- smaller live artifacts use `5 minute` cache headers
+- heavier playback/external/shipmeta window artifacts use `30 minute` cache headers
+
 It also dispatches alerts after processing.
 
 ## Step 5 — dashboard runtime consumption

@@ -38,8 +38,8 @@ export HORMUZ_SOURCE_MIN_AGE_SECONDS="${HORMUZ_SOURCE_MIN_AGE_SECONDS:-120}"
 : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY missing}"
 
 API_BASE="${SUPABASE_URL%/}/storage/v1"
-LATEST_CACHE_CONTROL="public, max-age=60, s-maxage=60, stale-while-revalidate=30"
-HEAVY_CACHE_CONTROL="public, max-age=300, s-maxage=300, stale-while-revalidate=60"
+LATEST_CACHE_CONTROL="public, max-age=300, s-maxage=300, stale-while-revalidate=60"
+HEAVY_CACHE_CONTROL="public, max-age=1800, s-maxage=1800, stale-while-revalidate=300"
 
 cache_control_for_object() {
   case "$1" in

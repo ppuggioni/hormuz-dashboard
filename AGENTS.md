@@ -54,6 +54,7 @@ Operational notes:
 - event dedupe is `72h` per `shipId + crossingType`
 - the daily series is continuous by UTC day, including zero-count days between event days
 - saved route points use a bounded display window rather than the full 30-day history
+- processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files
 
 ## Git rules
 

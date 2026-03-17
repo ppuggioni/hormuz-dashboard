@@ -57,6 +57,10 @@ Current behavior:
 - saved route geometry is bounded for display performance rather than storing full 30-day histories
 - outputs are written to `processed_core.json` and `processed_paths.json` as Red Sea-specific fields
 
+Processed artifact caching:
+- smaller live artifacts publish with `5 minute` cache headers
+- heavier playback/external/shipmeta window artifacts publish with `30 minute` cache headers
+
 ## Scheduler / refresh cadence
 
 Production refresh is handled locally via `launchd`, not just GitHub Actions.

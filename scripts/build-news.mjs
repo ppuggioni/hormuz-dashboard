@@ -7,6 +7,7 @@ const HISTORY_PATH = path.join(ROOT, 'data', 'news-history.json');
 const LATEST_RUN_PATH = path.join(ROOT, 'data', 'news-latest-run.json');
 const OUT_DIR = path.join(ROOT, 'public', 'data');
 const FEED_PATH = path.join(OUT_DIR, 'news_feed.json');
+const ATTACKS_PATH = path.join(OUT_DIR, 'vessel_attacks_latest.json');
 
 function uniq(arr) {
   return [...new Set((arr || []).filter(Boolean))];
@@ -49,6 +50,13 @@ for (const item of history.items || []) {
 }
 
 const items = [...deduped.values()].sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
+const vesselAttacksLatest = Array.isArray(latestRun.vesselAttacksLatest)
+  ? latestRun.vesselAttacksLatest.map((item) => ({
+      date: item?.date || null,
+      place: item?.place || null,
+      summary: item?.summary || null,
+    })).filter((item) => item.date || item.place || item.summary)
+  : [];
 
 const payload = {
   metadata: {
@@ -62,6 +70,7 @@ const payload = {
   lastUpdateSummary: latestRun.lastUpdateSummary,
   last24hSummary: latestRun.last24hSummary,
   vesselAttacks24hSummary: latestRun.vesselAttacks24hSummary || null,
+  vesselAttacksLatest,
   previousDaySummary: latestRun.previousDaySummary || null,
   sources: (watchlist.sources || []).map((source) => ({
     id: source.id,
@@ -77,4 +86,11 @@ const payload = {
 
 await fs.mkdir(OUT_DIR, { recursive: true });
 await fs.writeFile(FEED_PATH, JSON.stringify(payload, null, 2) + '\n');
+await fs.writeFile(ATTACKS_PATH, JSON.stringify({
+  generatedAt: new Date().toISOString(),
+  lastRunAt: latestRun.runAt,
+  vesselAttacks24hSummary: latestRun.vesselAttacks24hSummary || null,
+  items: vesselAttacksLatest,
+}, null, 2) + '\n');
 console.log(`Wrote ${path.relative(ROOT, FEED_PATH)}`);
+console.log(`Wrote ${path.relative(ROOT, ATTACKS_PATH)}`);

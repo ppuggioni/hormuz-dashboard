@@ -116,7 +116,7 @@
       "sourceType": "article",
       "publishedAt": "2026-03-16T06:00:00Z",
       "firstSeenAt": "2026-03-17T02:05:20Z",
-      "lastSeenAt": "2026-03-17T02:05:20Z",
+      "lastSeenAt": "2026-03-17T02:54:00Z",
       "title": "Lloyd's List says Indian and Pakistan state-linked ships are now among the few eastbound vessels transiting Hormuz",
       "summary": "Lloyd's List reports that the India-flagged LPG carriers Shivalik and Nanda Devi and the Pakistan-owned crude tanker Karachi all transited the Strait of Hormuz around 13-15 March, with all three voyages eastbound. The article adds useful route color beyond the earlier Karachi post: Karachi and the bulker Minoan Sky reportedly routed around Larak Island inside Iranian territorial waters, Nanda Devi's patchy AIS also suggests a Larak loop, and the previously attacked Star Gwyneth may have hugged the Iranian shoreline as well. For the dashboard, the important read is that some non-Iranian traffic is getting through, but by visibly cautious routing and still within a transit pattern dominated by Iranian-, Greek- and Chinese-linked tonnage rather than by a broad reopening.",
       "tags": [
@@ -139,7 +139,7 @@
       "sourceType": "article",
       "publishedAt": "2026-03-16T06:00:00Z",
       "firstSeenAt": "2026-03-17T02:05:20Z",
-      "lastSeenAt": "2026-03-17T02:05:20Z",
+      "lastSeenAt": "2026-03-17T02:54:00Z",
       "title": "Lloyd's List says crews and insurers still see Hormuz as too dangerous for any normal resumption of trade",
       "summary": "Lloyd's List reports that most vessels trapped in the Gulf are still not moving, with one owner quoted saying there is still no insurance and no crew agreement to run the strait routinely. The piece says seven Dynacom tankers remain among the trapped fleet, at least 11 seafarers have been killed in Iranian rocket and drone attacks during the crisis, and one Dynacom crew reportedly tried to exit but turned back after being challenged by Iranian forces. For the dashboard, this matters because it sharpens the difference between a few politically tolerated passages and any true normalization: even where cargo economics are attractive, crew consent, war-risk cover and Iranian control of who can pass remain binding constraints.",
       "tags": [
@@ -152,6 +152,75 @@
         "hormuz"
       ],
       "figureNote": "Useful hard color: seven Dynacom tankers are cited as trapped in the Gulf and Lloyd's says at least 11 seafarers have been killed in Iranian rocket and drone attacks during the crisis."
+    },
+    {
+      "id": "live-ukmto-fujairah-tanker-strike-2026-03-16",
+      "canonicalUrl": "https://www.ukmto.org/recent-incidents#c7b626ed-3232-4423-80d2-c7117b8099af",
+      "sourceId": "ukmto-recent-incidents",
+      "sourceName": "UKMTO Recent Incidents",
+      "sourceType": "website_section",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-17T02:54:00Z",
+      "lastSeenAt": "2026-03-17T02:54:00Z",
+      "title": "UKMTO reports a tanker struck by an unknown projectile east of Fujairah",
+      "summary": "UKMTO's latest incident log says a tanker at anchor 23 nautical miles east of Fujairah, Oman, was struck by an unknown projectile on 16 March. The report says the ship suffered minor structural damage, with no injuries to crew and no environmental impact reported. For the dashboard, this is the key fresh attacks datapoint from the current run because it shows that projectile risk is still active in the wider Hormuz-Fujairah operating area even while some selectively approved transits continue.",
+      "tags": [
+        "ukmto",
+        "attack",
+        "fujairah",
+        "tanker",
+        "projectile",
+        "hormuz",
+        "persian-gulf",
+        "last-24h"
+      ],
+      "figureNote": "UKMTO places the incident 23 nautical miles east of Fujairah and describes the damage as minor structural damage with no reported injuries or pollution."
+    },
+    {
+      "id": "live-lloyds-attack-pattern-analysis-2026-03-16",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156613/Data-shows-attacks-on-ships-in-the-Middle-East-do-not-follow-a-pattern-but-aim-to-disrupt-commercial-shipping",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-17T02:54:00Z",
+      "lastSeenAt": "2026-03-17T02:54:00Z",
+      "title": "Lloyd's List says recent Gulf ship attacks look calibrated for disruption rather than a clean targeting pattern",
+      "summary": "Lloyd's List's 16 March attacks analysis says 16 vessels have been targeted since 28 February with no clear pattern by vessel type, flag or ownership, suggesting the operational aim is broad commercial disruption rather than a narrow blacklist. The piece says nine tankers and six dry cargo vessels were among the ships hit, more than half were laden, and the geography shifted from Hormuz and Gulf of Oman attacks in the first phase toward more strikes deeper inside the Gulf on 11-13 March. For the dashboard, that makes the fresh Fujairah UKMTO incident more significant: it fits a still-active campaign of pressure across the wider operating area rather than a fully fading attack cycle.",
+      "tags": [
+        "lloyds-list",
+        "attacks",
+        "analysis",
+        "hormuz",
+        "gulf-of-oman",
+        "fujairah",
+        "shipping-risk",
+        "last-24h"
+      ],
+      "figureNote": "Lloyd's says 16 vessels were targeted from 28 February onward, including nine tankers and six dry cargo vessels; 10 were hit between 1-6 March and six between 11-13 March."
+    },
+    {
+      "id": "live-lloyds-sts-tanker-strike-basrah-2026-03-16",
+      "canonicalUrl": "https://www.lloydslist.com/LL1156618/Iranian-attack-on-tankers-during-STS-operation-underlines-vulnerability-says-expert",
+      "sourceId": "lloyds-hormuz",
+      "sourceName": "Lloyd's List Hormuz Crisis",
+      "sourceType": "article",
+      "publishedAt": "2026-03-16T06:00:00Z",
+      "firstSeenAt": "2026-03-17T02:54:00Z",
+      "lastSeenAt": "2026-03-17T02:54:00Z",
+      "title": "Lloyd's List says the Safesea Vishnu-Zefyros STS strike showed how exposed stationary tankers are inside the Gulf",
+      "summary": "Lloyd's List reports that an Iranian sea-drone strike hit the tankers Safesea Vishnu and Zefyros while they were conducting a ship-to-ship transfer of 48,000 tonnes of naphtha near Basrah late on 11 March. One senior Indian engineer was killed, all other crew from both ships were reported safe, and the article says Tsavliris received a Lloyd's Open Form salvage contract for Safesea Vishnu. For the dashboard, this adds important attack color beyond simple incident counts: anchored or stationary ships remain acutely exposed, STS operations are a particular vulnerability, and casualty plus salvage consequences are now material parts of the risk picture.",
+      "tags": [
+        "lloyds-list",
+        "safesea-vishnu",
+        "zefyros",
+        "sts",
+        "basrah",
+        "casualty",
+        "salvage",
+        "attacks"
+      ],
+      "figureNote": "The strike occurred during a 48,000-tonne naphtha STS transfer; one Indian engineer was killed and the article says Tsavliris was awarded salvage on Lloyd's Open Form terms."
     },
     {
       "id": "live-bennikim-gulf-storage-production-cuts",

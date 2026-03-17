@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-03-17T02:58:43.439Z",
+  "lastRunAt": "2026-03-17T02:54:00Z",
+  "vesselAttacks24hSummary": {
+    "headline": "A fresh vessel attack was confirmed in the last 24 hours near Fujairah, even as broader Hormuz traffic remained only selectively open.",
+    "body": "This run explicitly checked UKMTO Recent Incidents, Lloyd's List's Hormuz crisis and Daily Briefing result sets with relevant article pages opened directly, fresh web research, and the regular watchlist sources. The key change versus the prior run is UKMTO attack report #23 dated 16 March: a tanker at anchor 23 nautical miles east of Fujairah, Oman, was struck by an unknown projectile, causing minor structural damage with no injuries or environmental impact reported. That means the last 24 hours did contain a fresh confirmed vessel attack in the wider Hormuz/Fujairah operating area. Additional color from Lloyd's remains important: the recent attack wave has hit vessels without a neat flag or cargo pattern; Lloyd's analysis says 16 vessels have been targeted since 28 February, including nine tankers and six dry cargo vessels, while a separate Lloyd's report on the Safesea Vishnu and Zefyros STS strike highlights how vulnerable stationary ships remain, with one Indian engineer killed after a sea-drone attack during a 48,000-tonne naphtha transfer near Basrah. Follow-up reporting on Mayuree Naree still says three crew remained unaccounted for. Net: the corridor is not seeing blanket closure, but fresh projectile risk is still active for anchored and transiting vessels in and around the Persian Gulf, Strait of Hormuz and nearby Fujairah approaches.",
+    "generatedAt": "2026-03-17T02:54:00Z"
+  },
+  "items": [
+    {
+      "date": "2026-03-16",
+      "place": "23NM east of Fujairah, Oman",
+      "summary": "UKMTO attack report #23: a tanker at anchor was struck by an unknown projectile. Minor structural damage was reported, with no injuries to crew and no environmental impact reported."
+    },
+    {
+      "date": "2026-03-12",
+      "place": "35NM north of Jebel Ali, United Arab Emirates",
+      "summary": "UKMTO attack report #22: a container ship was struck by an unknown projectile, causing a small fire onboard. Crew were reported safe and authorities were investigating."
+    },
+    {
+      "date": "2026-03-11",
+      "place": "5NM south of Al Basrah, Iraq TTW",
+      "summary": "UKMTO attack report #21: two tankers were struck by unknown projectiles, both suffered fires onboard, and both crews were evacuated safely. No environmental impact was reported at the time of the updates."
+    },
+    {
+      "date": "2026-03-11",
+      "place": "11NM north of Oman in the Strait of Hormuz",
+      "summary": "UKMTO attack report #19: a cargo vessel was hit by an unknown projectile, causing a fire onboard. The vessel requested assistance, the crew evacuated, and later updates said some crew remained unlocated."
+    },
+    {
+      "date": "2026-03-11",
+      "place": "50NM northwest of Dubai, United Arab Emirates",
+      "summary": "UKMTO attack report #20: a bulk carrier reported being hit by an unknown projectile. Crew were safe and well, with no environmental impact reported."
+    }
+  ]
+}

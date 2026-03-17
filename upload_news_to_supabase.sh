@@ -5,8 +5,10 @@ ROOT="/Users/pp-bot/.openclaw/workspace_2/hormuz-dashboard"
 WORKROOT="/Users/pp-bot/.openclaw/workspace_2"
 LOG="$WORKROOT/hormuz_news_remote.log"
 OUT_FILE="$ROOT/public/data/news_feed.json"
+ATTACKS_FILE="$ROOT/public/data/vessel_attacks_latest.json"
 BUCKET="x-scrapes-public"
 OBJECT_PATH="hormuz/news_feed.json"
+ATTACKS_OBJECT_PATH="hormuz/vessel_attacks_latest.json"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
@@ -31,6 +33,10 @@ CACHE_CONTROL="public, max-age=900, s-maxage=900, stale-while-revalidate=120"
     echo "news_feed.json missing after build"
     exit 1
   fi
+  if [[ ! -f "$ATTACKS_FILE" ]]; then
+    echo "vessel_attacks_latest.json missing after build"
+    exit 1
+  fi
 
   curl -fsS -X POST "${API_BASE}/object/${BUCKET}/${OBJECT_PATH}" \
     -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
@@ -40,6 +46,16 @@ CACHE_CONTROL="public, max-age=900, s-maxage=900, stale-while-revalidate=120"
     -H "x-upsert: true" \
     --data-binary "@${OUT_FILE}" >/tmp/hormuz_news_upload.json
 
+  curl -fsS -X POST "${API_BASE}/object/${BUCKET}/${ATTACKS_OBJECT_PATH}" \
+    -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Content-Type: application/json" \
+    -H "Cache-Control: ${CACHE_CONTROL}" \
+    -H "x-upsert: true" \
+    --data-binary "@${ATTACKS_FILE}" >/tmp/hormuz_attacks_upload.json
+
   raw_bytes=$(wc -c < "$OUT_FILE")
+  attacks_raw_bytes=$(wc -c < "$ATTACKS_FILE")
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] uploaded ${OBJECT_PATH} raw=${raw_bytes}"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] uploaded ${ATTACKS_OBJECT_PATH} raw=${attacks_raw_bytes}"
 } >> "$LOG" 2>&1

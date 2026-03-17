@@ -79,6 +79,9 @@ const latestRun = {
     body: 'Populate data/news-inbox.json with a dedicated last-24h vessel-attacks summary, even if the answer is that there were no credible fresh attacks.',
     generatedAt: runAt,
   },
+  vesselAttacksLatest: Array.isArray(inbox.vesselAttacksLatest)
+    ? inbox.vesselAttacksLatest
+    : (Array.isArray(previousLatestRun.vesselAttacksLatest) ? previousLatestRun.vesselAttacksLatest : []),
   previousDaySummary: inbox.previousDaySummary || previousLatestRun.previousDaySummary || null,
   newItems: newIds,
 };

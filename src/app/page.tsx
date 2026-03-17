@@ -203,6 +203,12 @@ type NewsSummary = {
   generatedAt: string;
 };
 
+type VesselAttackItem = {
+  date: string;
+  place: string;
+  summary: string;
+};
+
 type NewsFeedShape = {
   metadata: {
     generatedAt: string;
@@ -215,6 +221,7 @@ type NewsFeedShape = {
   lastUpdateSummary: NewsSummary;
   last24hSummary: NewsSummary;
   vesselAttacks24hSummary?: NewsSummary | null;
+  vesselAttacksLatest?: VesselAttackItem[];
   previousDaySummary?: NewsSummary | null;
   sources: NewsSource[];
   items: NewsItem[];
@@ -854,6 +861,7 @@ export default function Page() {
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newsSourceFilter, setNewsSourceFilter] = useState<string>("all");
+  const [selectedAttackIndex, setSelectedAttackIndex] = useState(0);
   const [selectedRedSeaCrossingTypes, setSelectedRedSeaCrossingTypes] = useState<RedSeaCrossingType[]>(RED_SEA_CROSSING_TYPES);
   const [selectedRedSeaVesselTypes, setSelectedRedSeaVesselTypes] = useState<RedSeaVesselType[]>(["tanker"]);
   const [redSeaWindow, setRedSeaWindow] = useState<"24h" | "48h" | "all">("24h");
@@ -1184,6 +1192,13 @@ export default function Page() {
     if (newsSourceFilter === "all") return items;
     return items.filter((item) => deriveNewsDisplaySource(item) === newsSourceFilter);
   }, [newsFeed, newsSourceFilter]);
+
+  const vesselAttackItems = useMemo(() => {
+    const items = Array.isArray(newsFeed?.vesselAttacksLatest) ? newsFeed.vesselAttacksLatest : [];
+    return [...items].sort((a, b) => +new Date(a.date) - +new Date(b.date));
+  }, [newsFeed]);
+
+  const selectedAttack = vesselAttackItems[selectedAttackIndex] || vesselAttackItems[vesselAttackItems.length - 1] || null;
   const candidateDailyHigh = useMemo(
     () => aggregateCandidatesToDailyBins(highConfidenceCandidateEventsForCharts),
     [highConfidenceCandidateEventsForCharts],
@@ -2100,6 +2115,55 @@ export default function Page() {
               </button>
             </div>
           </div>
+          <section className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-rose-300">Attacks timeline</div>
+                <div className="mt-1 text-sm text-slate-400">Left-to-right attack chronology. Click a circle to inspect the details for that day.</div>
+              </div>
+              <div className="text-xs text-slate-500">{vesselAttackItems.length} day{vesselAttackItems.length === 1 ? "" : "s"} loaded</div>
+            </div>
+            {vesselAttackItems.length ? (
+              <div className="mt-4">
+                <div className="relative overflow-x-auto pb-2">
+                  <div className="relative min-w-[680px] px-4 py-8">
+                    <div className="absolute left-4 right-10 top-1/2 h-[2px] -translate-y-1/2 bg-slate-600" />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">→</div>
+                    <div className="relative flex items-center justify-between gap-6">
+                      {vesselAttackItems.map((attack, idx) => {
+                        const isSelected = idx === selectedAttackIndex;
+                        return (
+                          <button
+                            key={`${attack.date}-${attack.place}-${idx}`}
+                            type="button"
+                            onClick={() => setSelectedAttackIndex(idx)}
+                            className="group relative flex flex-col items-center text-center"
+                          >
+                            <span className={`h-6 w-6 rounded-full border-4 ${isSelected ? "border-rose-200 bg-rose-500 shadow-[0_0_0_6px_rgba(244,63,94,0.18)]" : "border-slate-300 bg-slate-700 group-hover:border-rose-300 group-hover:bg-rose-400"}`} />
+                            <span className={`mt-3 max-w-[120px] text-[11px] leading-4 ${isSelected ? "text-rose-200" : "text-slate-400 group-hover:text-slate-200"}`}>
+                              {new Date(attack.date).toUTCString().slice(5, 16)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                {selectedAttack ? (
+                  <div className="mt-4 rounded-xl border border-rose-900/40 bg-rose-950/20 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-rose-300">Attack details</div>
+                    <div className="mt-2 text-lg font-semibold text-slate-100">{selectedAttack.place}</div>
+                    <div className="mt-1 text-sm text-slate-400">{new Date(selectedAttack.date).toUTCString()}</div>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">{selectedAttack.summary}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                No structured attack days yet. Once the collector writes the attack JSON, the timeline will appear here.
+              </div>
+            )}
+          </section>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={downloadCrossingsCsv}

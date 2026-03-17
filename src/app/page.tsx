@@ -2030,14 +2030,17 @@ export default function Page() {
                 Jump to crossing tankers map
               </button>
             </div>
-            <div className="rounded-xl border border-teal-300/60 bg-teal-500/10 p-3">
-              <div className="text-xs text-teal-200">Crossing Cargo (last 24h)</div>
-              <div className="text-lg font-semibold text-teal-100">{String(last24hCrossingCounts.cargo)}</div>
+            <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
+              <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
+              <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
+              <div className="mt-1 text-[10px] leading-relaxed text-amber-100/80">
+                Window anchored to latest dashboard snapshot, not the latest candidate event.
+              </div>
               <button
-                onClick={() => document.getElementById("historical-cargo-crossings")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-teal-300/60 px-2 py-1 text-[11px] text-teal-100"
+                onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
               >
-                Jump to cargo section
+                Jump to candidate section
               </button>
             </div>
             {RED_SEA_TOPLINE_GROUPS.map((group) => (
@@ -2064,21 +2067,6 @@ export default function Page() {
                 </button>
               </div>
             ))}
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-1">
-            <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
-              <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
-              <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
-              <div className="mt-1 text-[10px] leading-relaxed text-amber-100/80">
-                Window anchored to latest dashboard snapshot, not the latest candidate event.
-              </div>
-              <button
-                onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
-              >
-                Jump to candidate section
-              </button>
-            </div>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
             <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3">

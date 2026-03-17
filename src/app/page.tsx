@@ -294,6 +294,16 @@ const RED_SEA_CROSSING_TYPE_LABELS: Record<RedSeaCrossingType, string> = {
   north_outbound: "North outbound",
   north_inbound: "North inbound",
 };
+const RED_SEA_CROSSING_CHART_MATRIX: Array<{
+  crossingType: RedSeaCrossingType;
+  side: "North" | "South";
+  flow: "Inbound" | "Outbound";
+}> = [
+  { crossingType: "north_inbound", side: "North", flow: "Inbound" },
+  { crossingType: "south_inbound", side: "South", flow: "Inbound" },
+  { crossingType: "north_outbound", side: "North", flow: "Outbound" },
+  { crossingType: "south_outbound", side: "South", flow: "Outbound" },
+];
 const RED_SEA_VESSEL_TYPES: RedSeaVesselType[] = ["tanker", "cargo"];
 const RED_SEA_CROSSING_TYPE_COLORS: Record<RedSeaCrossingType, string> = {
   south_outbound: "#f97316",
@@ -3172,29 +3182,53 @@ export default function Page() {
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-medium text-slate-100">Daily crossing counts</h3>
-                <p className="text-xs text-slate-400">Combined chart of the four crossing buckets by UTC day.</p>
+                <p className="text-xs text-slate-400">Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket.</p>
               </div>
             </div>
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={filteredRedSeaCrossingsByDay}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis
-                    dataKey="day"
-                    tickFormatter={(v) => formatDayTick(v as string)}
-                    minTickGap={32}
-                    stroke="#94a3b8"
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis stroke="#94a3b8" allowDecimals={false} />
-                  <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
-                  <Legend />
-                  <Bar dataKey="south_outbound" fill={RED_SEA_CROSSING_TYPE_COLORS.south_outbound} name="South outbound" />
-                  <Bar dataKey="south_inbound" fill={RED_SEA_CROSSING_TYPE_COLORS.south_inbound} name="South inbound" />
-                  <Bar dataKey="north_outbound" fill={RED_SEA_CROSSING_TYPE_COLORS.north_outbound} name="North outbound" />
-                  <Bar dataKey="north_inbound" fill={RED_SEA_CROSSING_TYPE_COLORS.north_inbound} name="North inbound" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="grid gap-4 md:grid-cols-2">
+              {RED_SEA_CROSSING_CHART_MATRIX.map(({ crossingType, side, flow }) => (
+                <div key={`red-sea-chart-${crossingType}`} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">{side}</div>
+                      <h4 className="text-sm font-medium text-slate-100">{flow}</h4>
+                    </div>
+                    <div
+                      className="rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.18em]"
+                      style={{
+                        borderColor: RED_SEA_CROSSING_TYPE_COLORS[crossingType],
+                        color: RED_SEA_CROSSING_TYPE_COLORS[crossingType],
+                      }}
+                    >
+                      {RED_SEA_CROSSING_TYPE_LABELS[crossingType]}
+                    </div>
+                  </div>
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={filteredRedSeaCrossingsByDay}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                        <XAxis
+                          dataKey="day"
+                          tickFormatter={(v) => formatDayTick(v as string)}
+                          minTickGap={24}
+                          stroke="#94a3b8"
+                          tick={{ fontSize: 11 }}
+                        />
+                        <YAxis stroke="#94a3b8" allowDecimals={false} />
+                        <Tooltip
+                          labelFormatter={(v) => new Date(v as string).toUTCString()}
+                          contentStyle={{ background: "#020617", border: "1px solid #334155" }}
+                        />
+                        <Bar
+                          dataKey={crossingType}
+                          fill={RED_SEA_CROSSING_TYPE_COLORS[crossingType]}
+                          name={RED_SEA_CROSSING_TYPE_LABELS[crossingType]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

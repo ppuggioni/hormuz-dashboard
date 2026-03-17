@@ -234,6 +234,8 @@ type NewsFeedShape = {
   items: NewsItem[];
 };
 
+type FetchFreshness = "cache" | "revalidate" | "bust";
+
 type CandidateEvent = CandidateCrosser & {
   eventId: string;
   gapHours: number;
@@ -954,14 +956,21 @@ export default function Page() {
   const interactionAtRef = useRef<number>(Date.now());
   const mountedAtRef = useRef<number>(Date.now());
   const latestGeneratedAtRef = useRef<string | null>(null);
+  const lastLiveRevalidateAtRef = useRef<number>(0);
 
   const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
   const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
 
-  const fetchJson = useMemo(() => async (url: string, options?: { fresh?: boolean }) => {
-    const fresh = Boolean(options?.fresh);
-    const resolvedUrl = fresh ? `${url}${url.includes("?") ? "&" : "?"}_ts=${Date.now()}` : url;
-    const r = await fetch(resolvedUrl, { cache: fresh ? "no-store" : "force-cache" });
+  const fetchJson = useMemo(() => async (url: string, options?: { freshness?: FetchFreshness }) => {
+    const freshness = options?.freshness || "revalidate";
+    const shouldBustCache = freshness === "bust";
+    const resolvedUrl = shouldBustCache ? `${url}${url.includes("?") ? "&" : "?"}_ts=${Date.now()}` : url;
+    const cacheMode: RequestCache = freshness === "cache"
+      ? "force-cache"
+      : freshness === "bust"
+        ? "no-store"
+        : "no-cache";
+    const r = await fetch(resolvedUrl, { cache: cacheMode });
     if (!r.ok) throw new Error(`fetch failed ${r.status}`);
     const buf = await r.arrayBuffer();
     const bytes = new Uint8Array(buf);
@@ -977,30 +986,32 @@ export default function Page() {
     return JSON.parse(text);
   }, []);
 
-  const loadNews = useMemo(() => async (fresh = false) => {
+  const loadNews = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
     try {
-      const news = await fetchJson(remoteNewsUrl, { fresh });
+      const news = await fetchJson(remoteNewsUrl, { freshness });
       setNewsFeed(news as NewsFeedShape);
       return;
     } catch {
       // fall through to local artifact
     }
     try {
-      const news = await fetchJson(`${root}/news_feed.json`, { fresh });
+      const news = await fetchJson(`${root}/news_feed.json`, { freshness });
       setNewsFeed(news as NewsFeedShape);
     } catch {
       setNewsFeed(null);
     }
   }, [fetchJson, remoteNewsUrl, root]);
 
-  const loadDashboardData = useMemo(() => async (fresh = false) => {
-    await loadNews(fresh);
+  const loadDashboardData = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+    const isLiveRevalidate = freshness !== "cache";
+    if (isLiveRevalidate) lastLiveRevalidateAtRef.current = Date.now();
+    await loadNews(freshness);
     try {
-      const core = await fetchJson(`${root}/processed_core.json`, { fresh });
-      const paths = await fetchJson(`${root}/processed_paths.json`, { fresh });
-      const candidates = await fetchJson(`${root}/processed_candidates.json`, { fresh });
-      const latestPlayback = await fetchJson(`${root}/processed_playback_latest.json`, { fresh });
-      const latestShipmeta = await fetchJson(`${root}/processed_shipmeta_latest.json`, { fresh });
+      const core = await fetchJson(`${root}/processed_core.json`, { freshness });
+      const paths = await fetchJson(`${root}/processed_paths.json`, { freshness });
+      const candidates = await fetchJson(`${root}/processed_candidates.json`, { freshness });
+      const latestPlayback = await fetchJson(`${root}/processed_playback_latest.json`, { freshness });
+      const latestShipmeta = await fetchJson(`${root}/processed_shipmeta_latest.json`, { freshness });
 
       const normalized: DataShape = {
         metadata: core?.metadata || {
@@ -1047,7 +1058,7 @@ export default function Page() {
   }, [fetchJson, loadNews, root]);
 
   useEffect(() => {
-    void loadDashboardData(false);
+    void loadDashboardData("revalidate");
   }, [loadDashboardData]);
 
   useEffect(() => {
@@ -1058,7 +1069,7 @@ export default function Page() {
   const handleRefreshData = async () => {
     setIsRefreshingData(true);
     try {
-      await loadDashboardData(true);
+      await loadDashboardData("bust");
     } finally {
       setIsRefreshingData(false);
     }
@@ -1093,7 +1104,7 @@ export default function Page() {
           const localGen = latestGeneratedAtRef.current;
           if (remoteGen && localGen && +new Date(remoteGen) > +new Date(localGen)) {
             setNewDataAvailable(true);
-            if (isIdle()) window.location.reload();
+            if (isIdle()) void loadDashboardData("bust");
           }
         }
       } catch {
@@ -1102,23 +1113,43 @@ export default function Page() {
 
       const elapsed = Date.now() - mountedAtRef.current;
       if (elapsed > 45 * 60 * 1000 && isIdle()) {
-        window.location.reload();
+        void loadDashboardData("bust");
       }
     };
 
     const id = setInterval(checkForFreshData, 5 * 60 * 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [loadDashboardData]);
 
   useEffect(() => {
     if (!newDataAvailable) return;
     const id = setInterval(() => {
       if (Date.now() - interactionAtRef.current > 120000) {
-        window.location.reload();
+        void loadDashboardData("bust");
       }
     }, 30000);
     return () => clearInterval(id);
-  }, [newDataAvailable]);
+  }, [newDataAvailable, loadDashboardData]);
+
+  useEffect(() => {
+    const maybeRevalidateVisibleData = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastLiveRevalidateAtRef.current < 60000) return;
+      void loadDashboardData("revalidate");
+    };
+
+    const onPageShow = () => {
+      void maybeRevalidateVisibleData();
+    };
+
+    document.addEventListener("visibilitychange", maybeRevalidateVisibleData);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", maybeRevalidateVisibleData);
+      window.removeEventListener("pageshow", onPageShow);
+    };
+  }, [loadDashboardData]);
 
   useEffect(() => {
     if (!playing || !data?.snapshots?.length) return;

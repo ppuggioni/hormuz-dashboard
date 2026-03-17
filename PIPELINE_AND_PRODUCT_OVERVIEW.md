@@ -296,7 +296,8 @@ This logic exists because direct two-sided observation can be missed when AIS go
 - inference is driven by the 4 Red Sea analysis rectangles, not by collection-region names alone
 - each anchor hit checks the most recent eligible prior-zone hit within the previous 30 days
 - same-timestamp zone hits do not count as prior/current transitions
-- repeated detections are deduped for 72 hours per `shipId + crossingType`
+- the crossing timestamp is the first qualifying anchor hit after a fresh prior-side sighting
+- repeated detections are further guarded by a 72-hour cooldown per `shipId + crossingType`
 - the saved daily series is continuous by UTC day, so quiet days remain visible as explicit zeroes
 - route payloads keep a bounded display window around the event instead of persisting the full 30-day raw track
 

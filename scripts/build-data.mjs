@@ -196,6 +196,10 @@ function pickMostRecentRedSeaPriorHit(lastSeenByZone, eligibleZones, anchorMs, c
   return latest;
 }
 
+function buildRedSeaHitKey(hit) {
+  return `${hit.zone}|${hit.t}|${hit.sourceIndex}|${hit.sourceRegion}`;
+}
+
 function findObservationStartIndex(observations, targetMs) {
   let lo = 0;
   let hi = observations.length;
@@ -309,6 +313,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
     sourceObservations,
     currentHit,
     lastSeenByZone,
+    lastProcessedPriorByType,
     lastAcceptedAnchorByType,
     crossingType,
     anchorZones,
@@ -319,6 +324,10 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
 
     const priorHit = pickMostRecentRedSeaPriorHit(lastSeenByZone, priorZones, currentHit.tMs, cutoffMs);
     if (!priorHit) return;
+
+    const priorHitKey = buildRedSeaHitKey(priorHit);
+    if (lastProcessedPriorByType.get(crossingType) === priorHitKey) return;
+    lastProcessedPriorByType.set(crossingType, priorHitKey);
 
     const lastAcceptedAnchorMs = lastAcceptedAnchorByType.get(crossingType) || 0;
     if (lastAcceptedAnchorMs && currentHit.tMs - lastAcceptedAnchorMs < RED_SEA_CROSSING_DEDUPE_MS) {
@@ -409,6 +418,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
     if (!zoneHits.length) continue;
 
     const lastSeenByZone = new Map();
+    const lastProcessedPriorByType = new Map();
     const lastAcceptedAnchorByType = new Map();
 
     for (const currentHit of zoneHits) {
@@ -419,6 +429,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
         sourceObservations,
         currentHit,
         lastSeenByZone,
+        lastProcessedPriorByType,
         lastAcceptedAnchorByType,
         crossingType: 'south_outbound',
         anchorZones: ['rs-south-out'],
@@ -430,6 +441,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
         sourceObservations,
         currentHit,
         lastSeenByZone,
+        lastProcessedPriorByType,
         lastAcceptedAnchorByType,
         crossingType: 'south_inbound',
         anchorZones: ['rs-south-in', 'rs-north-in', 'rs-north-out'],
@@ -441,6 +453,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
         sourceObservations,
         currentHit,
         lastSeenByZone,
+        lastProcessedPriorByType,
         lastAcceptedAnchorByType,
         crossingType: 'north_outbound',
         anchorZones: ['rs-north-out'],
@@ -452,6 +465,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
         sourceObservations,
         currentHit,
         lastSeenByZone,
+        lastProcessedPriorByType,
         lastAcceptedAnchorByType,
         crossingType: 'north_inbound',
         anchorZones: ['rs-north-in', 'rs-south-out', 'rs-south-in'],

@@ -3082,7 +3082,7 @@ export default function Page() {
               <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Red Sea crossings</div>
               <h2 className="mt-1 text-xl font-semibold text-slate-100">North and south inferred crossing flow</h2>
               <p className="mt-2 max-w-3xl text-sm text-slate-400">
-                Inferred crossings built only from the four Red Sea rectangles and source observations from <code className="text-slate-300">suez</code>, <code className="text-slate-300">red_sea</code>, and <code className="text-slate-300">yemen_channel</code>. Red Sea results are restricted to tankers and cargo vessels, use a 30-day lookback, and apply a 72-hour per-type dedupe window.
+                Inferred crossings built only from the four Red Sea rectangles and source observations from <code className="text-slate-300">suez</code>, <code className="text-slate-300">red_sea</code>, and <code className="text-slate-300">yemen_channel</code>. Red Sea results are restricted to tankers and cargo vessels, use a 30-day lookback, trigger on the first qualifying anchor hit after a fresh prior-side sighting, and keep a 72-hour per-type cooldown as a secondary guardrail.
               </p>
             </div>
             <div className="text-xs text-slate-400 lg:text-right">

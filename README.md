@@ -53,7 +53,8 @@ The processed-data build also derives a Red Sea crossings layer from:
 Current behavior:
 - Red Sea crossing outputs are restricted to `tanker` and `cargo` vessels
 - crossings use the most recent eligible prior zone hit within a 30-day lookback
-- repeated detections are deduped for 72 hours per `shipId + crossingType`
+- the crossing timestamp is the first qualifying anchor hit after a fresh prior-side sighting
+- repeated detections are further guarded by a 72-hour cooldown per `shipId + crossingType`
 - daily output is continuous by UTC day, including zero-count days between active days
 - saved route geometry is bounded for display performance rather than storing full 30-day histories
 - outputs are written to `processed_core.json` and `processed_paths.json` as Red Sea-specific fields

@@ -52,7 +52,8 @@ Operational notes:
 - inference is based on the 4 Red Sea rectangles, not region names alone
 - prior-zone selection uses the most recent eligible earlier hit within a 30-day lookback
 - same-timestamp zone hits do not satisfy the prior condition
-- event dedupe is `72h` per `shipId + crossingType`
+- crossing time is the first qualifying anchor hit after a fresh prior-side sighting
+- a `72h` cooldown per `shipId + crossingType` acts as a secondary dedupe guardrail
 - the daily series is continuous by UTC day, including zero-count days between event days
 - saved route points use a bounded display window rather than the full 30-day history
 - processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files

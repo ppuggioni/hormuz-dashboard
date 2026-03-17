@@ -1,36 +1,31 @@
 {
   "version": 1,
-  "runAt": "2026-03-17T02:54:00Z",
+  "runAt": "2026-03-17T12:35:00Z",
   "lastUpdateSummary": {
-    "headline": "Hormuz is still running as a tightly rationed corridor, but UKMTO’s latest log shows the attack picture is not cooling off cleanly.",
-    "body": "This fresh pass across the watchlist found the same selective-passage story still intact in Lloyd's List: Indian-linked and Pakistan-linked ships are among the few eastbound vessels moving, Dynacom's Smyrni made it through after AIS gaps and GNSS disruption, and crews plus insurers still do not treat Hormuz as reopened. But the run also explicitly checked UKMTO Recent Incidents and found a fresh 16 March attack report 23 nautical miles east of Fujairah, where a tanker at anchor was struck by an unknown projectile and suffered minor structural damage. That matters because it undercuts any read that the 11-12 March attack wave has fully rolled off into pure aftermath; the corridor is still selectively usable for some cargoes, but the attack risk remains active and geographically spread from the Strait itself into nearby Gulf of Oman and Fujairah approaches.",
-    "generatedAt": "2026-03-17T02:54:00Z"
+    "headline": "Windward says selected ships are now exiting Hormuz by hugging Iran\u2019s coast, making the selective-passage regime more operationally visible.",
+    "body": "The clearest genuinely new signal in this pass is Windward\u2019s 17 March routing note that at least five eastbound bulk carriers left the Gulf on 15-16 March via Iranian territorial waters rather than the normal international navigation channel, and that nearly all of those ships had previously called at Imam Khomeini. Windward also says two LPG carriers passed in the prior 36 hours and that eight non-Iranian AIS-on ships were tracked through the strait on 16 March, almost double earlier-in-the-week levels, even while overall traffic was still down about 97%. That strengthens the dashboard\u2019s working picture from simple scarcity to permission-based corridor management: selected cargoes are moving, but through politically filtered routing patterns rather than a normal reopening of Hormuz.",
+    "generatedAt": "2026-03-17T12:15:00Z"
   },
   "last24hSummary": {
-    "headline": "The latest 24-hour picture is still selective transit through Hormuz, but with at least one fresh confirmed attack near Fujairah.",
-    "body": "Across UKMTO, Lloyd's List search pages plus directly opened article pages, web research, and the regular X/watchlist sweep, the strongest combined read is that commercial movement remains narrow, negotiated and highly conditional rather than normal. Lloyd's continues to show vessel-level passage color around Karachi, Shivalik, Nanda Devi and the Dynacom-operated Smyrni, while the attacks side now has an important fresh datapoint: UKMTO logged a 16 March incident 23 nautical miles east of Fujairah in which a tanker at anchor was struck by an unknown projectile, causing minor structural damage but no reported injuries or pollution. So the latest 24-hour operating picture is not simply 'no new attacks'; it is a still-dangerous corridor where some politically tolerated and commercially important movements continue under heavy insurance, crew-safety, routing and interference constraints while attack risk remains live.",
-    "generatedAt": "2026-03-17T02:54:00Z"
+    "headline": "The latest 24-hour picture still shows a highly restricted Gulf system, but with clearer evidence of selective routing inside Iranian-controlled waters.",
+    "body": "Across the latest review, no source showed a broad commercial normalization of Hormuz traffic. Windward\u2019s new 17 March analysis is the main operational change: it says at least five eastbound bulk carriers exited via Iranian territorial waters on 15-16 March, with most having prior calls at Imam Khomeini, and that two LPG carriers also got through in the prior 36 hours. UKMTO\u2019s incidents page now says the 16 March Fujairah tanker event was re-classified as suspicious activity after investigators assessed the damage as falling debris from interceptions in the vicinity, so this pass did not identify a fresh confirmed vessel attack in the last 24 hours. Hormuz Strait Monitor\u2019s homepage continues to describe the strait as restricted and near-paralyzed, with only a handful of ships in transit. The regional read remains that flows can move in selected cases, but the corridor is still politically gated, operationally abnormal, and shaped by workaround routing rather than open market access.",
+    "generatedAt": "2026-03-17T12:15:00Z"
   },
   "vesselAttacks24hSummary": {
-    "headline": "A fresh vessel attack was confirmed in the last 24 hours near Fujairah, even as broader Hormuz traffic remained only selectively open.",
-    "body": "This run explicitly checked UKMTO Recent Incidents, Lloyd's List's Hormuz crisis and Daily Briefing result sets with relevant article pages opened directly, fresh web research, and the regular watchlist sources. The key change versus the prior run is UKMTO attack report #23 dated 16 March: a tanker at anchor 23 nautical miles east of Fujairah, Oman, was struck by an unknown projectile, causing minor structural damage with no injuries or environmental impact reported. That means the last 24 hours did contain a fresh confirmed vessel attack in the wider Hormuz/Fujairah operating area. Additional color from Lloyd's remains important: the recent attack wave has hit vessels without a neat flag or cargo pattern; Lloyd's analysis says 16 vessels have been targeted since 28 February, including nine tankers and six dry cargo vessels, while a separate Lloyd's report on the Safesea Vishnu and Zefyros STS strike highlights how vulnerable stationary ships remain, with one Indian engineer killed after a sea-drone attack during a 48,000-tonne naphtha transfer near Basrah. Follow-up reporting on Mayuree Naree still says three crew remained unaccounted for. Net: the corridor is not seeing blanket closure, but fresh projectile risk is still active for anchored and transiting vessels in and around the Persian Gulf, Strait of Hormuz and nearby Fujairah approaches.",
-    "generatedAt": "2026-03-17T02:54:00Z"
+    "headline": "No confirmed fresh vessel attack was verified in this pass; UKMTO now reclassifies the 16 March Fujairah tanker incident as suspicious activity.",
+    "body": "This specialist attacks run started with UKMTO Recent Incidents and then checked Lloyd's List security coverage plus targeted web corroboration. The material change in this pass is on UKMTO itself: report #23 for the 16 March tanker event 23 nautical miles east of Fujairah now carries Update 001 saying investigations indicate the vessel was subjected to falling debris from interceptions in the vicinity and that UKMTO has re-classified the incident as Suspicious Activity. That means there is no newer confirmed in-scope vessel attack in the last 24 hours. The latest confirmed attack still in the dedicated timeline is therefore UKMTO attack report #22 dated 12 March, when a container ship 35 nautical miles north of Jebel Ali was struck by an unknown projectile causing a small fire onboard. Lloyd's List and trade-press rewrites reviewed in this pass mostly preserved the earlier Fujairah strike framing, but the dashboard's attacks artifact now follows the current UKMTO classification as authoritative.",
+    "generatedAt": "2026-03-17T12:35:00Z"
   },
   "vesselAttacksLatest": [
-    {
-      "date": "2026-03-16",
-      "place": "23NM east of Fujairah, Oman",
-      "summary": "UKMTO attack report #23: a tanker at anchor was struck by an unknown projectile. Minor structural damage was reported, with no injuries to crew and no environmental impact reported."
-    },
-    {
-      "date": "2026-03-12",
-      "place": "35NM north of Jebel Ali, United Arab Emirates",
-      "summary": "UKMTO attack report #22: a container ship was struck by an unknown projectile, causing a small fire onboard. Crew were reported safe and authorities were investigating."
-    },
     {
       "date": "2026-03-11",
       "place": "5NM south of Al Basrah, Iraq TTW",
       "summary": "UKMTO attack report #21: two tankers were struck by unknown projectiles, both suffered fires onboard, and both crews were evacuated safely. No environmental impact was reported at the time of the updates."
+    },
+    {
+      "date": "2026-03-11",
+      "place": "50NM northwest of Dubai, United Arab Emirates",
+      "summary": "UKMTO attack report #20: a bulk carrier reported being hit by an unknown projectile. Crew were safe and well, with no environmental impact reported."
     },
     {
       "date": "2026-03-11",
@@ -39,8 +34,20 @@
     },
     {
       "date": "2026-03-11",
-      "place": "50NM northwest of Dubai, United Arab Emirates",
-      "summary": "UKMTO attack report #20: a bulk carrier reported being hit by an unknown projectile. Crew were safe and well, with no environmental impact reported."
+      "place": "25NM northwest of Ras Al Khaimah, United Arab Emirates",
+      "summary": "UKMTO attack report #18: a container vessel sustained damage from a suspected but unknown projectile. All crew were reported safe and accounted for, and later updates said there was no environmental impact."
+    },
+    {
+      "date": "2026-03-12",
+      "place": "35NM north of Jebel Ali, United Arab Emirates",
+      "summary": "UKMTO attack report #22: a container ship was struck by an unknown projectile, causing a small fire onboard. Crew were reported safe and authorities were investigating."
+    },
+    {
+      "date": "2026-03-16",
+      "place": "23NM east of Fujairah, United Arab Emirates",
+      "summary": "UKMTO report #23 initially described a tanker at anchor struck by an unknown projectile with minor structural damage and no injuries, but Update 001 later said investigators assessed the damage as falling debris from interceptions in the vicinity and UKMTO re-classified the incident as suspicious activity.",
+      "kind": "suspicious",
+      "statusLabel": "Reclassified by UKMTO as suspicious activity"
     }
   ],
   "previousDaySummary": {
@@ -49,8 +56,6 @@
     "generatedAt": "2026-03-17T02:54:00Z"
   },
   "newItems": [
-    "live-ukmto-fujairah-tanker-strike-2026-03-16",
-    "live-lloyds-attack-pattern-analysis-2026-03-16",
-    "live-lloyds-sts-tanker-strike-basrah-2026-03-16"
+    "live-windward-iranian-waters-workaround-2026-03-17"
   ]
 }

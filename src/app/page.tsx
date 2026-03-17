@@ -207,6 +207,8 @@ type VesselAttackItem = {
   date: string;
   place: string;
   summary: string;
+  kind?: "attack" | "suspicious";
+  statusLabel?: string | null;
 };
 
 type NewsFeedShape = {
@@ -2160,6 +2162,17 @@ export default function Page() {
                     <div className="relative flex items-center justify-between gap-6">
                       {vesselAttackItems.map((attack, idx) => {
                         const isSelected = idx === selectedAttackIndex;
+                        const isSuspicious = attack.kind === "suspicious";
+                        const dotClass = isSuspicious
+                          ? (isSelected
+                              ? "border-amber-200 bg-amber-400 shadow-[0_0_0_6px_rgba(251,191,36,0.18)]"
+                              : "border-amber-300/80 bg-amber-500/80 group-hover:border-amber-200 group-hover:bg-amber-400")
+                          : (isSelected
+                              ? "border-rose-200 bg-rose-500 shadow-[0_0_0_6px_rgba(244,63,94,0.18)]"
+                              : "border-slate-300 bg-slate-700 group-hover:border-rose-300 group-hover:bg-rose-400");
+                        const dateClass = isSuspicious
+                          ? (isSelected ? "text-amber-200" : "text-slate-400 group-hover:text-amber-100")
+                          : (isSelected ? "text-rose-200" : "text-slate-400 group-hover:text-slate-200");
                         return (
                           <button
                             key={`${attack.date}-${attack.place}-${idx}`}
@@ -2167,8 +2180,8 @@ export default function Page() {
                             onClick={() => setSelectedAttackIndex(idx)}
                             className="group relative flex flex-col items-center text-center"
                           >
-                            <span className={`h-6 w-6 rounded-full border-4 ${isSelected ? "border-rose-200 bg-rose-500 shadow-[0_0_0_6px_rgba(244,63,94,0.18)]" : "border-slate-300 bg-slate-700 group-hover:border-rose-300 group-hover:bg-rose-400"}`} />
-                            <span className={`mt-3 max-w-[120px] text-[11px] leading-4 ${isSelected ? "text-rose-200" : "text-slate-400 group-hover:text-slate-200"}`}>
+                            <span className={`h-6 w-6 rounded-full border-4 ${dotClass}`} />
+                            <span className={`mt-3 max-w-[120px] text-[11px] leading-4 ${dateClass}`}>
                               {new Date(attack.date).toUTCString().slice(5, 16)}
                             </span>
                           </button>
@@ -2178,8 +2191,15 @@ export default function Page() {
                   </div>
                 </div>
                 {selectedAttack ? (
-                  <div className="mt-4 rounded-xl border border-rose-900/40 bg-rose-950/20 p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-rose-300">Attack details</div>
+                  <div className={`mt-4 rounded-xl p-4 ${selectedAttack.kind === "suspicious" ? "border border-amber-900/40 bg-amber-950/20" : "border border-rose-900/40 bg-rose-950/20"}`}>
+                    <div className={`text-xs uppercase tracking-[0.2em] ${selectedAttack.kind === "suspicious" ? "text-amber-300" : "text-rose-300"}`}>
+                      {selectedAttack.kind === "suspicious" ? "Suspicious activity details" : "Attack details"}
+                    </div>
+                    {selectedAttack.statusLabel ? (
+                      <div className={`mt-2 inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${selectedAttack.kind === "suspicious" ? "border-amber-400/40 bg-amber-400/10 text-amber-200" : "border-rose-400/40 bg-rose-400/10 text-rose-200"}`}>
+                        {selectedAttack.statusLabel}
+                      </div>
+                    ) : null}
                     <div className="mt-2 text-lg font-semibold text-slate-100">{selectedAttack.place}</div>
                     <div className="mt-1 text-sm text-slate-400">{new Date(selectedAttack.date).toUTCString()}</div>
                     <p className="mt-3 text-sm leading-6 text-slate-300">{selectedAttack.summary}</p>

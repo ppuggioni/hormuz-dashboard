@@ -55,6 +55,8 @@ const vesselAttacksLatest = Array.isArray(latestRun.vesselAttacksLatest)
       date: item?.date || null,
       place: item?.place || null,
       summary: item?.summary || null,
+      kind: item?.kind || 'attack',
+      statusLabel: item?.statusLabel || null,
     })).filter((item) => item.date || item.place || item.summary)
   : [];
 

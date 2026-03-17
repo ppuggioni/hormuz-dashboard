@@ -227,6 +227,13 @@ type NewsFeedShape = {
   items: NewsItem[];
 };
 
+type VesselAttacksFeedShape = {
+  generatedAt: string;
+  lastRunAt?: string;
+  vesselAttacks24hSummary?: NewsSummary | null;
+  items: VesselAttackItem[];
+};
+
 type FetchFreshness = "cache" | "revalidate" | "bust";
 
 type CandidateEvent = CandidateCrosser & {
@@ -859,6 +866,7 @@ export default function Page() {
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
+  const [attacksFeed, setAttacksFeed] = useState<VesselAttacksFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newsSourceFilter, setNewsSourceFilter] = useState<string>("all");
   const [selectedAttackIndex, setSelectedAttackIndex] = useState(0);
@@ -880,6 +888,9 @@ export default function Page() {
 
   const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
   const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
+  const remoteAttacksUrl = process.env.NEXT_PUBLIC_HORMUZ_ATTACKS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/vessel_attacks_latest.json";
+  const localNewsUrl = "/data/news_feed.json";
+  const localAttacksUrl = "/data/vessel_attacks_latest.json";
 
   const fetchJson = useMemo(() => async (url: string, options?: { freshness?: FetchFreshness }) => {
     const freshness = options?.freshness || "revalidate";
@@ -915,17 +926,33 @@ export default function Page() {
       // fall through to local artifact
     }
     try {
-      const news = await fetchJson(`${root}/news_feed.json`, { freshness });
+      const news = await fetchJson(localNewsUrl, { freshness });
       setNewsFeed(news as NewsFeedShape);
     } catch {
       setNewsFeed(null);
     }
-  }, [fetchJson, remoteNewsUrl, root]);
+  }, [fetchJson, localNewsUrl, remoteNewsUrl]);
+
+  const loadAttacks = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+    try {
+      const attacks = await fetchJson(remoteAttacksUrl, { freshness });
+      setAttacksFeed(attacks as VesselAttacksFeedShape);
+      return;
+    } catch {
+      // fall through to local artifact
+    }
+    try {
+      const attacks = await fetchJson(localAttacksUrl, { freshness });
+      setAttacksFeed(attacks as VesselAttacksFeedShape);
+    } catch {
+      setAttacksFeed(null);
+    }
+  }, [fetchJson, localAttacksUrl, remoteAttacksUrl]);
 
   const loadDashboardData = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
     const isLiveRevalidate = freshness !== "cache";
     if (isLiveRevalidate) lastLiveRevalidateAtRef.current = Date.now();
-    await loadNews(freshness);
+    await Promise.all([loadNews(freshness), loadAttacks(freshness)]);
     try {
       const core = await fetchJson(`${root}/processed_core.json`, { freshness });
       const paths = await fetchJson(`${root}/processed_paths.json`, { freshness });
@@ -975,7 +1002,7 @@ export default function Page() {
     } catch (err) {
       console.error("Failed to load split dashboard artifacts", err);
     }
-  }, [fetchJson, loadNews, root]);
+  }, [fetchJson, loadAttacks, loadNews, root]);
 
   useEffect(() => {
     void loadDashboardData("revalidate");
@@ -1194,11 +1221,12 @@ export default function Page() {
   }, [newsFeed, newsSourceFilter]);
 
   const vesselAttackItems = useMemo(() => {
-    const items = Array.isArray(newsFeed?.vesselAttacksLatest) ? newsFeed.vesselAttacksLatest : [];
+    const items = Array.isArray(attacksFeed?.items) ? attacksFeed.items : [];
     return [...items].sort((a, b) => +new Date(a.date) - +new Date(b.date));
-  }, [newsFeed]);
+  }, [attacksFeed]);
 
   const selectedAttack = vesselAttackItems[selectedAttackIndex] || vesselAttackItems[vesselAttackItems.length - 1] || null;
+  const vesselAttacksSummary = attacksFeed?.vesselAttacks24hSummary || null;
   const candidateDailyHigh = useMemo(
     () => aggregateCandidatesToDailyBins(highConfidenceCandidateEventsForCharts),
     [highConfidenceCandidateEventsForCharts],
@@ -2105,17 +2133,17 @@ export default function Page() {
               </button>
             </div>
             <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
-              <div className="text-xs text-rose-200">News — vessel attacks last 24h</div>
-              <div className="mt-1 text-sm font-semibold leading-snug text-rose-100">{newsFeed?.vesselAttacks24hSummary?.headline || "No 24h attack summary yet"}</div>
+              <div className="text-xs text-rose-200">Vessel attacks — last 24h</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-rose-100">{vesselAttacksSummary?.headline || "No 24h attack summary yet"}</div>
               <button
-                onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                onClick={() => document.getElementById("vessel-attacks")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="mt-2 rounded-md border border-rose-300/60 px-2 py-1 text-[11px] text-rose-100"
               >
-                Jump to news section
+                Jump to attacks section
               </button>
             </div>
           </div>
-          <section className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <section id="vessel-attacks" className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="text-xs uppercase tracking-[0.2em] text-rose-300">Attacks timeline</div>
@@ -3134,9 +3162,9 @@ export default function Page() {
           <div className="mt-4 grid gap-4 md:grid-cols-4">
             <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-rose-300">VESSEL ATTACKS · LAST 24H</div>
-              <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.vesselAttacks24hSummary?.headline || "No vessel-attack summary yet"}</div>
+              <div className="mt-2 text-lg font-semibold text-slate-100">{vesselAttacksSummary?.headline || "No vessel-attack summary yet"}</div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                {newsFeed?.vesselAttacks24hSummary?.body || "The collector will write a dedicated 24-hour attacks summary here, including a clear no-credible-fresh-attacks read when appropriate."}
+                {vesselAttacksSummary?.body || "The dedicated attacks artifact will write the rolling 24-hour attacks summary here, including a clear no-credible-fresh-attacks read when appropriate."}
               </p>
             </div>
 

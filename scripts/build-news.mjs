@@ -58,9 +58,17 @@ const vesselAttacksLatest = Array.isArray(latestRun.vesselAttacksLatest)
     })).filter((item) => item.date || item.place || item.summary)
   : [];
 
+const generatedAt = new Date().toISOString();
+const attacksPayload = {
+  generatedAt,
+  lastRunAt: latestRun.runAt,
+  vesselAttacks24hSummary: latestRun.vesselAttacks24hSummary || null,
+  items: vesselAttacksLatest,
+};
+
 const payload = {
   metadata: {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     profile: watchlist.profile || 'hormuz-news',
     sourceCount: (watchlist.sources || []).length,
     itemCount: items.length,
@@ -69,8 +77,9 @@ const payload = {
   },
   lastUpdateSummary: latestRun.lastUpdateSummary,
   last24hSummary: latestRun.last24hSummary,
-  vesselAttacks24hSummary: latestRun.vesselAttacks24hSummary || null,
-  vesselAttacksLatest,
+  // Keep attack fields mirrored here for older consumers; the dedicated attacks artifact is authoritative.
+  vesselAttacks24hSummary: attacksPayload.vesselAttacks24hSummary,
+  vesselAttacksLatest: attacksPayload.items,
   previousDaySummary: latestRun.previousDaySummary || null,
   sources: (watchlist.sources || []).map((source) => ({
     id: source.id,
@@ -86,11 +95,6 @@ const payload = {
 
 await fs.mkdir(OUT_DIR, { recursive: true });
 await fs.writeFile(FEED_PATH, JSON.stringify(payload, null, 2) + '\n');
-await fs.writeFile(ATTACKS_PATH, JSON.stringify({
-  generatedAt: new Date().toISOString(),
-  lastRunAt: latestRun.runAt,
-  vesselAttacks24hSummary: latestRun.vesselAttacks24hSummary || null,
-  items: vesselAttacksLatest,
-}, null, 2) + '\n');
+await fs.writeFile(ATTACKS_PATH, JSON.stringify(attacksPayload, null, 2) + '\n');
 console.log(`Wrote ${path.relative(ROOT, FEED_PATH)}`);
 console.log(`Wrote ${path.relative(ROOT, ATTACKS_PATH)}`);

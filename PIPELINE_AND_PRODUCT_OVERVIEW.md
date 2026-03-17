@@ -394,14 +394,22 @@ Script:
 
 Output:
 - `public/data/news_feed.json`
+- `public/data/vessel_attacks_latest.json`
 
-This artifact contains:
+The general news artifact contains:
 - metadata
 - `lastUpdateSummary`
 - `last24hSummary`
 - tracked sources
 - feed items ordered by `publishedAt`
 - per-item `isNew` markers for the latest run
+
+The dedicated attacks artifact contains:
+- `vesselAttacks24hSummary`
+- structured attack items for the attack card / timeline / future attack visualizations
+
+Compatibility note:
+- `news_feed.json` still mirrors the attack summary and latest structured attack items for older consumers, but `vessel_attacks_latest.json` is the authoritative attack-specific artifact
 
 ## Step 6 — publish live news artifact to Supabase
 
@@ -411,9 +419,11 @@ Script:
 Publishes to:
 - bucket: `x-scrapes-public`
 - path: `hormuz/news_feed.json`
+- path: `hormuz/vessel_attacks_latest.json`
 
 Full public URL:
 - `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json`
+- `https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/vessel_attacks_latest.json`
 
 ## Step 7 — dashboard runtime consumption
 
@@ -422,6 +432,8 @@ The app now prefers the live remote news artifact from Supabase and falls back l
 Primary pattern:
 - remote: `x-scrapes-public/hormuz/news_feed.json`
 - fallback: local `/data/news_feed.json`
+- remote: `x-scrapes-public/hormuz/vessel_attacks_latest.json`
+- fallback: local `/data/vessel_attacks_latest.json`
 
 ---
 

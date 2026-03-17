@@ -48,6 +48,7 @@ The Red Sea analysis pipeline writes:
 
 Operational notes:
 - raw inputs are restricted to `suez`, `red_sea`, and `yemen_channel`
+- outputs are restricted to `tanker` and `cargo` vessels
 - inference is based on the 4 Red Sea rectangles, not region names alone
 - prior-zone selection uses the most recent eligible earlier hit within a 30-day lookback
 - same-timestamp zone hits do not satisfy the prior condition

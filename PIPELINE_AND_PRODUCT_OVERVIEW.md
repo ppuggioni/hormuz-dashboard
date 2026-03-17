@@ -292,6 +292,7 @@ This logic exists because direct two-sided observation can be missed when AIS go
 ## Red Sea inferred crossings
 
 - raw inputs are limited to `suez`, `red_sea`, and `yemen_channel`
+- outputs are restricted to `tanker` and `cargo` vessels
 - inference is driven by the 4 Red Sea analysis rectangles, not by collection-region names alone
 - each anchor hit checks the most recent eligible prior-zone hit within the previous 30 days
 - same-timestamp zone hits do not count as prior/current transitions

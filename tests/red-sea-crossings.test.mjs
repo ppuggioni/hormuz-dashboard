@@ -97,6 +97,24 @@ test('Red Sea route windows stay bounded to the event context instead of storing
   );
 });
 
+test('Red Sea crossings ignore non-tanker and non-cargo vessels', () => {
+  const redSeaSourceObservationsByShip = new Map([
+    ['ship-3', [
+      { t: '2026-01-01T00:00:00.000Z', lat: 25, lon: 35, sourceRegion: 'suez' },
+      { t: '2026-01-02T00:00:00.000Z', lat: 12, lon: 44, sourceRegion: 'yemen_channel' },
+    ]],
+  ]);
+
+  const shipMeta = {
+    'ship-3': { shipName: 'Passenger Vessel', vesselType: 'passenger', flag: 'MT' },
+  };
+
+  const { redSeaCrossingEvents, redSeaCrossingRoutes } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
+
+  assert.equal(redSeaCrossingEvents.length, 0);
+  assert.equal(redSeaCrossingRoutes.length, 0);
+});
+
 test('Red Sea zone helpers return all matching zones for a point', () => {
   assert.deepEqual(getRedSeaCrossingZones(12, 44), ['rs-south-out']);
   assert.deepEqual(getRedSeaCrossingZones(0, 0), []);

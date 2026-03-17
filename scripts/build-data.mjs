@@ -54,6 +54,7 @@ const ALLOWED_VESSEL_TYPES = String(process.env.ALLOWED_VESSEL_TYPES || 'tanker,
 const KEEP_ALL_VESSEL_TYPES = ALLOWED_VESSEL_TYPES.includes('all');
 const RED_SEA_CROSSING_SOURCE_REGIONS = new Set(['suez', 'red_sea', 'yemen_channel']);
 const RED_SEA_CROSSING_TYPES = ['south_outbound', 'south_inbound', 'north_outbound', 'north_inbound'];
+const RED_SEA_CROSSING_VESSEL_TYPES = new Set(['tanker', 'cargo']);
 const RED_SEA_CROSSING_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 const RED_SEA_CROSSING_DEDUPE_MS = 72 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -383,6 +384,8 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
   };
 
   for (const [shipId, rawObservations] of redSeaSourceObservationsByShip.entries()) {
+    if (!RED_SEA_CROSSING_VESSEL_TYPES.has(shipMeta[shipId]?.vesselType || '')) continue;
+
     const sourceObservations = rawObservations
       .slice()
       .sort((a, b) => +new Date(a.t) - +new Date(b.t))

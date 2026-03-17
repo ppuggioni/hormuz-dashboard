@@ -51,6 +51,7 @@ The processed-data build also derives a Red Sea crossings layer from:
 - four analysis rectangles: `rs-south-out`, `rs-south-in`, `rs-north-in`, `rs-north-out`
 
 Current behavior:
+- Red Sea crossing outputs are restricted to `tanker` and `cargo` vessels
 - crossings use the most recent eligible prior zone hit within a 30-day lookback
 - repeated detections are deduped for 72 hours per `shipId + crossingType`
 - daily output is continuous by UTC day, including zero-count days between active days

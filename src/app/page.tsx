@@ -1227,6 +1227,14 @@ export default function Page() {
     return [...items].sort((a, b) => +new Date(a.date) - +new Date(b.date));
   }, [attacksFeed]);
 
+  useEffect(() => {
+    if (!vesselAttackItems.length) {
+      setSelectedAttackIndex(0);
+      return;
+    }
+    setSelectedAttackIndex(vesselAttackItems.length - 1);
+  }, [vesselAttackItems]);
+
   const selectedAttack = vesselAttackItems[selectedAttackIndex] || vesselAttackItems[vesselAttackItems.length - 1] || null;
   const vesselAttacksSummary = attacksFeed?.vesselAttacks24hSummary || null;
   const candidateDailyHigh = useMemo(

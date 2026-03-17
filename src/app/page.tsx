@@ -287,6 +287,37 @@ const RED_SEA_CROSSING_CHART_MATRIX: Array<{
   { crossingType: "north_outbound", side: "North", flow: "Outbound" },
   { crossingType: "south_outbound", side: "South", flow: "Outbound" },
 ];
+const RED_SEA_TOPLINE_GROUPS: Array<{
+  key: "north" | "south";
+  title: string;
+  accentClass: string;
+  backgroundClass: string;
+  buttonClass: string;
+  items: Array<{ crossingType: RedSeaCrossingType; label: string }>;
+}> = [
+  {
+    key: "north",
+    title: "Red Sea crossings — North [Tankers]",
+    accentClass: "text-sky-200",
+    backgroundClass: "border-sky-300/60 bg-sky-500/10",
+    buttonClass: "border-sky-300/60 text-sky-100",
+    items: [
+      { crossingType: "north_inbound", label: "Inbound" },
+      { crossingType: "north_outbound", label: "Outbound" },
+    ],
+  },
+  {
+    key: "south",
+    title: "Red Sea crossings — South [Tankers]",
+    accentClass: "text-orange-200",
+    backgroundClass: "border-orange-300/60 bg-orange-500/10",
+    buttonClass: "border-orange-300/60 text-orange-100",
+    items: [
+      { crossingType: "south_inbound", label: "Inbound" },
+      { crossingType: "south_outbound", label: "Outbound" },
+    ],
+  },
+];
 const RED_SEA_VESSEL_TYPES: RedSeaVesselType[] = ["tanker", "cargo"];
 const RED_SEA_CROSSING_TYPE_COLORS: Record<RedSeaCrossingType, string> = {
   south_outbound: "#f97316",
@@ -799,6 +830,7 @@ export default function Page() {
   const [crossingDirectionFilter, setCrossingDirectionFilter] = useState<"all" | "east_to_west" | "west_to_east">("all");
   const [crossingWindow, setCrossingWindow] = useState<"24h" | "48h" | "all">("all");
   const [discardSuspectedSpoofing, setDiscardSuspectedSpoofing] = useState(true);
+  const [hideSpoofingDetectedCrossings, setHideSpoofingDetectedCrossings] = useState(true);
   const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
   const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
@@ -1253,6 +1285,36 @@ export default function Page() {
     if (hasCargo) return "Cargos";
     return "No vessels selected";
   }, [selectedRedSeaVesselTypeSet]);
+  const redSeaToplineMetrics = useMemo(() => {
+    const endTs = data?.metadata?.generatedAt
+      ? +new Date(data.metadata.generatedAt)
+      : data?.snapshots?.length
+        ? +new Date(data.snapshots[data.snapshots.length - 1].t)
+        : Date.now();
+    const last24hCutoffTs = endTs - 24 * 60 * 60 * 1000;
+    const last7dCutoffTs = endTs - 7 * 24 * 60 * 60 * 1000;
+    const stats = Object.fromEntries(
+      RED_SEA_CROSSING_TYPES.map((crossingType) => [crossingType, { last24h: 0, last7dTotal: 0 }]),
+    ) as Record<RedSeaCrossingType, { last24h: number; last7dTotal: number }>;
+
+    for (const event of redSeaCrossingEvents) {
+      if (event.vesselType !== "tanker") continue;
+      const ts = +new Date(event.crossingTime || event.t);
+      if (ts > endTs) continue;
+      if (ts >= last24hCutoffTs) stats[event.crossingType].last24h += 1;
+      if (ts >= last7dCutoffTs) stats[event.crossingType].last7dTotal += 1;
+    }
+
+    return Object.fromEntries(
+      RED_SEA_CROSSING_TYPES.map((crossingType) => [
+        crossingType,
+        {
+          last24h: stats[crossingType].last24h,
+          last7dAvg: stats[crossingType].last7dTotal / 7,
+        },
+      ]),
+    ) as Record<RedSeaCrossingType, { last24h: number; last7dAvg: number }>;
+  }, [redSeaCrossingEvents, data?.metadata?.generatedAt, data?.snapshots]);
   const redSeaEventRows = useMemo(() => {
     const rows = [...filteredRedSeaCrossingEvents];
     rows.sort((a, b) => {
@@ -1590,7 +1652,11 @@ export default function Page() {
   }, [linkageRows]);
 
   const crossingDetailRows = useMemo(() => {
-    return [...filteredCrossingEvents].sort((a, b) => {
+    const rows = hideSpoofingDetectedCrossings
+      ? filteredCrossingEvents.filter((event) => !isExcludedCrossingEvent(event))
+      : filteredCrossingEvents;
+
+    return [...rows].sort((a, b) => {
       let cmp = 0;
       switch (crossingDetailSort.key) {
         case "ship":
@@ -1612,7 +1678,7 @@ export default function Page() {
       }
       return crossingDetailSort.dir === "asc" ? cmp : -cmp;
     });
-  }, [filteredCrossingEvents, crossingDetailSort, transitTimeByShip]);
+  }, [filteredCrossingEvents, crossingDetailSort, transitTimeByShip, hideSpoofingDetectedCrossings]);
 
   const candidateTableRows = useMemo(() => {
     const rank = { high: 2, low: 1, no: 0 } as const;
@@ -1951,8 +2017,7 @@ export default function Page() {
           <p className="mt-3 text-xs text-slate-300">
             Tanker data is generally more reliable for our purposes because tankers are the vessels most likely to carry oil and gas. Cargo traffic is more frequent, but also a noisier signal.
           </p>
-          <div className="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-7">
-            <Stat label="Vessels" value={String(data.metadata.shipCount)} />
+          <div className="mt-4 grid grid-cols-1 gap-3 text-sm xl:grid-cols-4 md:grid-cols-2">
             <div className="rounded-xl border border-emerald-300/60 bg-emerald-500/10 p-3">
               <div className="text-xs text-emerald-200">Crossing Tankers (last 24h | baseline pre-war: 30/day each way)</div>
               <div className="text-lg font-semibold text-emerald-100">{String(last24hCrossingCounts.tanker)}</div>
@@ -1963,6 +2028,30 @@ export default function Page() {
                 Jump to crossing tankers map
               </button>
             </div>
+            {RED_SEA_TOPLINE_GROUPS.map((group) => (
+              <div key={group.key} className={`rounded-xl border p-3 ${group.backgroundClass}`}>
+                <div className={`text-xs ${group.accentClass}`}>{group.title}</div>
+                <div className="mt-3 space-y-2">
+                  {group.items.map(({ crossingType, label }) => (
+                    <div key={`${group.key}-${crossingType}`} className="flex items-baseline justify-between gap-3">
+                      <div className="text-xs uppercase tracking-[0.18em] text-slate-300">{label}</div>
+                      <div className="text-right">
+                        <span className="text-lg font-semibold text-slate-100">{redSeaToplineMetrics[crossingType].last24h}</span>
+                        <span className="ml-1 text-[10px] text-slate-300/80">
+                          ({redSeaToplineMetrics[crossingType].last7dAvg.toFixed(1)}/d 7d avg)
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => document.getElementById("red-sea-crossings")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className={`mt-3 rounded-md border px-2 py-1 text-[11px] ${group.buttonClass}`}
+                >
+                  Jump to Red Sea section
+                </button>
+              </div>
+            ))}
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
               <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
               <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
@@ -1976,7 +2065,9 @@ export default function Page() {
                 Jump to candidate section
               </button>
             </div>
-            <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3 md:col-span-2">
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3">
               <div className="text-xs text-fuchsia-200">News — last update</div>
               <div className="mt-1 text-sm font-semibold leading-snug text-fuchsia-100">{newsFeed?.lastUpdateSummary?.headline || "No latest news summary yet"}</div>
               <button
@@ -1986,7 +2077,7 @@ export default function Page() {
                 Jump to news section
               </button>
             </div>
-            <div className="rounded-xl border border-purple-300/60 bg-purple-500/10 p-3 md:col-span-2">
+            <div className="rounded-xl border border-purple-300/60 bg-purple-500/10 p-3">
               <div className="text-xs text-purple-200">News — last 24h</div>
               <div className="mt-1 text-sm font-semibold leading-snug text-purple-100">{newsFeed?.last24hSummary?.headline || "No 24h news summary yet"}</div>
               <button
@@ -2523,6 +2614,18 @@ export default function Page() {
                 />
               </div>
               <p className="text-xs text-slate-400">GPS can be weak in this area, so some points may jump inland. Dots are connected with straight lines, so routes can visually cross land even when ships did not.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
+                <div>
+                  Showing {crossingDetailRows.length} confirmed crossing row{crossingDetailRows.length === 1 ? "" : "s"} in the table.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHideSpoofingDetectedCrossings((value) => !value)}
+                  className={`rounded border px-2 py-1 ${hideSpoofingDetectedCrossings ? "border-rose-300 text-rose-200" : "border-slate-700 text-slate-400"}`}
+                >
+                  hide spoofing-detected crossings: {hideSpoofingDetectedCrossings ? "on" : "off"}
+                </button>
+              </div>
               <div className="max-h-[420px] overflow-auto border border-slate-800 rounded-lg">
                 <table className="w-full text-xs">
                   <thead className="bg-slate-900 sticky top-0">
@@ -3073,14 +3176,5 @@ export default function Page() {
         </details>
       </div>
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-3">
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
-    </div>
   );
 }

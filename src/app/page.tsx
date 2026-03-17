@@ -2030,6 +2030,16 @@ export default function Page() {
                 Jump to crossing tankers map
               </button>
             </div>
+            <div className="rounded-xl border border-teal-300/60 bg-teal-500/10 p-3">
+              <div className="text-xs text-teal-200">Crossing Cargo (last 24h)</div>
+              <div className="text-lg font-semibold text-teal-100">{String(last24hCrossingCounts.cargo)}</div>
+              <button
+                onClick={() => document.getElementById("historical-cargo-crossings")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-teal-300/60 px-2 py-1 text-[11px] text-teal-100"
+              >
+                Jump to cargo section
+              </button>
+            </div>
             {RED_SEA_TOPLINE_GROUPS.map((group) => (
               <div key={group.key} className={`rounded-xl border p-3 ${group.backgroundClass}`}>
                 <div className={`text-xs ${group.accentClass}`}>{group.title}</div>
@@ -2054,6 +2064,8 @@ export default function Page() {
                 </button>
               </div>
             ))}
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-1">
             <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
               <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
               <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
@@ -2068,7 +2080,7 @@ export default function Page() {
               </button>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
             <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3">
               <div className="text-xs text-fuchsia-200">News — last update</div>
               <div className="mt-1 text-sm font-semibold leading-snug text-fuchsia-100">{newsFeed?.lastUpdateSummary?.headline || "No latest news summary yet"}</div>
@@ -2085,6 +2097,16 @@ export default function Page() {
               <button
                 onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 className="mt-2 rounded-md border border-purple-300/60 px-2 py-1 text-[11px] text-purple-100"
+              >
+                Jump to news section
+              </button>
+            </div>
+            <div className="rounded-xl border border-rose-300/60 bg-rose-500/10 p-3">
+              <div className="text-xs text-rose-200">News — vessel attacks last 24h</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-rose-100">{newsFeed?.vesselAttacks24hSummary?.headline || "No 24h attack summary yet"}</div>
+              <button
+                onClick={() => document.getElementById("newsfeed")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-rose-300/60 px-2 py-1 text-[11px] text-rose-100"
               >
                 Jump to news section
               </button>
@@ -3058,7 +3080,7 @@ export default function Page() {
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-4">
-            <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-4 md:col-span-2">
+            <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-rose-300">VESSEL ATTACKS · LAST 24H</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsFeed?.vesselAttacks24hSummary?.headline || "No vessel-attack summary yet"}</div>
               <p className="mt-3 text-sm leading-6 text-slate-300">
@@ -3088,9 +3110,7 @@ export default function Page() {
                 {newsFeed?.previousDaySummary?.body || "The first successful update of a new UTC day will write a full previous-day summary here once the collector provides it."}
               </p>
             </div>
-          </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-1">
             <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Earlier day</div>
               <div className="mt-2 text-lg font-semibold text-slate-100">{newsDays[1]?.headline || newsDays[0]?.headline || "No earlier-day summary yet"}</div>

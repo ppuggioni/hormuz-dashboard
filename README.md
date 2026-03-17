@@ -44,6 +44,19 @@ Current source regions in the live pipeline include:
 - `mumbai`
 - `red_sea`
 
+## Red Sea inferred crossings
+
+The processed-data build also derives a Red Sea crossings layer from:
+- source regions `suez`, `red_sea`, and `yemen_channel`
+- four analysis rectangles: `rs-south-out`, `rs-south-in`, `rs-north-in`, `rs-north-out`
+
+Current behavior:
+- crossings use the most recent eligible prior zone hit within a 30-day lookback
+- repeated detections are deduped for 72 hours per `shipId + crossingType`
+- daily output is continuous by UTC day, including zero-count days between active days
+- saved route geometry is bounded for display performance rather than storing full 30-day histories
+- outputs are written to `processed_core.json` and `processed_paths.json` as Red Sea-specific fields
+
 ## Scheduler / refresh cadence
 
 Production refresh is handled locally via `launchd`, not just GitHub Actions.

@@ -10,7 +10,7 @@
     "build": "npm run build:news && next build",
     "start": "next start",
     "lint": "eslint",
-    "test:incremental": "node --test tests/incremental-state.test.mjs"
+    "test:incremental": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

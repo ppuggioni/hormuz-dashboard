@@ -5,46 +5,12 @@ import { MapContainer, Marker, Popup, Polygon, Polyline, TileLayer, Tooltip } fr
 import { divIcon } from "leaflet";
 
 import { getPlaybackTriangleIcon } from "@/lib/leafletIcons";
+import { RED_SEA_REFERENCE_AREAS } from "@/lib/redSeaCrossingZones.mjs";
 
 type Point = { shipId: string; shipName: string; vesselType: string; flag?: string; destination?: string; lat: number; lon: number };
 type Snapshot = { t: string; points: Point[] };
 type LinkedPoint = { shipId: string; shipName: string; vesselType: string; flag?: string; region: string; lat: number; lon: number; deltaDh: string };
 type MonitoredArea = { minLat: number; maxLat: number; minLon: number; maxLon: number; color?: string; label?: string };
-
-const RED_SEA_REFERENCE_AREAS: MonitoredArea[] = [
-  {
-    label: "rs-south-out",
-    minLon: 43.6621,
-    maxLon: 52.0656,
-    minLat: 10.0391,
-    maxLat: 14.5609,
-    color: "#d1d5db",
-  },
-  {
-    label: "rs-south-in",
-    minLon: 37.1322,
-    maxLon: 43.6223,
-    minLat: 13.1,
-    maxLat: 23.0482,
-    color: "#d1d5db",
-  },
-  {
-    label: "rs-north-in",
-    minLon: 32.65,
-    maxLon: 38.2701,
-    minLat: 20.7906,
-    maxLat: 28.93,
-    color: "#d1d5db",
-  },
-  {
-    label: "rs-north-out",
-    minLon: 26.6879,
-    maxLon: 35.0082,
-    minLat: 29.2,
-    maxLat: 34.6263,
-    color: "#d1d5db",
-  },
-];
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",

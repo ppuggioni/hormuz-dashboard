@@ -8,7 +8,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 type SnapshotPoint = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
 type Snapshot = { t: string; points: SnapshotPoint[] };
 type CrossingHour = { hour: string; east_to_west: number; west_to_east: number };
-type PathPoint = { t: string; lat: number; lon: number };
+type PathPoint = { t: string; lat: number; lon: number; sourceRegion?: string; zones?: string[] };
 type CrossingPath = {
   shipId: string;
   shipName: string;
@@ -16,6 +16,65 @@ type CrossingPath = {
   flag?: string;
   primaryDirection: "east_to_west" | "west_to_east" | "mixed";
   directionCounts: { east_to_west: number; west_to_east: number };
+  points: PathPoint[];
+};
+
+type RedSeaCrossingType = "south_outbound" | "south_inbound" | "north_outbound" | "north_inbound";
+type RedSeaCrossingDay = {
+  day: string;
+  south_outbound: number;
+  south_inbound: number;
+  north_outbound: number;
+  north_inbound: number;
+  total: number;
+};
+type RedSeaCrossingEvent = {
+  eventId: string;
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  flag?: string;
+  crossingType: RedSeaCrossingType;
+  t: string;
+  crossingTime: string;
+  day: string;
+  anchorZone: string;
+  anchorTime: string;
+  anchorLat: number;
+  anchorLon: number;
+  anchorSourceRegion?: string;
+  priorZone: string;
+  priorTime: string;
+  priorLat: number;
+  priorLon: number;
+  priorSourceRegion?: string;
+  lookbackHours: number;
+  deltaDh?: string;
+  sourceRegionsSeen?: string[];
+  inferenceWindowDays?: number;
+  routePointCount: number;
+};
+type RedSeaCrossingRoute = {
+  eventId: string;
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  flag?: string;
+  crossingType: RedSeaCrossingType;
+  t: string;
+  crossingTime: string;
+  day: string;
+  anchorZone: string;
+  anchorTime: string;
+  anchorLat: number;
+  anchorLon: number;
+  priorZone: string;
+  priorTime: string;
+  priorLat: number;
+  priorLon: number;
+  routeWindowHours?: number;
+  routeWindowStartTime?: string;
+  routeWindowEndTime?: string;
   points: PathPoint[];
 };
 
@@ -212,6 +271,9 @@ type DataShape = {
   crossingsByHour: CrossingHour[];
   crossingEvents: CrossingEvent[];
   crossingPaths: CrossingPath[];
+  redSeaCrossingsByDay?: RedSeaCrossingDay[];
+  redSeaCrossingEvents?: RedSeaCrossingEvent[];
+  redSeaCrossingRoutes?: RedSeaCrossingRoute[];
   linkageEvents?: LinkageEvent[];
   externalPresencePoints?: ExternalPresencePoint[];
   confirmedCrossingExclusions?: ConfirmedCrossingExclusion[];
@@ -220,7 +282,21 @@ type DataShape = {
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
+const RedSeaCrossingMap = dynamic(() => import("@/components/RedSeaCrossingMap"), { ssr: false });
 const EXTERNAL_REGIONS = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai", "red_sea"] as const;
+const RED_SEA_CROSSING_TYPES: RedSeaCrossingType[] = ["south_outbound", "south_inbound", "north_outbound", "north_inbound"];
+const RED_SEA_CROSSING_TYPE_LABELS: Record<RedSeaCrossingType, string> = {
+  south_outbound: "South outbound",
+  south_inbound: "South inbound",
+  north_outbound: "North outbound",
+  north_inbound: "North inbound",
+};
+const RED_SEA_CROSSING_TYPE_COLORS: Record<RedSeaCrossingType, string> = {
+  south_outbound: "#f97316",
+  south_inbound: "#22c55e",
+  north_outbound: "#38bdf8",
+  north_inbound: "#eab308",
+};
 
 function formatShipDisplayName(shipName: string, flag?: string | null) {
   const cleanName = String(shipName || "Unknown").trim() || "Unknown";
@@ -867,6 +943,9 @@ export default function Page() {
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newsSourceFilter, setNewsSourceFilter] = useState<string>("all");
+  const [selectedRedSeaCrossingTypes, setSelectedRedSeaCrossingTypes] = useState<RedSeaCrossingType[]>(RED_SEA_CROSSING_TYPES);
+  const [selectedRedSeaEventIds, setSelectedRedSeaEventIds] = useState<string[]>([]);
+  const [redSeaSort, setRedSeaSort] = useState<{ key: "time" | "ship" | "type" | "lookback"; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [mapMode, setMapMode] = useState<"confirmed" | "candidates">("confirmed");
@@ -940,6 +1019,9 @@ export default function Page() {
         crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
         crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
         crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
+        redSeaCrossingsByDay: Array.isArray(core?.data?.redSeaCrossingsByDay) ? core.data.redSeaCrossingsByDay : [],
+        redSeaCrossingEvents: Array.isArray(core?.data?.redSeaCrossingEvents) ? core.data.redSeaCrossingEvents : [],
+        redSeaCrossingRoutes: Array.isArray(paths?.data?.redSeaCrossingRoutes) ? paths.data.redSeaCrossingRoutes : [],
         linkageEvents: Array.isArray(core?.data?.linkageEvents) ? core.data.linkageEvents : [],
         externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
         confirmedCrossingExclusions: Array.isArray(core?.data?.confirmedCrossingExclusions) ? core.data.confirmedCrossingExclusions : [],
@@ -1221,6 +1303,73 @@ export default function Page() {
   );
   const selectedCrossingShipIdSet = useMemo(() => new Set(selectedCrossingShipIds), [selectedCrossingShipIds]);
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
+  const redSeaCrossingEvents = useMemo(
+    () => Array.isArray(data?.redSeaCrossingEvents) ? data.redSeaCrossingEvents : [],
+    [data?.redSeaCrossingEvents],
+  );
+  const redSeaCrossingRoutes = useMemo(
+    () => Array.isArray(data?.redSeaCrossingRoutes) ? data.redSeaCrossingRoutes : [],
+    [data?.redSeaCrossingRoutes],
+  );
+  const redSeaCrossingsByDay = useMemo(
+    () => Array.isArray(data?.redSeaCrossingsByDay) ? data.redSeaCrossingsByDay : [],
+    [data?.redSeaCrossingsByDay],
+  );
+  const selectedRedSeaTypeSet = useMemo(() => new Set(selectedRedSeaCrossingTypes), [selectedRedSeaCrossingTypes]);
+  const selectedRedSeaEventIdSet = useMemo(() => new Set(selectedRedSeaEventIds), [selectedRedSeaEventIds]);
+  const filteredRedSeaCrossingEvents = useMemo(
+    () => redSeaCrossingEvents.filter((event) => selectedRedSeaTypeSet.has(event.crossingType)),
+    [redSeaCrossingEvents, selectedRedSeaTypeSet],
+  );
+  const filteredRedSeaCrossingRoutes = useMemo(
+    () => redSeaCrossingRoutes.filter((route) => selectedRedSeaTypeSet.has(route.crossingType)),
+    [redSeaCrossingRoutes, selectedRedSeaTypeSet],
+  );
+  const filteredRedSeaCrossingsByDay = useMemo(
+    () => redSeaCrossingsByDay.map((row) => ({
+      day: row.day,
+      south_outbound: selectedRedSeaTypeSet.has("south_outbound") ? row.south_outbound : 0,
+      south_inbound: selectedRedSeaTypeSet.has("south_inbound") ? row.south_inbound : 0,
+      north_outbound: selectedRedSeaTypeSet.has("north_outbound") ? row.north_outbound : 0,
+      north_inbound: selectedRedSeaTypeSet.has("north_inbound") ? row.north_inbound : 0,
+      total: RED_SEA_CROSSING_TYPES.reduce((sum, type) => sum + (selectedRedSeaTypeSet.has(type) ? row[type] : 0), 0),
+    })),
+    [redSeaCrossingsByDay, selectedRedSeaTypeSet],
+  );
+  const redSeaLatestTs = useMemo(
+    () => filteredRedSeaCrossingEvents.length ? Math.max(...filteredRedSeaCrossingEvents.map((event) => +new Date(event.crossingTime || event.t))) : null,
+    [filteredRedSeaCrossingEvents],
+  );
+  const redSeaLast7dCutoff = useMemo(
+    () => redSeaLatestTs == null ? null : redSeaLatestTs - 7 * 24 * 60 * 60 * 1000,
+    [redSeaLatestTs],
+  );
+  const redSeaLast7dCounts = useMemo(() => {
+    const counts = {
+      south_outbound: 0,
+      south_inbound: 0,
+      north_outbound: 0,
+      north_inbound: 0,
+    } as Record<RedSeaCrossingType, number>;
+    if (redSeaLast7dCutoff == null || redSeaLatestTs == null) return counts;
+    for (const event of filteredRedSeaCrossingEvents) {
+      const ts = +new Date(event.crossingTime || event.t);
+      if (ts < redSeaLast7dCutoff || ts > redSeaLatestTs) continue;
+      counts[event.crossingType] += 1;
+    }
+    return counts;
+  }, [filteredRedSeaCrossingEvents, redSeaLast7dCutoff, redSeaLatestTs]);
+  const redSeaEventRows = useMemo(() => {
+    const rows = [...filteredRedSeaCrossingEvents];
+    rows.sort((a, b) => {
+      const dir = redSeaSort.dir === "asc" ? 1 : -1;
+      if (redSeaSort.key === "ship") return a.shipName.localeCompare(b.shipName) * dir;
+      if (redSeaSort.key === "type") return a.crossingType.localeCompare(b.crossingType) * dir;
+      if (redSeaSort.key === "lookback") return ((a.lookbackHours || 0) - (b.lookbackHours || 0)) * dir;
+      return ((+new Date(a.crossingTime || a.t)) - (+new Date(b.crossingTime || b.t))) * dir;
+    });
+    return rows;
+  }, [filteredRedSeaCrossingEvents, redSeaSort]);
 
   useEffect(() => {
     const valid = new Set(candidateCrossers.map((c) => c.shipId));
@@ -1240,6 +1389,11 @@ export default function Page() {
       return stillValid;
     });
   }, [candidateCrossersForDisplay, candidateCrossers]);
+
+  useEffect(() => {
+    const validEventIds = new Set(filteredRedSeaCrossingRoutes.map((route) => route.eventId));
+    setSelectedRedSeaEventIds((prev) => prev.filter((eventId) => validEventIds.has(eventId)));
+  }, [filteredRedSeaCrossingRoutes]);
 
   const suspectedSpoofingEventKeys = useMemo(
     () => buildSuspectedSpoofingEventKeySet(data?.crossingEvents || []),
@@ -2795,6 +2949,158 @@ export default function Page() {
 
           </div>
 
+        </section>
+
+        <section id="red-sea-crossings" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Red Sea crossings</div>
+              <h2 className="mt-1 text-xl font-semibold text-slate-100">North and south inferred crossing flow</h2>
+              <p className="mt-2 max-w-3xl text-sm text-slate-400">
+                Inferred crossings built only from the four Red Sea rectangles and source observations from <code className="text-slate-300">suez</code>, <code className="text-slate-300">red_sea</code>, and <code className="text-slate-300">yemen_channel</code>. Events use a 30-day lookback and 72-hour per-type dedupe window.
+              </p>
+            </div>
+            <div className="text-xs text-slate-400 lg:text-right">
+              <div>Events loaded: {redSeaCrossingEvents.length}</div>
+              <div>Routes loaded: {redSeaCrossingRoutes.length}</div>
+              <div>Latest crossing: {redSeaLatestTs ? new Date(redSeaLatestTs).toUTCString() : "Not available yet"}</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {RED_SEA_CROSSING_TYPES.map((type) => {
+              const active = selectedRedSeaTypeSet.has(type);
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  className={`rounded-full border px-3 py-1 text-xs ${active ? "border-slate-400 bg-slate-800 text-slate-100" : "border-slate-700 text-slate-400"}`}
+                  onClick={() => setSelectedRedSeaCrossingTypes((prev) => prev.includes(type) ? prev.filter((value) => value !== type) : [...prev, type])}
+                >
+                  {RED_SEA_CROSSING_TYPE_LABELS[type]}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300"
+              onClick={() => setSelectedRedSeaCrossingTypes(RED_SEA_CROSSING_TYPES)}
+            >
+              reset filters
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {RED_SEA_CROSSING_TYPES.map((type) => (
+              <div key={type} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">{RED_SEA_CROSSING_TYPE_LABELS[type]}</div>
+                <div className="mt-2 text-2xl font-semibold text-slate-100">{redSeaLast7dCounts[type]}</div>
+                <div className="mt-1 text-xs text-slate-400">Last 7 days from latest event</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-medium text-slate-100">Daily crossing counts</h3>
+                <p className="text-xs text-slate-400">Combined chart of the four crossing buckets by UTC day.</p>
+              </div>
+            </div>
+            <div className="h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={filteredRedSeaCrossingsByDay}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis
+                    dataKey="day"
+                    tickFormatter={(v) => formatDayTick(v as string)}
+                    minTickGap={32}
+                    stroke="#94a3b8"
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis stroke="#94a3b8" allowDecimals={false} />
+                  <Tooltip labelFormatter={(v) => new Date(v as string).toUTCString()} contentStyle={{ background: "#020617", border: "1px solid #334155" }} />
+                  <Legend />
+                  <Bar dataKey="south_outbound" fill={RED_SEA_CROSSING_TYPE_COLORS.south_outbound} name="South outbound" />
+                  <Bar dataKey="south_inbound" fill={RED_SEA_CROSSING_TYPE_COLORS.south_inbound} name="South inbound" />
+                  <Bar dataKey="north_outbound" fill={RED_SEA_CROSSING_TYPE_COLORS.north_outbound} name="North outbound" />
+                  <Bar dataKey="north_inbound" fill={RED_SEA_CROSSING_TYPE_COLORS.north_inbound} name="North inbound" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-medium text-slate-100">Crossing events</h3>
+                  <p className="text-xs text-slate-400">Select rows to show route geometry on the map.</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>Selected: {selectedRedSeaEventIds.length}</span>
+                  {selectedRedSeaEventIds.length ? (
+                    <button
+                      type="button"
+                      className="rounded border border-slate-700 px-2 py-1 text-slate-300"
+                      onClick={() => setSelectedRedSeaEventIds([])}
+                    >
+                      reset selection
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="max-h-[420px] overflow-auto rounded-lg border border-slate-800">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-slate-900">
+                    <tr>
+                      <th className="p-2 text-left">Sel</th>
+                      <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "ship", dir: s.key === "ship" && s.dir === "asc" ? "desc" : "asc" }))}>Ship</th>
+                      <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
+                      <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "time", dir: s.key === "time" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing time (UTC)</th>
+                      <th className="p-2 text-left">Prior zone</th>
+                      <th className="p-2 text-left">Anchor zone</th>
+                      <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "lookback", dir: s.key === "lookback" && s.dir === "asc" ? "desc" : "asc" }))}>Delta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {redSeaEventRows.map((event) => {
+                      const selected = selectedRedSeaEventIdSet.has(event.eventId);
+                      return (
+                        <tr key={event.eventId} className="border-t border-slate-800">
+                          <td className="p-2">
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => setSelectedRedSeaEventIds((prev) => prev.includes(event.eventId) ? prev.filter((id) => id !== event.eventId) : [...prev, event.eventId])}
+                            />
+                          </td>
+                          <td className="p-2"><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${event.shipId}`} target="_blank" rel="noreferrer" className="underline">{formatShipDisplayName(event.shipName, event.flag)} ({event.shipId})</a></td>
+                          <td className="p-2">{RED_SEA_CROSSING_TYPE_LABELS[event.crossingType]}</td>
+                          <td className="p-2">{new Date(event.crossingTime || event.t).toUTCString()}</td>
+                          <td className="p-2">{event.priorZone}<div className="text-[10px] text-slate-500">{new Date(event.priorTime).toUTCString()}</div></td>
+                          <td className="p-2">{event.anchorZone}</td>
+                          <td className="p-2">{event.deltaDh || `${event.lookbackHours.toFixed(1)}h`}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <h3 className="mb-3 text-lg font-medium text-slate-100">Crossing routes map</h3>
+              <div className="h-[420px] rounded-lg border border-slate-800 overflow-hidden">
+                <RedSeaCrossingMap
+                  routes={filteredRedSeaCrossingRoutes}
+                  selectedEventIds={selectedRedSeaEventIds}
+                  onToggleEvent={(eventId) => setSelectedRedSeaEventIds((prev) => prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId])}
+                  onResetSelection={() => setSelectedRedSeaEventIds([])}
+                />
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="newsfeed" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">

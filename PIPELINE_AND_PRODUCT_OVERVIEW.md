@@ -285,6 +285,16 @@ There are now **two ways** a crossing can be confirmed:
 
 This logic exists because direct two-sided observation can be missed when AIS goes dark or the ship is only intermittently visible in the corridor.
 
+## Red Sea inferred crossings
+
+- raw inputs are limited to `suez`, `red_sea`, and `yemen_channel`
+- inference is driven by the 4 Red Sea analysis rectangles, not by collection-region names alone
+- each anchor hit checks the most recent eligible prior-zone hit within the previous 30 days
+- same-timestamp zone hits do not count as prior/current transitions
+- repeated detections are deduped for 72 hours per `shipId + crossingType`
+- the saved daily series is continuous by UTC day, so quiet days remain visible as explicit zeroes
+- route payloads keep a bounded display window around the event instead of persisting the full 30-day raw track
+
 ## “Once crossed, always crossed”
 - crossing events and crossing paths are merged cumulatively across runs using previous processed outputs
 - historical confirmed crossings are preserved even if the ship disappears from short recent windows

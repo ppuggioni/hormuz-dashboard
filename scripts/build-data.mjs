@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Papa from 'papaparse';
+import { getRedSeaCrossingZones } from '../src/lib/redSeaCrossingZones.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -51,10 +52,23 @@ const ALLOWED_VESSEL_TYPES = String(process.env.ALLOWED_VESSEL_TYPES || 'tanker,
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 const KEEP_ALL_VESSEL_TYPES = ALLOWED_VESSEL_TYPES.includes('all');
+const RED_SEA_CROSSING_SOURCE_REGIONS = new Set(['suez', 'red_sea', 'yemen_channel']);
+const RED_SEA_CROSSING_TYPES = ['south_outbound', 'south_inbound', 'north_outbound', 'north_inbound'];
+const RED_SEA_CROSSING_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
+const RED_SEA_CROSSING_DEDUPE_MS = 72 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RED_SEA_ROUTE_CONTEXT_MS = DAY_MS;
+const RED_SEA_ROUTE_MAX_PRE_EVENT_MS = 14 * DAY_MS;
 
 function hourBin(iso) {
   const d = new Date(iso);
   d.setUTCMinutes(0, 0, 0);
+  return d.toISOString();
+}
+
+function dayBin(iso) {
+  const d = new Date(iso);
+  d.setUTCHours(0, 0, 0, 0);
   return d.toISOString();
 }
 
@@ -67,6 +81,16 @@ function buildCrossingEventId(event) {
   const timestamp = String(event?.t || '').trim() || 'unknown_time';
   const direction = normalizeCrossingDirection(event?.direction);
   return `${shipId}|${timestamp}|${direction}`;
+}
+
+function buildRedSeaCrossingEventId(event) {
+  const shipId = String(event?.shipId || 'unknown').trim() || 'unknown';
+  const crossingType = String(event?.crossingType || 'unknown').trim() || 'unknown';
+  const crossingTime = String(event?.crossingTime || event?.t || 'unknown_time').trim() || 'unknown_time';
+  const priorTime = String(event?.priorTime || 'unknown_prior').trim() || 'unknown_prior';
+  const priorZone = String(event?.priorZone || 'unknown_prior_zone').trim() || 'unknown_prior_zone';
+  const anchorZone = String(event?.anchorZone || 'unknown_anchor_zone').trim() || 'unknown_anchor_zone';
+  return `redsea|${shipId}|${crossingType}|${crossingTime}|${priorTime}|${priorZone}|${anchorZone}`;
 }
 
 async function loadConfirmedCrossingExclusions(configPath) {
@@ -159,6 +183,292 @@ function normalizeShipName(name) {
   const n = String(name || '').trim();
   if (!n || n === '0' || n === '00000') return 'Unknown';
   return n;
+}
+
+function pickMostRecentRedSeaPriorHit(lastSeenByZone, eligibleZones, anchorMs, cutoffMs) {
+  let latest = null;
+  for (const zoneId of eligibleZones) {
+    const candidate = lastSeenByZone.get(zoneId) || null;
+    if (!candidate || candidate.tMs >= anchorMs || candidate.tMs < cutoffMs) continue;
+    if (!latest || candidate.tMs > latest.tMs) latest = candidate;
+  }
+  return latest;
+}
+
+function findObservationStartIndex(observations, targetMs) {
+  let lo = 0;
+  let hi = observations.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (observations[mid].tMs < targetMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function findObservationEndIndex(observations, targetMs) {
+  let lo = 0;
+  let hi = observations.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (observations[mid].tMs <= targetMs) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+function getRedSeaRouteWindowRange(priorHit, anchorHit) {
+  return {
+    startMs: Math.max(priorHit.tMs - RED_SEA_ROUTE_CONTEXT_MS, anchorHit.tMs - RED_SEA_ROUTE_MAX_PRE_EVENT_MS),
+    endMs: anchorHit.tMs + RED_SEA_ROUTE_CONTEXT_MS,
+  };
+}
+
+function buildRedSeaRouteWindowPoints(observations, priorHit, anchorHit) {
+  const { startMs, endMs } = getRedSeaRouteWindowRange(priorHit, anchorHit);
+  const startIndex = findObservationStartIndex(observations, startMs);
+  const endIndex = findObservationEndIndex(observations, endMs);
+  const selectedPoints = [];
+  const seen = new Set();
+
+  for (let index = startIndex; index < endIndex; index++) {
+    const obs = observations[index];
+    const point = {
+      t: obs.t,
+      lat: obs.lat,
+      lon: obs.lon,
+      sourceRegion: obs.sourceRegion,
+      zones: obs.zones || [],
+    };
+    const key = `${point.t}|${point.lat}|${point.lon}|${point.sourceRegion}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selectedPoints.push(point);
+  }
+
+  return selectedPoints;
+}
+
+function collectRedSeaSourceRegionsSeen(observations, startMs, endMs) {
+  const startIndex = findObservationStartIndex(observations, startMs);
+  const endIndex = findObservationEndIndex(observations, endMs);
+  const regions = new Set();
+
+  for (let index = startIndex; index < endIndex; index++) {
+    regions.add(observations[index].sourceRegion);
+  }
+
+  return [...regions].sort();
+}
+
+function createRedSeaCrossingsDayBucket(day) {
+  return {
+    day,
+    south_outbound: 0,
+    south_inbound: 0,
+    north_outbound: 0,
+    north_inbound: 0,
+    total: 0,
+  };
+}
+
+function buildContinuousRedSeaCrossingsByDay(redSeaCrossingEvents) {
+  if (!redSeaCrossingEvents.length) return [];
+
+  const countsByDay = new Map();
+  for (const event of redSeaCrossingEvents) {
+    if (!countsByDay.has(event.day)) {
+      countsByDay.set(event.day, createRedSeaCrossingsDayBucket(event.day));
+    }
+    const bucket = countsByDay.get(event.day);
+    bucket[event.crossingType] += 1;
+    bucket.total += 1;
+  }
+
+  const dayMsValues = redSeaCrossingEvents.map((event) => +new Date(event.day));
+  const firstDayMs = Math.min(...dayMsValues);
+  const lastDayMs = Math.max(...dayMsValues);
+  const series = [];
+
+  for (let dayMs = firstDayMs; dayMs <= lastDayMs; dayMs += DAY_MS) {
+    const day = new Date(dayMs).toISOString();
+    series.push(countsByDay.get(day) || createRedSeaCrossingsDayBucket(day));
+  }
+
+  return series;
+}
+
+function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
+  const redSeaCrossingEvents = [];
+  const redSeaCrossingRoutes = [];
+  const redSeaCrossingShipIds = new Set();
+
+  const addEventIfMatched = ({
+    shipId,
+    sourceObservations,
+    currentHit,
+    lastSeenByZone,
+    lastAcceptedAnchorByType,
+    crossingType,
+    anchorZones,
+    priorZones,
+    cutoffMs,
+  }) => {
+    if (!anchorZones.includes(currentHit.zone)) return;
+
+    const priorHit = pickMostRecentRedSeaPriorHit(lastSeenByZone, priorZones, currentHit.tMs, cutoffMs);
+    if (!priorHit) return;
+
+    const lastAcceptedAnchorMs = lastAcceptedAnchorByType.get(crossingType) || 0;
+    if (lastAcceptedAnchorMs && currentHit.tMs - lastAcceptedAnchorMs < RED_SEA_CROSSING_DEDUPE_MS) {
+      return;
+    }
+
+    const routePoints = buildRedSeaRouteWindowPoints(sourceObservations, priorHit, currentHit);
+    const routeWindowRange = getRedSeaRouteWindowRange(priorHit, currentHit);
+    const lookbackHours = Number(((currentHit.tMs - priorHit.tMs) / 36e5).toFixed(2));
+    const event = {
+      shipId,
+      shipName: shipMeta[shipId]?.shipName || 'Unknown',
+      vesselType: shipMeta[shipId]?.vesselType || 'other',
+      flag: shipMeta[shipId]?.flag || '',
+      crossingType,
+      t: currentHit.t,
+      crossingTime: currentHit.t,
+      day: dayBin(currentHit.t),
+      anchorZone: currentHit.zone,
+      anchorTime: currentHit.t,
+      anchorLat: currentHit.lat,
+      anchorLon: currentHit.lon,
+      anchorSourceRegion: currentHit.sourceRegion,
+      priorZone: priorHit.zone,
+      priorTime: priorHit.t,
+      priorLat: priorHit.lat,
+      priorLon: priorHit.lon,
+      priorSourceRegion: priorHit.sourceRegion,
+      lookbackHours,
+      deltaDh: formatDeltaDh(lookbackHours),
+      sourceRegionsSeen: collectRedSeaSourceRegionsSeen(sourceObservations, priorHit.tMs, currentHit.tMs),
+      inferenceWindowDays: RED_SEA_CROSSING_LOOKBACK_MS / DAY_MS,
+      routePointCount: routePoints.length,
+    };
+    event.eventId = buildRedSeaCrossingEventId(event);
+
+    redSeaCrossingEvents.push(event);
+    redSeaCrossingRoutes.push({
+      eventId: event.eventId,
+      shipId,
+      shipName: event.shipName,
+      vesselType: event.vesselType,
+      flag: event.flag,
+      crossingType,
+      t: event.t,
+      crossingTime: event.crossingTime,
+      day: event.day,
+      anchorZone: event.anchorZone,
+      anchorTime: event.anchorTime,
+      anchorLat: event.anchorLat,
+      anchorLon: event.anchorLon,
+      priorZone: event.priorZone,
+      priorTime: event.priorTime,
+      priorLat: event.priorLat,
+      priorLon: event.priorLon,
+      routeWindowHours: Number(((routeWindowRange.endMs - routeWindowRange.startMs) / 36e5).toFixed(2)),
+      routeWindowStartTime: new Date(routeWindowRange.startMs).toISOString(),
+      routeWindowEndTime: new Date(routeWindowRange.endMs).toISOString(),
+      points: routePoints,
+    });
+    redSeaCrossingShipIds.add(shipId);
+    lastAcceptedAnchorByType.set(crossingType, currentHit.tMs);
+  };
+
+  for (const [shipId, rawObservations] of redSeaSourceObservationsByShip.entries()) {
+    const sourceObservations = rawObservations
+      .slice()
+      .sort((a, b) => +new Date(a.t) - +new Date(b.t))
+      .map((obs) => ({
+        ...obs,
+        tMs: +new Date(obs.t),
+        zones: getRedSeaCrossingZones(obs.lat, obs.lon),
+      }));
+
+    const zoneHits = [];
+    for (let sourceIndex = 0; sourceIndex < sourceObservations.length; sourceIndex++) {
+      const obs = sourceObservations[sourceIndex];
+      for (const zone of obs.zones) {
+        zoneHits.push({
+          ...obs,
+          zone,
+          sourceIndex,
+        });
+      }
+    }
+    if (!zoneHits.length) continue;
+
+    const lastSeenByZone = new Map();
+    const lastAcceptedAnchorByType = new Map();
+
+    for (const currentHit of zoneHits) {
+      const cutoffMs = currentHit.tMs - RED_SEA_CROSSING_LOOKBACK_MS;
+
+      addEventIfMatched({
+        shipId,
+        sourceObservations,
+        currentHit,
+        lastSeenByZone,
+        lastAcceptedAnchorByType,
+        crossingType: 'south_outbound',
+        anchorZones: ['rs-south-out'],
+        priorZones: ['rs-south-in', 'rs-north-in', 'rs-north-out'],
+        cutoffMs,
+      });
+      addEventIfMatched({
+        shipId,
+        sourceObservations,
+        currentHit,
+        lastSeenByZone,
+        lastAcceptedAnchorByType,
+        crossingType: 'south_inbound',
+        anchorZones: ['rs-south-in', 'rs-north-in', 'rs-north-out'],
+        priorZones: ['rs-south-out'],
+        cutoffMs,
+      });
+      addEventIfMatched({
+        shipId,
+        sourceObservations,
+        currentHit,
+        lastSeenByZone,
+        lastAcceptedAnchorByType,
+        crossingType: 'north_outbound',
+        anchorZones: ['rs-north-out'],
+        priorZones: ['rs-north-in', 'rs-south-out', 'rs-south-in'],
+        cutoffMs,
+      });
+      addEventIfMatched({
+        shipId,
+        sourceObservations,
+        currentHit,
+        lastSeenByZone,
+        lastAcceptedAnchorByType,
+        crossingType: 'north_inbound',
+        anchorZones: ['rs-north-in', 'rs-south-out', 'rs-south-in'],
+        priorZones: ['rs-north-out'],
+        cutoffMs,
+      });
+
+      lastSeenByZone.set(currentHit.zone, currentHit);
+    }
+  }
+
+  redSeaCrossingEvents.sort((a, b) => +new Date(a.t) - +new Date(b.t));
+  redSeaCrossingRoutes.sort((a, b) => +new Date(a.t) - +new Date(b.t));
+
+  return {
+    redSeaCrossingEvents,
+    redSeaCrossingsByDay: buildContinuousRedSeaCrossingsByDay(redSeaCrossingEvents),
+    redSeaCrossingRoutes,
+    redSeaCrossingShipIds,
+  };
 }
 
 function scoreCandidateFromTail({ shipId, shipName, vesselType, points, shipMeta, darkHours }) {
@@ -475,6 +785,7 @@ async function main() {
   const latestMetaByShip = new Map();
   const observationsByShip = new Map();
   const hormuzObservationsByShip = new Map();
+  const redSeaSourceObservationsByShip = new Map();
   const snapshots = [];
 
   const hormuzFiles = regionFiles.hormuz || [];
@@ -546,6 +857,11 @@ async function main() {
 
         if (!observationsByShip.has(shipId)) observationsByShip.set(shipId, []);
         observationsByShip.get(shipId).push(obs);
+
+        if (RED_SEA_CROSSING_SOURCE_REGIONS.has(regionId)) {
+          if (!redSeaSourceObservationsByShip.has(shipId)) redSeaSourceObservationsByShip.set(shipId, []);
+          redSeaSourceObservationsByShip.get(shipId).push(obs);
+        }
 
         if (regionId === 'hormuz') {
           if (!hormuzObservationsByShip.has(shipId)) hormuzObservationsByShip.set(shipId, []);
@@ -622,10 +938,20 @@ async function main() {
     for (const id of [...hormuzObservationsByShip.keys()]) {
       if (!allowedShipIds.has(id)) hormuzObservationsByShip.delete(id);
     }
+    for (const id of [...redSeaSourceObservationsByShip.keys()]) {
+      if (!allowedShipIds.has(id)) redSeaSourceObservationsByShip.delete(id);
+    }
     for (const snap of snapshots) {
       snap.points = snap.points.filter((p) => allowedShipIds.has(p.shipId));
     }
   }
+
+  const {
+    redSeaCrossingEvents,
+    redSeaCrossingsByDay,
+    redSeaCrossingRoutes,
+    redSeaCrossingShipIds,
+  } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
 
   const crossingEvents = [];
   const crossingShipIds = new Set();
@@ -985,20 +1311,28 @@ async function main() {
     shipCount: Object.keys(shipMeta).length,
     crossingShipCount: mergedCrossingShipIds.size,
     crossingEventCount: mergedCrossingEvents.length,
+    redSeaCrossingShipCount: redSeaCrossingShipIds.size,
+    redSeaCrossingEventCount: redSeaCrossingEvents.length,
+    redSeaCrossingRouteCount: redSeaCrossingRoutes.length,
+    redSeaCrossingLookbackDays: RED_SEA_CROSSING_LOOKBACK_MS / (24 * 3600 * 1000),
+    redSeaCrossingDedupeHours: RED_SEA_CROSSING_DEDUPE_MS / 36e5,
+    redSeaCrossingSourceRegions: [...RED_SEA_CROSSING_SOURCE_REGIONS],
     linkageEventCount: dedupedLinkageEvents.length,
     externalPresenceCount: externalPresencePoints.length,
     vesselTypeFilter: KEEP_ALL_VESSEL_TYPES ? 'all' : ALLOWED_VESSEL_TYPES,
   };
 
-  const crossingAndLinkShipIds = new Set();
-  for (const e of mergedCrossingEvents) crossingAndLinkShipIds.add(e.shipId);
-  for (const p of mergedCrossingPaths) crossingAndLinkShipIds.add(p.shipId);
-  for (const l of dedupedLinkageEvents) crossingAndLinkShipIds.add(l.shipId);
+  const coreRelevantShipIds = new Set();
+  for (const e of mergedCrossingEvents) coreRelevantShipIds.add(e.shipId);
+  for (const p of mergedCrossingPaths) coreRelevantShipIds.add(p.shipId);
+  for (const e of redSeaCrossingEvents) coreRelevantShipIds.add(e.shipId);
+  for (const p of redSeaCrossingRoutes) coreRelevantShipIds.add(p.shipId);
+  for (const l of dedupedLinkageEvents) coreRelevantShipIds.add(l.shipId);
 
   const minimalShipMeta = (id) => ({ flag: shipMeta[id]?.flag || '' });
 
   const coreShipMeta = {};
-  for (const id of crossingAndLinkShipIds) {
+  for (const id of coreRelevantShipIds) {
     if (shipMeta[id]) coreShipMeta[id] = minimalShipMeta(id);
   }
 
@@ -1010,6 +1344,10 @@ async function main() {
     crossingEvents: mergedCrossingEvents,
     crossingsByHour: mergedCrossingsByHour,
     crossingPaths: mergedCrossingPaths,
+    redSeaCrossingTypes: RED_SEA_CROSSING_TYPES,
+    redSeaCrossingsByDay,
+    redSeaCrossingEvents,
+    redSeaCrossingRoutes,
     linkageEvents: dedupedLinkageEvents,
     externalPresencePoints,
   };
@@ -1043,7 +1381,7 @@ async function main() {
   };
 
   const buildShipMetaForWindow = (hours) => {
-    const ids = new Set(crossingAndLinkShipIds);
+    const ids = new Set(coreRelevantShipIds);
     const snaps = selectSnapshotsWindow(hours);
     const ext = selectExternalWindow(hours);
     for (const s of snaps) for (const p of s.points || []) ids.add(p.shipId);
@@ -1096,6 +1434,9 @@ async function main() {
         shipMeta: coreShipMeta,
         crossingEvents: mergedCrossingEvents,
         crossingsByHour: mergedCrossingsByHour,
+        redSeaCrossingTypes: RED_SEA_CROSSING_TYPES,
+        redSeaCrossingsByDay,
+        redSeaCrossingEvents,
         linkageEvents: dedupedLinkageEvents,
         confirmedCrossingExclusions,
       },
@@ -1110,7 +1451,18 @@ async function main() {
 
   await writeJson(
     'processed_paths.json',
-    wrap('paths', { crossingPaths: mergedCrossingPaths }, 'all', { pathCount: mergedCrossingPaths.length }),
+    wrap(
+      'paths',
+      {
+        crossingPaths: mergedCrossingPaths,
+        redSeaCrossingRoutes,
+      },
+      'all',
+      {
+        pathCount: mergedCrossingPaths.length,
+        redSeaRouteCount: redSeaCrossingRoutes.length,
+      },
+    ),
   );
 
   const tankerCandidates = computeLikelyDarkCrossers(snapshots, shipMeta, mergedCrossingShipIds, ['tanker']);
@@ -1131,7 +1483,7 @@ async function main() {
     : [];
   const latestSnapshotShipMeta = {};
   for (const id of new Set([
-    ...crossingAndLinkShipIds,
+    ...coreRelevantShipIds,
     ...relevantShipIds,
     ...(latestSnapshot?.points || []).map((p) => p.shipId),
   ])) {
@@ -1214,7 +1566,17 @@ async function main() {
   console.log(`Wrote public/data split v2 files (source=${SOURCE_MODE}, root=${SOURCE_MODE === 'remote' ? 'remote' : SOURCE_ROOT})`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+export {
+  buildContinuousRedSeaCrossingsByDay,
+  buildRedSeaCrossings,
+  buildRedSeaRouteWindowPoints,
+  getRedSeaRouteWindowRange,
+  pickMostRecentRedSeaPriorHit,
+};
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

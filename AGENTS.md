@@ -39,6 +39,22 @@ Legacy compatibility artifact:
 
 `processed.json` still exists because the frontend retains a legacy fallback path, but it is not the preferred deployment shape.
 
+## Red Sea inferred crossings
+
+The Red Sea analysis pipeline writes:
+- `redSeaCrossingsByDay`
+- `redSeaCrossingEvents`
+- `redSeaCrossingRoutes`
+
+Operational notes:
+- raw inputs are restricted to `suez`, `red_sea`, and `yemen_channel`
+- inference is based on the 4 Red Sea rectangles, not region names alone
+- prior-zone selection uses the most recent eligible earlier hit within a 30-day lookback
+- same-timestamp zone hits do not satisfy the prior condition
+- event dedupe is `72h` per `shipId + crossingType`
+- the daily series is continuous by UTC day, including zero-count days between event days
+- saved route points use a bounded display window rather than the full 30-day history
+
 ## Git rules
 
 Do not commit regenerated processed data artifacts.

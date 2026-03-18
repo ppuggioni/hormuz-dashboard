@@ -54,6 +54,11 @@ type RedSeaCrossingEvent = {
   sourceRegionsSeen?: string[];
   inferenceWindowDays?: number;
   routePointCount: number;
+  transponderGapHours?: number | null;
+  transponderBridgeKm?: number | null;
+  transponderOvershootKm?: number | null;
+  transponderOvershootEdge?: string | null;
+  transponderStatus?: "on" | "off" | null;
 };
 type RedSeaCrossingRoute = {
   eventId: string;
@@ -76,6 +81,11 @@ type RedSeaCrossingRoute = {
   routeWindowHours?: number;
   routeWindowStartTime?: string;
   routeWindowEndTime?: string;
+  transponderGapHours?: number | null;
+  transponderBridgeKm?: number | null;
+  transponderOvershootKm?: number | null;
+  transponderOvershootEdge?: string | null;
+  transponderStatus?: "on" | "off" | null;
   points: PathPoint[];
 };
 
@@ -88,6 +98,10 @@ type CrossingEvent = {
   vesselType: string;
   direction: "east_to_west" | "west_to_east";
   manuallyExcluded?: boolean;
+  transponderGapHours?: number | null;
+  transponderBridgeKm?: number | null;
+  transponderOvershootKm?: number | null;
+  transponderStatus?: "on" | "off" | null;
 };
 
 type ConfirmedCrossingExclusion = {
@@ -495,6 +509,20 @@ function formatUtcTime(iso: string) {
   return `${hour}:${minute} UTC`;
 }
 
+function formatMetricNumber(value?: number | null, digits = 1) {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "-";
+}
+
+function TransponderStatusBadge({ status }: { status?: "on" | "off" | null }) {
+  if (status === "on") {
+    return <span className="rounded-full border border-emerald-700 bg-emerald-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-emerald-200">on</span>;
+  }
+  if (status === "off") {
+    return <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">off</span>;
+  }
+  return <span className="text-slate-500">-</span>;
+}
+
 function utcDayStartMs(iso: string) {
   const d = new Date(iso);
   d.setUTCHours(0, 0, 0, 0);
@@ -862,7 +890,7 @@ export default function Page() {
   const [tankerSort, setTankerSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [cargoSort, setCargoSort] = useState<{ key: "ship" | "timestamp" | "direction"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [linkSort, setLinkSort] = useState<{ key: "ship" | "type" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
-  const [crossingDetailSort, setCrossingDetailSort] = useState<{ key: "ship" | "type" | "direction" | "timestamp" | "transit"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
+  const [crossingDetailSort, setCrossingDetailSort] = useState<{ key: "ship" | "type" | "direction" | "timestamp" | "transit" | "transponder" | "overshoot"; dir: "asc" | "desc" }>({ key: "timestamp", dir: "desc" });
   const [copiedCrossingEventId, setCopiedCrossingEventId] = useState<string | null>(null);
   const [selectedCandidateShipIds, setSelectedCandidateShipIds] = useState<string[]>([]);
   const [showOnlySelectedCandidates, setShowOnlySelectedCandidates] = useState(true);
@@ -876,7 +904,7 @@ export default function Page() {
   const [selectedRedSeaVesselTypes, setSelectedRedSeaVesselTypes] = useState<RedSeaVesselType[]>(["tanker"]);
   const [redSeaWindow, setRedSeaWindow] = useState<"24h" | "48h" | "all">("24h");
   const [selectedRedSeaEventIds, setSelectedRedSeaEventIds] = useState<string[]>([]);
-  const [redSeaSort, setRedSeaSort] = useState<{ key: "time" | "ship" | "vessel" | "crossing" | "lookback"; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
+  const [redSeaSort, setRedSeaSort] = useState<{ key: "time" | "ship" | "vessel" | "crossing" | "lookback" | "transponder" | "overshoot"; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
   const [newDataAvailable, setNewDataAvailable] = useState(false);
   const [isRefreshingData, setIsRefreshingData] = useState(false);
   const [mapMode, setMapMode] = useState<"confirmed" | "candidates">("confirmed");
@@ -1378,6 +1406,8 @@ export default function Page() {
       if (redSeaSort.key === "vessel") return a.vesselType.localeCompare(b.vesselType) * dir;
       if (redSeaSort.key === "crossing") return a.crossingType.localeCompare(b.crossingType) * dir;
       if (redSeaSort.key === "lookback") return ((a.lookbackHours || 0) - (b.lookbackHours || 0)) * dir;
+      if (redSeaSort.key === "transponder") return (a.transponderStatus || "").localeCompare(b.transponderStatus || "") * dir;
+      if (redSeaSort.key === "overshoot") return ((a.transponderOvershootKm || 0) - (b.transponderOvershootKm || 0)) * dir;
       return ((+new Date(a.crossingTime || a.t)) - (+new Date(b.crossingTime || b.t))) * dir;
     });
     return rows;
@@ -1722,6 +1752,12 @@ export default function Page() {
           break;
         case "direction":
           cmp = a.direction.localeCompare(b.direction);
+          break;
+        case "transponder":
+          cmp = (a.transponderStatus || "").localeCompare(b.transponderStatus || "");
+          break;
+        case "overshoot":
+          cmp = (a.transponderOvershootKm || 0) - (b.transponderOvershootKm || 0);
           break;
         case "transit":
           cmp = (transitTimeByShip.get(a.shipId) || "").localeCompare(transitTimeByShip.get(b.shipId) || "");
@@ -2768,6 +2804,8 @@ export default function Page() {
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "type", dir: s.key === "type" && s.dir === "asc" ? "desc" : "asc" }))}>Type</th>
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "direction", dir: s.key === "direction" && s.dir === "asc" ? "desc" : "asc" }))}>Direction</th>
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "timestamp", dir: s.key === "timestamp" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing timestamp (UTC)</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transponder", dir: s.key === "transponder" && s.dir === "asc" ? "desc" : "asc" }))}>Transponder</th>
+                      <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "overshoot", dir: s.key === "overshoot" && s.dir === "asc" ? "desc" : "asc" }))}>Overshoot km</th>
                       <th className="text-left p-2">Status</th>
                       <th className="text-left p-2">Event ID</th>
                       <th className="text-left p-2 cursor-pointer" onClick={() => setCrossingDetailSort((s) => ({ key: "transit", dir: s.key === "transit" && s.dir === "asc" ? "desc" : "asc" }))}>Transit time</th>
@@ -2799,6 +2837,8 @@ export default function Page() {
                           <td className="p-2">{r.vesselType}</td>
                           <td className="p-2">{r.direction.replace("_to_", " → ")}</td>
                           <td className="p-2">{new Date(r.t).toUTCString()}</td>
+                          <td className="p-2"><TransponderStatusBadge status={r.transponderStatus} /></td>
+                          <td className="p-2">{formatMetricNumber(r.transponderOvershootKm)}</td>
                           <td className="p-2">{isManuallyExcludedCrossingEvent(r) ? <span className="rounded-full border border-amber-700 bg-amber-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-amber-200">manual spoofing exclusion</span> : isSuspectedSpoofingEvent(r) ? <span className="rounded-full border border-rose-700 bg-rose-950/40 px-2 py-1 text-[10px] uppercase tracking-wide text-rose-200">discarded suspected spoofing</span> : <span className="text-slate-500">kept</span>}</td>
                           <td className="p-2">
                             <button
@@ -3115,6 +3155,8 @@ export default function Page() {
                       <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "vessel", dir: s.key === "vessel" && s.dir === "asc" ? "desc" : "asc" }))}>Vessel</th>
                       <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "crossing", dir: s.key === "crossing" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing</th>
                       <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "time", dir: s.key === "time" && s.dir === "asc" ? "desc" : "asc" }))}>Crossing time (UTC)</th>
+                      <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "transponder", dir: s.key === "transponder" && s.dir === "asc" ? "desc" : "asc" }))}>Transponder</th>
+                      <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "overshoot", dir: s.key === "overshoot" && s.dir === "asc" ? "desc" : "asc" }))}>Overshoot km</th>
                       <th className="p-2 text-left">Prior zone</th>
                       <th className="p-2 text-left">Anchor zone</th>
                       <th className="p-2 text-left cursor-pointer" onClick={() => setRedSeaSort((s) => ({ key: "lookback", dir: s.key === "lookback" && s.dir === "asc" ? "desc" : "asc" }))}>Delta</th>
@@ -3145,6 +3187,8 @@ export default function Page() {
                           <td className="p-2">{event.vesselType}</td>
                           <td className="p-2">{RED_SEA_CROSSING_TYPE_LABELS[event.crossingType]}</td>
                           <td className="p-2">{new Date(event.crossingTime || event.t).toUTCString()}</td>
+                          <td className="p-2"><TransponderStatusBadge status={event.transponderStatus} /></td>
+                          <td className="p-2">{formatMetricNumber(event.transponderOvershootKm)}</td>
                           <td className="p-2">{event.priorZone}<div className="text-[10px] text-slate-500">{new Date(event.priorTime).toUTCString()}</div></td>
                           <td className="p-2">{event.anchorZone}</td>
                           <td className="p-2">{event.deltaDh || `${event.lookbackHours.toFixed(1)}h`}</td>

@@ -56,6 +56,7 @@ Operational notes:
 - a `72h` cooldown per `shipId + crossingType` acts as a secondary dedupe guardrail
 - the daily series is continuous by UTC day, including zero-count days between event days
 - saved route points use a bounded display window rather than the full 30-day history
+- confirmed Hormuz crossings and Red Sea crossing events carry per-event transponder review metadata: `transponderGapHours`, `transponderBridgeKm`, `transponderOvershootKm`, and `transponderStatus`
 - processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files
 
 ## Git rules

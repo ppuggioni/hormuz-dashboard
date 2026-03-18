@@ -57,6 +57,7 @@ Current behavior:
 - repeated detections are further guarded by a 72-hour cooldown per `shipId + crossingType`
 - daily output is continuous by UTC day, including zero-count days between active days
 - saved route geometry is bounded for display performance rather than storing full 30-day histories
+- confirmed Hormuz crossing events and Red Sea crossing events now carry per-event transponder review fields: `transponderGapHours`, `transponderBridgeKm`, `transponderOvershootKm`, and `transponderStatus`
 - outputs are written to `processed_core.json` and `processed_paths.json` as Red Sea-specific fields
 
 Processed artifact caching:

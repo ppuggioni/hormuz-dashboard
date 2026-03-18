@@ -300,6 +300,7 @@ This logic exists because direct two-sided observation can be missed when AIS go
 - repeated detections are further guarded by a 72-hour cooldown per `shipId + crossingType`
 - the saved daily series is continuous by UTC day, so quiet days remain visible as explicit zeroes
 - route payloads keep a bounded display window around the event instead of persisting the full 30-day raw track
+- confirmed Hormuz crossing events and Red Sea crossing events include per-event transponder review metrics: `transponderGapHours`, `transponderBridgeKm`, `transponderOvershootKm`, and `transponderStatus`
 
 ## “Once crossed, always crossed”
 - crossing events and crossing paths are merged cumulatively across runs using previous processed outputs

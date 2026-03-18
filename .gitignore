@@ -43,6 +43,16 @@ next-env.d.ts
 # generated dashboard data artifacts
 /public/data/processed*.json
 /public/data/processed*.json.gz
+/public/data/news_feed.json
+/public/data/vessel_attacks_latest.json
+/public/data/confirmed_crossing_exclusions.json
+
+# news pipeline runtime state
+/data/news-history.json
+/data/news-inbox.json
+/data/news-latest-run.json
+/data/news-run-artifacts/*.json
+/data/attacks-run-artifacts/*.json
 
 # incremental pipeline runtime state
 /state/*.json

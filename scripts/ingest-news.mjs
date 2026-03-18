@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { loadNewsHistory, loadNewsInbox, loadNewsLatestRun } from './news-runtime.mjs';
 
 const ROOT = process.cwd();
 const HISTORY_PATH = path.join(ROOT, 'data', 'news-history.json');
@@ -17,9 +18,9 @@ function requireField(obj, field, ctx) {
   return obj[field];
 }
 
-const history = JSON.parse(await fs.readFile(HISTORY_PATH, 'utf8'));
-const inbox = JSON.parse(await fs.readFile(INBOX_PATH, 'utf8'));
-const previousLatestRun = JSON.parse(await fs.readFile(LATEST_RUN_PATH, 'utf8'));
+const history = await loadNewsHistory(HISTORY_PATH);
+const inbox = await loadNewsInbox(INBOX_PATH);
+const previousLatestRun = await loadNewsLatestRun(LATEST_RUN_PATH);
 
 if (!Array.isArray(inbox.items) || inbox.items.length === 0) {
   console.log(JSON.stringify({

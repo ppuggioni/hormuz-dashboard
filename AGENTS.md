@@ -70,6 +70,10 @@ Reasons:
 
 Ignored patterns live in `.gitignore`.
 
+News pipeline note:
+- `scripts/ingest-news.mjs`, `scripts/build-news.mjs`, and `scripts/dispatch-telegram-news.mjs` auto-bootstrap missing `data/news-history.json`, `data/news-latest-run.json`, and `data/news-inbox.json` so a fresh clone can run without pre-seeded news state files
+- generated news artifacts under `public/data/` and local news runtime JSON state under `data/` are runtime files and should not be committed
+
 ## Data model guidance
 
 When extending vessel metadata, prefer backward-compatible additions.

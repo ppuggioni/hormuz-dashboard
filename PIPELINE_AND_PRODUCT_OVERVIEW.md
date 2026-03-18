@@ -343,6 +343,8 @@ Files:
 
 These provide continuity across runs.
 
+If either file is missing, the news scripts now bootstrap an empty default file on first use instead of failing the run.
+
 ### `news-history.json`
 Stores persistent collected items, including:
 - canonical URL
@@ -364,6 +366,13 @@ File:
 - `data/news-inbox.json`
 
 This is the staging area for the **current run only**.
+
+If this file is missing, the news scripts now create an empty staging file automatically.
+
+Operational note:
+- `data/news-history.json`, `data/news-latest-run.json`, and `data/news-inbox.json` are now treated as local runtime state
+- `public/data/news_feed.json` and `public/data/vessel_attacks_latest.json` are generated publish artifacts
+- these JSON files are intended to remain local/runtime and not be committed to Git
 
 The agent writes into it:
 - `runAt`

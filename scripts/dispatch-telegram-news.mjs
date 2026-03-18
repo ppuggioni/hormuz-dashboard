@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { loadNewsHistory, loadNewsLatestRun } from './news-runtime.mjs';
 
 const ENV_PATH = path.resolve(process.cwd(), '../.env');
 try {
@@ -109,8 +110,8 @@ async function run() {
 
   await syncSubscribersFromTelegram();
 
-  const latest = JSON.parse(await fs.readFile(new URL('../data/news-latest-run.json', import.meta.url), 'utf8'));
-  const history = JSON.parse(await fs.readFile(new URL('../data/news-history.json', import.meta.url), 'utf8'));
+  const latest = await loadNewsLatestRun(new URL('../data/news-latest-run.json', import.meta.url));
+  const history = await loadNewsHistory(new URL('../data/news-history.json', import.meta.url));
   const newIds = latest.newItems || [];
   if (!newIds.length) {
     console.log('[tg-news] no new items in latest run');

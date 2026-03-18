@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { loadNewsHistory, loadNewsLatestRun } from './news-runtime.mjs';
 
 const ROOT = process.cwd();
 const WATCHLIST_PATH = path.join(ROOT, 'config', 'news-watchlist.json');
@@ -20,8 +21,8 @@ function normalizePublishedAt(iso) {
 }
 
 const watchlist = JSON.parse(await fs.readFile(WATCHLIST_PATH, 'utf8'));
-const history = JSON.parse(await fs.readFile(HISTORY_PATH, 'utf8'));
-const latestRun = JSON.parse(await fs.readFile(LATEST_RUN_PATH, 'utf8'));
+const history = await loadNewsHistory(HISTORY_PATH);
+const latestRun = await loadNewsLatestRun(LATEST_RUN_PATH);
 
 const sourceMap = new Map((watchlist.sources || []).map((s) => [s.id, s]));
 const newItemIds = new Set(latestRun.newItems || []);

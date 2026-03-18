@@ -101,6 +101,16 @@ Generated processed artifacts are ignored via `.gitignore`:
 
 Do not commit regenerated data files to GitHub. Some exceed GitHub's 100 MB object limit.
 
+The news pipeline also maintains runtime JSON state under `data/`. The news scripts now auto-bootstrap missing `data/news-history.json`, `data/news-latest-run.json`, and `data/news-inbox.json` on first run so fresh clones do not fail on missing files.
+
+Generated news artifacts and local news runtime JSON state are also intended to stay out of Git:
+- `/public/data/news_feed.json`
+- `/public/data/vessel_attacks_latest.json`
+- `/public/data/confirmed_crossing_exclusions.json`
+- `/data/news-history.json`
+- `/data/news-latest-run.json`
+- `/data/news-inbox.json`
+
 ## Useful scripts
 
 - Build processed data locally:

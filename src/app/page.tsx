@@ -7,14 +7,24 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 
 type SnapshotPoint = { shipId: string; shipName: string; vesselType: string; lat: number; lon: number };
 type Snapshot = { t: string; points: SnapshotPoint[] };
-type CrossingHour = { hour: string; east_to_west: number; west_to_east: number };
+type TransponderStatus = "on" | "off";
+type CrossingDirection = "east_to_west" | "west_to_east";
+type CrossingHour = {
+  hour: string;
+  east_to_west: number;
+  west_to_east: number;
+  east_to_west_on: number;
+  east_to_west_off: number;
+  west_to_east_on: number;
+  west_to_east_off: number;
+};
 type PathPoint = { t: string; lat: number; lon: number; sourceRegion?: string; zones?: string[] };
 type CrossingPath = {
   shipId: string;
   shipName: string;
   vesselType: string;
   flag?: string;
-  primaryDirection: "east_to_west" | "west_to_east" | "mixed";
+  primaryDirection: CrossingDirection | "mixed";
   directionCounts: { east_to_west: number; west_to_east: number };
   points: PathPoint[];
 };
@@ -24,9 +34,17 @@ type RedSeaVesselType = "tanker" | "cargo";
 type RedSeaCrossingDay = {
   day: string;
   south_outbound: number;
+  south_outbound_on: number;
+  south_outbound_off: number;
   south_inbound: number;
+  south_inbound_on: number;
+  south_inbound_off: number;
   north_outbound: number;
+  north_outbound_on: number;
+  north_outbound_off: number;
   north_inbound: number;
+  north_inbound_on: number;
+  north_inbound_off: number;
   total: number;
 };
 type RedSeaCrossingEvent = {
@@ -96,12 +114,12 @@ type CrossingEvent = {
   shipId: string;
   shipName: string;
   vesselType: string;
-  direction: "east_to_west" | "west_to_east";
+  direction: CrossingDirection;
   manuallyExcluded?: boolean;
   transponderGapHours?: number | null;
   transponderBridgeKm?: number | null;
   transponderOvershootKm?: number | null;
-  transponderStatus?: "on" | "off" | null;
+  transponderStatus?: TransponderStatus | null;
 };
 
 type ConfirmedCrossingExclusion = {
@@ -357,6 +375,39 @@ const RED_SEA_CROSSING_TYPE_COLORS: Record<RedSeaCrossingType, string> = {
   north_outbound: "#38bdf8",
   north_inbound: "#eab308",
 };
+const HORMUZ_DIRECTION_COLORS: Record<CrossingDirection, string> = {
+  east_to_west: "#38bdf8",
+  west_to_east: "#f97316",
+};
+
+function mixHexWithWhite(hex: string, ratio: number) {
+  const normalized = hex.replace("#", "");
+  if (normalized.length !== 6) return hex;
+  const clampRatio = Math.min(1, Math.max(0, ratio));
+  const toChannel = (start: number) => Number.parseInt(normalized.slice(start, start + 2), 16);
+  const mix = (channel: number) => Math.round(channel + (255 - channel) * clampRatio).toString(16).padStart(2, "0");
+  return `#${mix(toChannel(0))}${mix(toChannel(2))}${mix(toChannel(4))}`;
+}
+
+function getTransponderShade(baseColor: string, status: TransponderStatus) {
+  return status === "on" ? mixHexWithWhite(baseColor, 0.35) : baseColor;
+}
+
+function createEmptyCrossingHour(hour: string): CrossingHour {
+  return {
+    hour,
+    east_to_west: 0,
+    west_to_east: 0,
+    east_to_west_on: 0,
+    east_to_west_off: 0,
+    west_to_east_on: 0,
+    west_to_east_off: 0,
+  };
+}
+
+function getCrossingStatusKey(direction: CrossingDirection, status: TransponderStatus) {
+  return `${direction}_${status}` as const;
+}
 
 function formatShipDisplayName(shipName: string, flag?: string | null) {
   const cleanName = String(shipName || "Unknown").trim() || "Unknown";
@@ -401,11 +452,11 @@ function deriveNewsDisplaySource(item: NewsItem) {
 }
 
 function alignHours(
-  source: { hour: string; east_to_west: number; west_to_east: number }[],
+  source: CrossingHour[],
   allHours: string[],
 ) {
   const map = new Map(source.map((x) => [x.hour, x]));
-  return allHours.map((hour) => map.get(hour) || { hour, east_to_west: 0, west_to_east: 0 });
+  return allHours.map((hour) => map.get(hour) || createEmptyCrossingHour(hour));
 }
 
 function toHourStartIso(ts: string) {
@@ -437,9 +488,14 @@ function aggregateToDailyBins(rows: CrossingHour[]) {
     const d = new Date(r.hour);
     d.setUTCHours(0, 0, 0, 0);
     const key = d.toISOString();
-    if (!out.has(key)) out.set(key, { hour: key, east_to_west: 0, west_to_east: 0 });
-    out.get(key)!.east_to_west += r.east_to_west;
-    out.get(key)!.west_to_east += r.west_to_east;
+    if (!out.has(key)) out.set(key, createEmptyCrossingHour(key));
+    const bucket = out.get(key)!;
+    bucket.east_to_west += r.east_to_west;
+    bucket.west_to_east += r.west_to_east;
+    bucket.east_to_west_on += r.east_to_west_on;
+    bucket.east_to_west_off += r.east_to_west_off;
+    bucket.west_to_east_on += r.west_to_east_on;
+    bucket.west_to_east_off += r.west_to_east_off;
   }
   return [...out.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
 }
@@ -454,11 +510,23 @@ function createEmptyRedSeaCrossingDay(day: string): RedSeaCrossingDay {
   return {
     day,
     south_outbound: 0,
+    south_outbound_on: 0,
+    south_outbound_off: 0,
     south_inbound: 0,
+    south_inbound_on: 0,
+    south_inbound_off: 0,
     north_outbound: 0,
+    north_outbound_on: 0,
+    north_outbound_off: 0,
     north_inbound: 0,
+    north_inbound_on: 0,
+    north_inbound_off: 0,
     total: 0,
   };
+}
+
+function getRedSeaCrossingStatusKey(crossingType: RedSeaCrossingType, status: TransponderStatus) {
+  return `${crossingType}_${status}` as const;
 }
 
 function aggregateRedSeaEventsToDailyBins(events: RedSeaCrossingEvent[]) {
@@ -473,7 +541,9 @@ function aggregateRedSeaEventsToDailyBins(events: RedSeaCrossingEvent[]) {
     const dayMs = +new Date(day);
     if (!byDay.has(day)) byDay.set(day, createEmptyRedSeaCrossingDay(day));
     const bucket = byDay.get(day)!;
+    const transponderStatus: TransponderStatus = event.transponderStatus === "on" ? "on" : "off";
     bucket[event.crossingType] += 1;
+    bucket[getRedSeaCrossingStatusKey(event.crossingType, transponderStatus)] += 1;
     bucket.total += 1;
     if (dayMs < minDayMs) minDayMs = dayMs;
     if (dayMs > maxDayMs) maxDayMs = dayMs;
@@ -641,7 +711,7 @@ function DailyCrossingsTooltip({
   active?: boolean;
   label?: string;
   payload?: ReadonlyArray<{ value?: number; name?: string; color?: string }>;
-  rows: { shipName: string; shipId: string; direction: string; t: string }[];
+  rows: { shipName: string; shipId: string; direction: string; t: string; transponderStatus?: TransponderStatus | null }[];
   shipMeta?: Record<string, ShipMeta>;
 }) {
   if (!active || !label) return null;
@@ -664,7 +734,7 @@ function DailyCrossingsTooltip({
           <ul className="max-h-56 space-y-1 overflow-auto pr-1 text-slate-200">
             {rows.map((r, idx) => (
               <li key={`${r.shipId}-${r.t}-${idx}`}>
-                {formatShipDisplayName(r.shipName, shipMeta?.[r.shipId]?.flag)} — {formatUtcTime(r.t)} — {r.direction.replace("_to_", " → ")}
+                {formatShipDisplayName(r.shipName, shipMeta?.[r.shipId]?.flag)} — {formatUtcTime(r.t)} — {r.direction.replace("_to_", " → ")} — transponder {r.transponderStatus || "-"}
               </li>
             ))}
           </ul>
@@ -1474,12 +1544,15 @@ export default function Page() {
 
   const hourlyFromEvents = (vesselType: string) => {
     if (!crossingEventsForCharts.length) return [] as CrossingHour[];
-    const byHour = new Map<string, { hour: string; east_to_west: number; west_to_east: number }>();
+    const byHour = new Map<string, CrossingHour>();
     for (const e of crossingEventsForCharts) {
       if (e.vesselType !== vesselType) continue;
-      if (!byHour.has(e.hour)) byHour.set(e.hour, { hour: e.hour, east_to_west: 0, west_to_east: 0 });
-      if (e.direction === "east_to_west") byHour.get(e.hour)!.east_to_west += 1;
-      if (e.direction === "west_to_east") byHour.get(e.hour)!.west_to_east += 1;
+      if (!byHour.has(e.hour)) byHour.set(e.hour, createEmptyCrossingHour(e.hour));
+      const bucket = byHour.get(e.hour)!;
+      const transponderStatus: TransponderStatus = e.transponderStatus === "on" ? "on" : "off";
+      if (e.direction === "east_to_west") bucket.east_to_west += 1;
+      if (e.direction === "west_to_east") bucket.west_to_east += 1;
+      bucket[getCrossingStatusKey(e.direction, transponderStatus)] += 1;
     }
     return [...byHour.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
   };
@@ -2446,6 +2519,9 @@ export default function Page() {
             <button onClick={() => setShowWestToEast((v) => !v)} className={`px-2 py-1 rounded border ${showWestToEast ? "border-orange-300 text-orange-200" : "border-slate-700 text-slate-500"}`}>West → East</button>
             <button onClick={() => setDiscardSuspectedSpoofing((v) => !v)} className={`px-2 py-1 rounded border ${discardSuspectedSpoofing ? "border-rose-300 text-rose-200" : "border-slate-700 text-slate-500"}`}>Discard suspected spoofing in charts: {discardSuspectedSpoofing ? "on" : "off"}</button>
           </div>
+          <div className="xl:col-span-2 text-xs text-slate-400">
+            Daily bars are split by transponder status: lighter shade = on, darker shade = off.
+          </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <h2 className="text-lg font-medium mb-3">Crossings in daily bins — Tanker</h2>
             <div className="h-[280px]">
@@ -2475,17 +2551,19 @@ export default function Page() {
                         active={props.active}
                         label={props.label as string | undefined}
                         payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
-                        rows={data?.crossingEvents
-                          ?.filter((e) => e.vesselType === "tanker" && props.label && isSameUtcDay(e.t, props.label as string))
-                          .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
+                        rows={crossingEventsForCharts
+                          .filter((e) => e.vesselType === "tanker" && props.label && isSameUtcDay(e.t, props.label as string))
+                          .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t, transponderStatus: e.transponderStatus }))
                           .sort((a, b) => +new Date(a.t) - +new Date(b.t)) || []}
                         shipMeta={data?.shipMeta}
                       />
                     )}
                   />
                   <Legend />
-                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
-                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "off")} name="West → East (off)" /> : null}
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -2565,17 +2643,19 @@ export default function Page() {
                         active={props.active}
                         label={props.label as string | undefined}
                         payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
-                        rows={data?.crossingEvents
-                          ?.filter((e) => e.vesselType === "cargo" && props.label && isSameUtcDay(e.t, props.label as string))
-                          .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
+                        rows={crossingEventsForCharts
+                          .filter((e) => e.vesselType === "cargo" && props.label && isSameUtcDay(e.t, props.label as string))
+                          .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t, transponderStatus: e.transponderStatus }))
                           .sort((a, b) => +new Date(a.t) - +new Date(b.t)) || []}
                         shipMeta={data?.shipMeta}
                       />
                     )}
                   />
                   <Legend />
-                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east" fill="#f97316" name="West → East" /> : null}
-                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west" fill="#38bdf8" name="East → West" /> : null}
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "off")} name="West → East (off)" /> : null}
+                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
+                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -3075,7 +3155,7 @@ export default function Page() {
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-medium text-slate-100">Daily crossing counts — Red Sea crossings [{redSeaMatrixVesselLabel}]</h3>
-                  <p className="text-xs text-slate-400">Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket.</p>
+                  <p className="text-xs text-slate-400">Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket. Lighter shade = transponder on, darker shade = off.</p>
                 </div>
               </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -3113,9 +3193,16 @@ export default function Page() {
                           contentStyle={{ background: "#020617", border: "1px solid #334155" }}
                         />
                         <Bar
-                          dataKey={crossingType}
-                          fill={RED_SEA_CROSSING_TYPE_COLORS[crossingType]}
-                          name={RED_SEA_CROSSING_TYPE_LABELS[crossingType]}
+                          stackId={`red-sea-${crossingType}`}
+                          dataKey={`${crossingType}_off`}
+                          fill={getTransponderShade(RED_SEA_CROSSING_TYPE_COLORS[crossingType], "off")}
+                          name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} (off)`}
+                        />
+                        <Bar
+                          stackId={`red-sea-${crossingType}`}
+                          dataKey={`${crossingType}_on`}
+                          fill={getTransponderShade(RED_SEA_CROSSING_TYPE_COLORS[crossingType], "on")}
+                          name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} (on)`}
                         />
                       </BarChart>
                     </ResponsiveContainer>
@@ -3125,7 +3212,19 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <h3 className="mb-3 text-lg font-medium text-slate-100">Crossing routes map</h3>
+              <div className="h-[420px] rounded-lg border border-slate-800 overflow-hidden">
+                <RedSeaCrossingMap
+                  routes={filteredRedSeaCrossingRoutes}
+                  selectedEventIds={selectedRedSeaEventIds}
+                  onToggleEvent={toggleSelectedRedSeaEvent}
+                  onResetSelection={resetSelectedRedSeaEvents}
+                />
+              </div>
+            </div>
+
             <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -3197,18 +3296,6 @@ export default function Page() {
                     })}
                   </tbody>
                 </table>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <h3 className="mb-3 text-lg font-medium text-slate-100">Crossing routes map</h3>
-              <div className="h-[420px] rounded-lg border border-slate-800 overflow-hidden">
-                <RedSeaCrossingMap
-                  routes={filteredRedSeaCrossingRoutes}
-                  selectedEventIds={selectedRedSeaEventIds}
-                  onToggleEvent={toggleSelectedRedSeaEvent}
-                  onResetSelection={resetSelectedRedSeaEvents}
-                />
               </div>
             </div>
           </div>

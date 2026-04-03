@@ -9,18 +9,16 @@ The deployed Vercel app is designed to load **split processed JSON artifacts** f
 Primary runtime artifacts:
 - `processed_core.json`
 - `processed_paths.json`
+- `processed_candidates.json`
+- `processed_playback_latest.json`
+- `processed_shipmeta_latest.json`
+- `processed_external_latest.json`
 - `processed_playback_24h.json`
 - `processed_playback_48h.json`
-- `processed_playback_72h.json`
-- `processed_playback_all.json`
 - `processed_external_24h.json`
 - `processed_external_48h.json`
-- `processed_external_72h.json`
-- `processed_external_all.json`
 - `processed_shipmeta_24h.json`
 - `processed_shipmeta_48h.json`
-- `processed_shipmeta_72h.json`
-- `processed_shipmeta_all.json`
 
 The frontend loads split files first and only falls back to legacy `processed.json` if needed.
 
@@ -28,8 +26,8 @@ The frontend loads split files first and only falls back to legacy `processed.js
 
 1. Regional capture jobs write fresh CSV snapshots.
 2. Regional sync jobs upload source CSVs to Supabase Storage.
-3. `refresh_and_upload_processed.sh` runs `npm run build:data`.
-   The build now reads local CSV snapshots from the workspace root by default and only falls back to remote Supabase indexes if local source files are unavailable.
+3. `refresh_and_upload_processed.sh` runs `npm run windowed:refresh`, then promotes the merged current artifact set into `public/data/` for upload.
+   The rolling refresh reads local CSV snapshots from the workspace root by default and only falls back to remote Supabase indexes if local source files are unavailable.
 4. Processed artifacts are uploaded to Supabase Storage under:
    - `x-scrapes-public/multi_region/*`
 5. Vercel fetches those artifacts at runtime.
@@ -57,7 +55,8 @@ Current behavior:
 - repeated detections are further guarded by a 72-hour cooldown per `shipId + crossingType`
 - daily output is continuous by UTC day, including zero-count days between active days
 - saved route geometry is bounded for display performance rather than storing full 30-day histories
-- confirmed Hormuz crossing events and Red Sea crossing events now carry per-event transponder review fields: `transponderGapHours`, `transponderBridgeKm`, `transponderOvershootKm`, and `transponderStatus`
+- Red Sea transponder review now prefers fixed choke-point gate logic: Bab el-Mandeb for south crossings and the Suez entrance for north crossings
+- when a valid gate-bracketing pair exists, Red Sea `transponderStatus` is derived from gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain available as fallback diagnostics
 - outputs are written to `processed_core.json` and `processed_paths.json` as Red Sea-specific fields
 
 Processed artifact caching:
@@ -79,7 +78,7 @@ Region-specific examples now also include the Red Sea additions:
 
 That job runs:
 - `refresh_and_upload_processed.sh`
-- rebuilds the processed artifacts
+- runs the windowed rolling refresh and promotes the merged artifacts into `public/data/`
 - uploads them to Supabase Storage
 - optionally dispatches alerts
 
@@ -92,6 +91,8 @@ Important:
 - It should not be committed to Git.
 - The preferred production path is the split artifact set above.
 - Do not assume the monolith is the primary runtime payload.
+
+`npm run build:data` remains available as the manual full-history rebuild path and rollback/fallback option, but it is no longer the default production refresh.
 
 ## Git hygiene
 
@@ -128,17 +129,44 @@ Optional source controls:
 ./refresh_and_upload_processed.sh
 ```
 
-## Incremental pipeline rollout status
+## Windowed rebuild workflow
 
-Incremental hot-pipeline work is being added in phases. Phase 1 introduces only
-scaffolding under `scripts/incremental/` plus the runtime `state/` directory
-layout and helper APIs for checkpoints, lock files, JSONL ledgers, and baseline
-metadata.
+The repo now also carries an experimental windowed rebuild wrapper around the trusted batch builder.
+
+Windowed scripts:
+- `npm run windowed:baseline`
+- `npm run windowed:refresh`
+- `npm run windowed:rerun-all`
+
+Current strategy:
+- `windowed:baseline` builds a frozen archive/current artifact set from a fixed source root
+- `windowed:refresh` rebuilds a `14 day` context window, then replaces only the most recent `4 day` slice in the prior full artifacts
+- `windowed:rerun-all` sweeps history with `14 day` context windows and `7 day` commit slices into a separate assembled output
+
+Operational defaults:
+- `windowed:refresh` first tries `public/data-windowed/current` as its archive source and then falls back to `public/data` if the validation archive has not been seeded yet
+- `windowed:baseline` is now guarded on large archives because the trusted `scripts/build-data.mjs` path still performs a whole-history in-memory replay
+- for full-history algorithm changes, prefer `windowed:rerun-all` over `windowed:baseline`
+
+Runtime/output locations:
+- manifests and staged sources: `data/windowed-pipeline/`
+- merged validation outputs: `public/data-windowed/`
+
+Useful env knobs:
+- `HORMUZ_WINDOWED_BASE_SOURCE_ROOTS=/abs/path`
+- `HORMUZ_WINDOWED_SOURCE_ROOTS=/abs/path1,/abs/path2`
+- `HORMUZ_WINDOWED_START_UTC=...`
+- `HORMUZ_WINDOWED_END_UTC=...`
+- `HORMUZ_WINDOWED_CONTEXT_DAYS=14`
+- `HORMUZ_WINDOWED_REWRITE_DAYS=4`
+- `HORMUZ_WINDOWED_COMMIT_DAYS=7`
+- `HORMUZ_WINDOWED_PREVIOUS_DIR=/abs/path`
+- `HORMUZ_WINDOWED_ALLOW_LARGE_BASELINE=1` only if you intentionally want the risky full-history baseline replay
 
 Important:
-- the current full rebuild path remains the live path
-- `scripts/build-data.mjs` is still authoritative for production artifacts
-- the new state helpers are not wired into publication yet
+- the live production refresh path now runs `npm run windowed:refresh` via `refresh_and_upload_processed.sh`
+- the windowed workflow still stages its merged current artifacts under `public/data-windowed/current` before promoting them into `public/data`
+- `npm run build:data` remains the manual fallback if the windowed path needs to be rolled back
 
 ## Environment / runtime assumption
 

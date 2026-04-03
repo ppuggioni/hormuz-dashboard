@@ -9,7 +9,8 @@ This dashboard is backed by a local capture/sync/build pipeline and a Vercel fro
 The intended production runtime path is:
 - source CSV capture
 - source CSV sync to Supabase Storage
-- processed artifact build from local workspace CSVs by default, with remote-index fallback if local files are unavailable
+- windowed processed artifact refresh from local workspace CSVs by default, with remote-index fallback if local files are unavailable
+- promotion of the merged current artifact set into `public/data/`
 - processed artifact upload to `x-scrapes-public/multi_region/*`
 - Vercel runtime fetch of split artifacts
 
@@ -30,14 +31,38 @@ Region-specific browser sessions can use dedicated OpenClaw-managed profiles; th
 Preferred artifacts:
 - `processed_core.json`
 - `processed_paths.json`
-- `processed_playback_{24h,48h,72h,all}.json`
-- `processed_external_{24h,48h,72h,all}.json`
-- `processed_shipmeta_{24h,48h,72h,all}.json`
+- `processed_candidates.json`
+- `processed_playback_latest.json`
+- `processed_shipmeta_latest.json`
+- `processed_external_latest.json`
+- `processed_playback_{24h,48h}.json`
+- `processed_external_{24h,48h}.json`
+- `processed_shipmeta_{24h,48h}.json`
 
 Legacy compatibility artifact:
 - `processed.json`
 
 `processed.json` still exists because the frontend retains a legacy fallback path, but it is not the preferred deployment shape.
+
+## Windowed rebuild validation
+
+There is now a validation-only windowed rebuild wrapper around `scripts/build-data.mjs`.
+
+Current behavior:
+- `windowed:baseline` builds a frozen archive/current artifact set from a fixed source snapshot
+- `windowed:refresh` rebuilds a `14d` context window and rewrites only the newest `4d` slice in the prior full artifacts
+- `windowed:rerun-all` sweeps history with `14d` context windows and `7d` commit slices into a separate assembled output
+
+Operational locations:
+- runtime manifests and staged sources: `data/windowed-pipeline/`
+- validation outputs: `public/data-windowed/`
+
+Important:
+- production publishes from `refresh_and_upload_processed.sh` using `windowed:refresh`
+- `public/data-windowed/current` is the staged merged output and `public/data/` remains the promoted local publish directory
+- `scripts/build-data.mjs` is now the manual fallback path rather than the default production refresh
+- `windowed:refresh` can fall back to the existing `public/data` artifact tree as its historical archive when `public/data-windowed/current` has not been seeded
+- `windowed:baseline` is intentionally guarded on large archives because `scripts/build-data.mjs` still replays the full source corpus in memory; use `windowed:rerun-all` for safer full-history validation sweeps
 
 ## Red Sea inferred crossings
 
@@ -56,7 +81,8 @@ Operational notes:
 - a `72h` cooldown per `shipId + crossingType` acts as a secondary dedupe guardrail
 - the daily series is continuous by UTC day, including zero-count days between event days
 - saved route points use a bounded display window rather than the full 30-day history
-- confirmed Hormuz crossings and Red Sea crossing events carry per-event transponder review metadata: `transponderGapHours`, `transponderBridgeKm`, `transponderOvershootKm`, and `transponderStatus`
+- Red Sea transponder review now prefers fixed choke-point gate logic over learned event thresholds: Bab el-Mandeb for south crossings and the Suez entrance for north crossings
+- when a valid gate-bracketing point pair exists, Red Sea `transponderStatus` is driven by gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain as fallback diagnostics
 - processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files
 
 ## Git rules

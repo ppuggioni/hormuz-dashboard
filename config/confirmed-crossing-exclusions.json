@@ -41,6 +41,30 @@
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for MADHURI",
       "excludedAt": "2026-03-16T09:58:00Z"
+    },
+    {
+      "eventId": "5190255|2026-04-01T06:36:45.669035Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BD 51 latest crossing",
+      "excludedAt": "2026-04-01T09:01:00Z"
+    },
+    {
+      "eventId": "6564779|2026-04-01T05:56:19.638695Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for CARLYNA latest crossing",
+      "excludedAt": "2026-04-01T09:01:00Z"
+    },
+    {
+      "eventId": "757062|2026-03-31T16:50:08.940429Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GAS RAY latest crossing",
+      "excludedAt": "2026-04-01T09:01:00Z"
+    },
+    {
+      "eventId": "9537112|2026-04-01T22:40:29.461216Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PIONEER GAS latest crossing",
+      "excludedAt": "2026-04-02T07:29:00Z"
     }
   ]
 }

@@ -76,6 +76,16 @@ type RedSeaCrossingEvent = {
   transponderBridgeKm?: number | null;
   transponderOvershootKm?: number | null;
   transponderOvershootEdge?: string | null;
+  transponderGateId?: string | null;
+  transponderGateGapKm?: number | null;
+  transponderGateGapHours?: number | null;
+  transponderGatePairStartTime?: string | null;
+  transponderGatePairStartLat?: number | null;
+  transponderGatePairStartLon?: number | null;
+  transponderGatePairEndTime?: string | null;
+  transponderGatePairEndLat?: number | null;
+  transponderGatePairEndLon?: number | null;
+  transponderRule?: "gate" | "legacy_fallback" | null;
   transponderStatus?: "on" | "off" | null;
 };
 type RedSeaCrossingRoute = {
@@ -103,6 +113,16 @@ type RedSeaCrossingRoute = {
   transponderBridgeKm?: number | null;
   transponderOvershootKm?: number | null;
   transponderOvershootEdge?: string | null;
+  transponderGateId?: string | null;
+  transponderGateGapKm?: number | null;
+  transponderGateGapHours?: number | null;
+  transponderGatePairStartTime?: string | null;
+  transponderGatePairStartLat?: number | null;
+  transponderGatePairStartLon?: number | null;
+  transponderGatePairEndTime?: string | null;
+  transponderGatePairEndLat?: number | null;
+  transponderGatePairEndLon?: number | null;
+  transponderRule?: "gate" | "legacy_fallback" | null;
   transponderStatus?: "on" | "off" | null;
   points: PathPoint[];
 };

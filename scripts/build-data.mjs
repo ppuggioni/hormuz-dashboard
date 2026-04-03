@@ -2,7 +2,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Papa from 'papaparse';
-import { getRedSeaCrossingZones, RED_SEA_CROSSING_ZONES } from '../src/lib/redSeaCrossingZones.mjs';
+import {
+  getRedSeaCrossingZones,
+  getRedSeaTransponderGateSide,
+  isPointInRedSeaTransponderGate,
+  RED_SEA_CROSSING_ZONES,
+  RED_SEA_TRANSPONDER_GATE_BY_CROSSING_TYPE,
+} from '../src/lib/redSeaCrossingZones.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -38,6 +44,12 @@ const SOURCE_ROOT = path.resolve(process.env.HORMUZ_SOURCE_ROOT || DEFAULT_SOURC
 const rawSourceMinAgeSeconds = Number(process.env.HORMUZ_SOURCE_MIN_AGE_SECONDS ?? '120');
 const SOURCE_MIN_AGE_SECONDS = Number.isFinite(rawSourceMinAgeSeconds) && rawSourceMinAgeSeconds >= 0 ? rawSourceMinAgeSeconds : 120;
 const SOURCE_MIN_AGE_MS = SOURCE_MIN_AGE_SECONDS * 1000;
+const SOURCE_START_UTC = normalizeWindowBoundary(process.env.HORMUZ_SOURCE_START_UTC || null);
+const SOURCE_END_UTC = normalizeWindowBoundary(process.env.HORMUZ_SOURCE_END_UTC || null);
+const OUTPUT_DIR = path.resolve(process.env.HORMUZ_OUTPUT_DIR || 'public/data');
+const PREV_ARTIFACT_DIR = path.resolve(process.env.HORMUZ_PREV_ARTIFACT_DIR || OUTPUT_DIR);
+const DISABLE_PREV_MERGE = /^(1|true|yes)$/i.test(String(process.env.HORMUZ_DISABLE_PREV_MERGE || '').trim());
+const INCLUDE_PREVIOUS_CROSSING_SHIP_IDS = /^(1|true|yes)$/i.test(String(process.env.HORMUZ_INCLUDE_PREVIOUS_CROSSING_SHIP_IDS || '').trim());
 
 const EAST_LON = 56.4;
 const WEST_LON = 56.15;
@@ -59,8 +71,8 @@ const RED_SEA_CROSSING_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 const RED_SEA_CROSSING_DEDUPE_MS = 72 * 60 * 60 * 1000;
 const HORMUZ_TRANSPONDER_OFF_THRESHOLDS = Object.freeze({
   gapHours: 6,
-  bridgeKm: 45,
-  overshootKm: 30,
+  bridgeKm: 100,
+  overshootKm: 60,
 });
 const RED_SEA_TRANSPONDER_THRESHOLD_FLOORS = Object.freeze({
   gapHours: 6,
@@ -71,6 +83,20 @@ const RED_SEA_TRANSPONDER_IQR_FENCE_MULTIPLIER = 1.5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RED_SEA_ROUTE_CONTEXT_MS = DAY_MS;
 const RED_SEA_ROUTE_MAX_PRE_EVENT_MS = 14 * DAY_MS;
+
+function normalizeWindowBoundary(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function isFileWithinSourceWindow(runUtc) {
+  const runMs = +new Date(runUtc);
+  if (!Number.isFinite(runMs)) return false;
+  if (SOURCE_START_UTC && runMs < +new Date(SOURCE_START_UTC)) return false;
+  if (SOURCE_END_UTC && runMs >= +new Date(SOURCE_END_UTC)) return false;
+  return true;
+}
 
 function hourBin(iso) {
   const d = new Date(iso);
@@ -134,6 +160,26 @@ async function loadConfirmedCrossingExclusions(configPath) {
     if (err?.code === 'ENOENT') return [];
     throw err;
   }
+}
+
+async function loadPreviousCrossingShipIds(artifactDir) {
+  const shipIds = new Set();
+
+  try {
+    const prevPaths = JSON.parse(await fs.readFile(path.join(artifactDir, 'processed_paths.json'), 'utf8'));
+    for (const pathRecord of prevPaths?.data?.crossingPaths || prevPaths?.crossingPaths || []) {
+      if (pathRecord?.shipId) shipIds.add(String(pathRecord.shipId));
+    }
+  } catch {}
+
+  try {
+    const prevCore = JSON.parse(await fs.readFile(path.join(artifactDir, 'processed_core.json'), 'utf8'));
+    for (const event of prevCore?.data?.crossingEvents || prevCore?.crossingEvents || []) {
+      if (event?.shipId) shipIds.add(String(event.shipId));
+    }
+  } catch {}
+
+  return shipIds;
 }
 
 function sideFromPoint(lat, lon) {
@@ -312,6 +358,90 @@ function buildRedSeaTransponderThresholdsByType(redSeaCrossingEvents) {
   }
 
   return thresholds;
+}
+
+function getRedSeaGateExpectationForCrossingType(crossingType) {
+  const gate = RED_SEA_TRANSPONDER_GATE_BY_CROSSING_TYPE[crossingType] || null;
+  if (!gate) return null;
+  const isInbound = crossingType.endsWith('_inbound');
+  return {
+    gate,
+    expectedStartSide: isInbound ? 'outside' : 'inside',
+    expectedEndSide: isInbound ? 'inside' : 'outside',
+  };
+}
+
+function computeRedSeaGatePairMetrics(observations, crossingType, searchStartMs, searchEndMs) {
+  const expectation = getRedSeaGateExpectationForCrossingType(crossingType);
+  if (!expectation) {
+    return {
+      transponderGateId: null,
+      transponderGateGapKm: null,
+      transponderGateGapHours: null,
+      transponderGatePairStartTime: null,
+      transponderGatePairStartLat: null,
+      transponderGatePairStartLon: null,
+      transponderGatePairEndTime: null,
+      transponderGatePairEndLat: null,
+      transponderGatePairEndLon: null,
+    };
+  }
+
+  const { gate, expectedStartSide, expectedEndSide } = expectation;
+  const startIndex = findObservationStartIndex(observations, searchStartMs);
+  const endIndex = findObservationEndIndex(observations, searchEndMs);
+  let bestPair = null;
+
+  for (let index = startIndex; index + 1 < endIndex; index++) {
+    const startPoint = observations[index];
+    const endPoint = observations[index + 1];
+    if (!startPoint || !endPoint || endPoint.tMs <= startPoint.tMs) continue;
+    if (
+      !isPointInRedSeaTransponderGate(startPoint.lat, startPoint.lon, gate)
+      || !isPointInRedSeaTransponderGate(endPoint.lat, endPoint.lon, gate)
+    ) {
+      continue;
+    }
+
+    const startSide = getRedSeaTransponderGateSide(startPoint.lat, startPoint.lon, gate);
+    const endSide = getRedSeaTransponderGateSide(endPoint.lat, endPoint.lon, gate);
+    if (!startSide || !endSide || startSide === endSide) continue;
+    if (startSide !== expectedStartSide || endSide !== expectedEndSide) continue;
+
+    const midpointLat = (startPoint.lat + endPoint.lat) / 2;
+    const midpointLon = (startPoint.lon + endPoint.lon) / 2;
+    const midpointDistanceKm = haversineKm(midpointLat, midpointLon, gate.centerLat, gate.centerLon);
+    const candidate = {
+      midpointDistanceKm,
+      gapKm: haversineKm(startPoint.lat, startPoint.lon, endPoint.lat, endPoint.lon),
+      gapHours: (endPoint.tMs - startPoint.tMs) / 36e5,
+      startPoint,
+      endPoint,
+    };
+
+    if (
+      !bestPair
+      || candidate.midpointDistanceKm < bestPair.midpointDistanceKm
+      || (
+        candidate.midpointDistanceKm === bestPair.midpointDistanceKm
+        && candidate.endPoint.tMs < bestPair.endPoint.tMs
+      )
+    ) {
+      bestPair = candidate;
+    }
+  }
+
+  return {
+    transponderGateId: gate.label,
+    transponderGateGapKm: roundMetric(bestPair?.gapKm),
+    transponderGateGapHours: roundMetric(bestPair?.gapHours),
+    transponderGatePairStartTime: bestPair?.startPoint?.t || null,
+    transponderGatePairStartLat: bestPair?.startPoint?.lat ?? null,
+    transponderGatePairStartLon: bestPair?.startPoint?.lon ?? null,
+    transponderGatePairEndTime: bestPair?.endPoint?.t || null,
+    transponderGatePairEndLat: bestPair?.endPoint?.lat ?? null,
+    transponderGatePairEndLon: bestPair?.endPoint?.lon ?? null,
+  };
 }
 
 function cosineTowardMidpoint(a, b, midpoint) {
@@ -504,8 +634,8 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
       return;
     }
 
-    const routePoints = buildRedSeaRouteWindowPoints(sourceObservations, priorHit, currentHit);
     const routeWindowRange = getRedSeaRouteWindowRange(priorHit, currentHit);
+    const routePoints = buildRedSeaRouteWindowPoints(sourceObservations, priorHit, currentHit);
     const lookbackHours = Number(((currentHit.tMs - priorHit.tMs) / 36e5).toFixed(2));
     const bridgeKm = haversineKm(priorHit.lat, priorHit.lon, currentHit.lat, currentHit.lon);
     const { overshootKm, entryEdge } = computeRedSeaOvershootMetrics(
@@ -514,6 +644,12 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
       currentHit.lat,
       currentHit.lon,
       currentHit.zone,
+    );
+    const gateMetrics = computeRedSeaGatePairMetrics(
+      sourceObservations,
+      crossingType,
+      routeWindowRange.startMs,
+      routeWindowRange.endMs,
     );
     const event = {
       shipId,
@@ -543,6 +679,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
       transponderBridgeKm: roundMetric(bridgeKm),
       transponderOvershootKm: roundMetric(overshootKm),
       transponderOvershootEdge: entryEdge,
+      ...gateMetrics,
     };
     event.eventId = buildRedSeaCrossingEventId(event);
 
@@ -572,6 +709,15 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
       transponderBridgeKm: event.transponderBridgeKm,
       transponderOvershootKm: event.transponderOvershootKm,
       transponderOvershootEdge: event.transponderOvershootEdge,
+      transponderGateId: event.transponderGateId,
+      transponderGateGapKm: event.transponderGateGapKm,
+      transponderGateGapHours: event.transponderGateGapHours,
+      transponderGatePairStartTime: event.transponderGatePairStartTime,
+      transponderGatePairStartLat: event.transponderGatePairStartLat,
+      transponderGatePairStartLon: event.transponderGatePairStartLon,
+      transponderGatePairEndTime: event.transponderGatePairEndTime,
+      transponderGatePairEndLat: event.transponderGatePairEndLat,
+      transponderGatePairEndLon: event.transponderGatePairEndLon,
       points: routePoints,
     });
     redSeaCrossingShipIds.add(shipId);
@@ -667,17 +813,31 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
   redSeaCrossingRoutes.sort((a, b) => +new Date(a.t) - +new Date(b.t));
   const redSeaTransponderThresholdsByType = buildRedSeaTransponderThresholdsByType(redSeaCrossingEvents);
   redSeaCrossingEvents = redSeaCrossingEvents.map((event) => {
+    const gate = RED_SEA_TRANSPONDER_GATE_BY_CROSSING_TYPE[event.crossingType] || null;
+    const hasGatePair = gate
+      && Number.isFinite(event.transponderGateGapKm)
+      && Number.isFinite(event.transponderGateGapHours)
+      && event.transponderGatePairStartTime
+      && event.transponderGatePairEndTime;
     const thresholds = redSeaTransponderThresholdsByType[event.crossingType] || RED_SEA_TRANSPONDER_THRESHOLD_FLOORS;
-    const transponderStatus = (
-      (Number.isFinite(event.transponderGapHours) && event.transponderGapHours > thresholds.gapHours)
-      || (Number.isFinite(event.transponderBridgeKm) && event.transponderBridgeKm > thresholds.bridgeKm)
-      || (Number.isFinite(event.transponderOvershootKm) && event.transponderOvershootKm > thresholds.overshootKm)
-    )
-      ? 'off'
-      : 'on';
+    const transponderStatus = hasGatePair
+      ? (
+        event.transponderGateGapKm > gate.thresholdGapKm
+        || event.transponderGateGapHours > gate.thresholdGapHours
+      )
+        ? 'off'
+        : 'on'
+      : (
+        (Number.isFinite(event.transponderGapHours) && event.transponderGapHours > thresholds.gapHours)
+        || (Number.isFinite(event.transponderBridgeKm) && event.transponderBridgeKm > thresholds.bridgeKm)
+        || (Number.isFinite(event.transponderOvershootKm) && event.transponderOvershootKm > thresholds.overshootKm)
+      )
+        ? 'off'
+        : 'on';
     return {
       ...event,
       transponderStatus,
+      transponderRule: hasGatePair ? 'gate' : 'legacy_fallback',
     };
   });
   const redSeaTransponderByEventId = new Map(redSeaCrossingEvents.map((event) => [event.eventId, event]));
@@ -687,6 +847,7 @@ function buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta) {
     return {
       ...route,
       transponderStatus: event.transponderStatus,
+      transponderRule: event.transponderRule,
     };
   });
 
@@ -915,6 +1076,7 @@ async function fetchIndexFiles(url) {
   const index = await indexRes.json();
   return (index.files || [])
     .map((file) => ({ ...file, source: 'remote' }))
+    .filter((file) => isFileWithinSourceWindow(file.run_utc))
     .slice()
     .sort((a, b) => new Date(a.run_utc) - new Date(b.run_utc));
 }
@@ -938,7 +1100,7 @@ async function loadLocalRegionFiles(regionId) {
     };
   }));
   const stableFiles = files
-    .filter((file) => file.run_utc && file.isStable)
+    .filter((file) => file.run_utc && file.isStable && isFileWithinSourceWindow(file.run_utc))
     .map((file) => ({
       file: file.file,
       run_utc: file.run_utc,
@@ -1185,6 +1347,9 @@ async function main() {
   const crossingEvents = [];
   const crossingShipIds = new Set();
   const crossingPaths = [];
+  const previousCrossingShipIds = INCLUDE_PREVIOUS_CROSSING_SHIP_IDS
+    ? await loadPreviousCrossingShipIds(PREV_ARTIFACT_DIR)
+    : new Set();
   const confirmedCrossingExclusionsPath = path.resolve('config/confirmed-crossing-exclusions.json');
   const confirmedCrossingExclusions = await loadConfirmedCrossingExclusions(confirmedCrossingExclusionsPath);
   const manualExcludedCrossingEventIds = new Set(confirmedCrossingExclusions.map((item) => item.eventId));
@@ -1236,6 +1401,23 @@ async function main() {
         points: allObs.map((x) => ({ t: x.t, lat: x.lat, lon: x.lon })),
       });
     }
+  }
+
+  for (const shipId of previousCrossingShipIds) {
+    if (crossingShipIds.has(shipId)) continue;
+    const allObs = observationsByShip.get(shipId);
+    if (!allObs?.length) continue;
+    crossingShipIds.add(shipId);
+    crossingPaths.push({
+      shipId,
+      shipName: shipMeta[shipId]?.shipName || 'Unknown',
+      vesselType: shipMeta[shipId]?.vesselType || 'other',
+      flag: shipMeta[shipId]?.flag || '',
+      primaryDirection: 'mixed',
+      directionCounts: { east_to_west: 0, west_to_east: 0 },
+      points: allObs.map((x) => ({ t: x.t, lat: x.lat, lon: x.lon })),
+      historicalCarryForward: true,
+    });
   }
 
   // --- Inferred crossings from zone presence ---
@@ -1319,6 +1501,41 @@ async function main() {
       lastT = ev.t;
     }
   }
+
+  // Collapse consecutive same-direction crossing events per ship.
+  // Domain rule: a vessel should not count as crossing Hormuz twice in a row in the
+  // same direction unless there is an intervening opposite-direction crossing.
+  const crossingEventsByShip = new Map();
+  for (const event of crossingEvents) {
+    if (!crossingEventsByShip.has(event.shipId)) crossingEventsByShip.set(event.shipId, []);
+    crossingEventsByShip.get(event.shipId).push(event);
+  }
+
+  const normalizedCrossingEvents = [];
+  for (const [shipId, events] of crossingEventsByShip.entries()) {
+    const sortedEvents = events.slice().sort((a, b) => new Date(a.t) - new Date(b.t));
+    let lastKept = null;
+    for (const event of sortedEvents) {
+      if (!lastKept) {
+        normalizedCrossingEvents.push(event);
+        lastKept = event;
+        continue;
+      }
+
+      // If the vessel is recorded crossing twice consecutively in the same direction,
+      // treat later events as continuation/duplicate of the same journey rather than
+      // a fresh crossing. Keep the earliest event until direction reverses.
+      if (event.direction === lastKept.direction) {
+        continue;
+      }
+
+      normalizedCrossingEvents.push(event);
+      lastKept = event;
+    }
+  }
+
+  crossingEvents.length = 0;
+  crossingEvents.push(...normalizedCrossingEvents.sort((a, b) => new Date(a.t) - new Date(b.t)));
 
   const hourly = new Map();
   for (const event of crossingEvents) {
@@ -1429,21 +1646,23 @@ async function main() {
     }
   }
 
-  const outDir = path.resolve('public/data');
-  const prevCorePath = path.join(outDir, 'processed_core.json');
-  const prevPathsPath = path.join(outDir, 'processed_paths.json');
+  const outDir = OUTPUT_DIR;
+  const prevCorePath = path.join(PREV_ARTIFACT_DIR, 'processed_core.json');
+  const prevPathsPath = path.join(PREV_ARTIFACT_DIR, 'processed_paths.json');
 
   // Preserve "once crossed, always crossed" by merging previous crossing events/paths.
   let prevCrossingEvents = [];
   let prevCrossingPaths = [];
-  try {
-    const prevCore = JSON.parse(await fs.readFile(prevCorePath, 'utf8'));
-    prevCrossingEvents = prevCore?.data?.crossingEvents || prevCore?.crossingEvents || [];
-  } catch {}
-  try {
-    const prevPaths = JSON.parse(await fs.readFile(prevPathsPath, 'utf8'));
-    prevCrossingPaths = prevPaths?.data?.crossingPaths || prevPaths?.crossingPaths || [];
-  } catch {}
+  if (!DISABLE_PREV_MERGE) {
+    try {
+      const prevCore = JSON.parse(await fs.readFile(prevCorePath, 'utf8'));
+      prevCrossingEvents = prevCore?.data?.crossingEvents || prevCore?.crossingEvents || [];
+    } catch {}
+    try {
+      const prevPaths = JSON.parse(await fs.readFile(prevPathsPath, 'utf8'));
+      prevCrossingPaths = prevPaths?.data?.crossingPaths || prevPaths?.crossingPaths || [];
+    } catch {}
+  }
 
   const crossingEventKey = (e) => `${e.shipId}|${e.direction}|${e.t}`;
   const mergedCrossingEventMap = new Map();
@@ -1456,7 +1675,30 @@ async function main() {
     event.manuallyExcluded = manualExcludedCrossingEventIds.has(event.eventId);
     mergedCrossingEventMap.set(crossingEventKey(event), event);
   }
-  const mergedCrossingEvents = [...mergedCrossingEventMap.values()].sort((a, b) => +new Date(a.t) - +new Date(b.t));
+  let mergedCrossingEvents = [...mergedCrossingEventMap.values()].sort((a, b) => +new Date(a.t) - +new Date(b.t));
+
+  // Final normalization on the fully merged event stream.
+  // A vessel cannot legitimately cross Hormuz twice in a row in the same direction
+  // without an intervening opposite-direction crossing. Collapse consecutive
+  // same-direction runs to their earliest event.
+  const mergedEventsByShip = new Map();
+  for (const event of mergedCrossingEvents) {
+    if (!mergedEventsByShip.has(event.shipId)) mergedEventsByShip.set(event.shipId, []);
+    mergedEventsByShip.get(event.shipId).push(event);
+  }
+
+  const normalizedMergedCrossingEvents = [];
+  for (const [, events] of mergedEventsByShip.entries()) {
+    const sortedEvents = events.slice().sort((a, b) => +new Date(a.t) - +new Date(b.t));
+    let lastKept = null;
+    for (const event of sortedEvents) {
+      if (!lastKept || event.direction !== lastKept.direction) {
+        normalizedMergedCrossingEvents.push(event);
+        lastKept = event;
+      }
+    }
+  }
+  mergedCrossingEvents = normalizedMergedCrossingEvents.sort((a, b) => +new Date(a.t) - +new Date(b.t));
 
   const mergedPathsByShip = new Map();
   for (const p of [...prevCrossingPaths, ...crossingPaths]) {
@@ -1529,6 +1771,11 @@ async function main() {
     sourceModeUsedByRegion: sourceModesByRegion,
     sourceRoot: SOURCE_MODE === 'remote' ? null : SOURCE_ROOT,
     sourceMinAgeSeconds: SOURCE_MIN_AGE_SECONDS,
+    sourceStartUtc: SOURCE_START_UTC,
+    sourceEndUtc: SOURCE_END_UTC,
+    previousMergeEnabled: !DISABLE_PREV_MERGE,
+    previousArtifactDir: DISABLE_PREV_MERGE ? null : PREV_ARTIFACT_DIR,
+    previousCrossingShipCarryForwardEnabled: INCLUDE_PREVIOUS_CROSSING_SHIP_IDS,
     sourceIndexUrl: sourceModesByRegion.hormuz === 'remote' ? INDEX_URLS.hormuz : null,
     sourceIndexes: Object.fromEntries(Object.entries(INDEX_URLS).map(([regionId, indexUrl]) => [
       regionId,
@@ -1800,7 +2047,7 @@ async function main() {
     );
   }
 
-  console.log(`Wrote public/data split v2 files (source=${SOURCE_MODE}, root=${SOURCE_MODE === 'remote' ? 'remote' : SOURCE_ROOT})`);
+  console.log(`Wrote split v2 files to ${outDir} (source=${SOURCE_MODE}, root=${SOURCE_MODE === 'remote' ? 'remote' : SOURCE_ROOT})`);
 }
 
 export {

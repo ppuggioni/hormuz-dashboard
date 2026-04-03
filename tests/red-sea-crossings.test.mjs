@@ -172,6 +172,117 @@ test('Red Sea crossings do not emit delayed events after a cooldown-suppressed a
   );
 });
 
+test('Red Sea south gate marks visible crossings as transponder on', () => {
+  const redSeaSourceObservationsByShip = new Map([
+    ['south-on', [
+      { t: '2026-02-01T00:00:00.000Z', lat: 13.2, lon: 43.75, sourceRegion: 'yemen_channel' },
+      { t: '2026-02-01T02:00:00.000Z', lat: 13.2, lon: 43.18, sourceRegion: 'red_sea' },
+    ]],
+  ]);
+
+  const shipMeta = {
+    'south-on': { shipName: 'South Gate On', vesselType: 'tanker', flag: 'PA' },
+  };
+
+  const { redSeaCrossingEvents } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
+  assert.equal(redSeaCrossingEvents.length, 1);
+  assert.equal(redSeaCrossingEvents[0].crossingType, 'south_inbound');
+  assert.equal(redSeaCrossingEvents[0].transponderRule, 'gate');
+  assert.equal(redSeaCrossingEvents[0].transponderGateId, 'south_bab_el_mandeb');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairStartTime, '2026-02-01T00:00:00.000Z');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairEndTime, '2026-02-01T02:00:00.000Z');
+  assert.equal(redSeaCrossingEvents[0].transponderStatus, 'on');
+});
+
+test('Red Sea south gate marks large strait gaps as transponder off', () => {
+  const redSeaSourceObservationsByShip = new Map([
+    ['south-off', [
+      { t: '2026-02-02T00:00:00.000Z', lat: 13.2, lon: 43.89, sourceRegion: 'yemen_channel' },
+      { t: '2026-02-02T09:00:00.000Z', lat: 13.2, lon: 42.95, sourceRegion: 'red_sea' },
+    ]],
+  ]);
+
+  const shipMeta = {
+    'south-off': { shipName: 'South Gate Off', vesselType: 'cargo', flag: 'LR' },
+  };
+
+  const { redSeaCrossingEvents } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
+  assert.equal(redSeaCrossingEvents.length, 1);
+  assert.equal(redSeaCrossingEvents[0].crossingType, 'south_inbound');
+  assert.equal(redSeaCrossingEvents[0].transponderRule, 'gate');
+  assert.equal(redSeaCrossingEvents[0].transponderGateId, 'south_bab_el_mandeb');
+  assert.equal(redSeaCrossingEvents[0].transponderStatus, 'off');
+  assert.equal(redSeaCrossingEvents[0].transponderGateGapHours, 9);
+  assert.ok(redSeaCrossingEvents[0].transponderGateGapKm > 80);
+});
+
+test('Red Sea north gate marks visible inbound Suez crossings as transponder on', () => {
+  const redSeaSourceObservationsByShip = new Map([
+    ['north-on', [
+      { t: '2026-02-05T00:00:00.000Z', lat: 30.1, lon: 32.55, sourceRegion: 'suez' },
+      { t: '2026-02-05T02:00:00.000Z', lat: 29.86, lon: 32.55, sourceRegion: 'suez' },
+      { t: '2026-02-05T06:00:00.000Z', lat: 28.5, lon: 35, sourceRegion: 'red_sea' },
+    ]],
+  ]);
+
+  const shipMeta = {
+    'north-on': { shipName: 'North Gate On', vesselType: 'cargo', flag: 'MT' },
+  };
+
+  const { redSeaCrossingEvents } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
+  assert.equal(redSeaCrossingEvents.length, 1);
+  assert.equal(redSeaCrossingEvents[0].crossingType, 'north_inbound');
+  assert.equal(redSeaCrossingEvents[0].transponderRule, 'gate');
+  assert.equal(redSeaCrossingEvents[0].transponderGateId, 'north_suez');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairStartTime, '2026-02-05T00:00:00.000Z');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairEndTime, '2026-02-05T02:00:00.000Z');
+  assert.equal(redSeaCrossingEvents[0].transponderStatus, 'on');
+});
+
+test('Red Sea north gate can classify north outbound events using post-anchor route context', () => {
+  const redSeaSourceObservationsByShip = new Map([
+    ['north-off', [
+      { t: '2026-02-10T00:00:00.000Z', lat: 28.5, lon: 35, sourceRegion: 'red_sea' },
+      { t: '2026-02-10T01:00:00.000Z', lat: 29.82, lon: 32.55, sourceRegion: 'red_sea' },
+      { t: '2026-02-10T09:30:00.000Z', lat: 30.18, lon: 32.55, sourceRegion: 'suez' },
+    ]],
+  ]);
+
+  const shipMeta = {
+    'north-off': { shipName: 'North Gate Off', vesselType: 'tanker', flag: 'PA' },
+  };
+
+  const { redSeaCrossingEvents } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
+  assert.equal(redSeaCrossingEvents.length, 1);
+  assert.equal(redSeaCrossingEvents[0].crossingType, 'north_outbound');
+  assert.equal(redSeaCrossingEvents[0].transponderRule, 'gate');
+  assert.equal(redSeaCrossingEvents[0].transponderGateId, 'north_suez');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairStartTime, '2026-02-10T01:00:00.000Z');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairEndTime, '2026-02-10T09:30:00.000Z');
+  assert.equal(redSeaCrossingEvents[0].transponderStatus, 'off');
+  assert.equal(redSeaCrossingEvents[0].t, '2026-02-10T01:00:00.000Z');
+});
+
+test('Red Sea transponder review falls back to legacy thresholds when no gate pair exists', () => {
+  const redSeaSourceObservationsByShip = new Map([
+    ['fallback', [
+      { t: '2026-02-12T00:00:00.000Z', lat: 14.4, lon: 44, sourceRegion: 'yemen_channel' },
+      { t: '2026-02-12T02:00:00.000Z', lat: 18, lon: 40, sourceRegion: 'red_sea' },
+    ]],
+  ]);
+
+  const shipMeta = {
+    fallback: { shipName: 'Fallback Case', vesselType: 'cargo', flag: 'HK' },
+  };
+
+  const { redSeaCrossingEvents } = buildRedSeaCrossings(redSeaSourceObservationsByShip, shipMeta);
+  assert.equal(redSeaCrossingEvents.length, 1);
+  assert.equal(redSeaCrossingEvents[0].transponderRule, 'legacy_fallback');
+  assert.equal(redSeaCrossingEvents[0].transponderGateId, 'south_bab_el_mandeb');
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairStartTime, null);
+  assert.equal(redSeaCrossingEvents[0].transponderGatePairEndTime, null);
+});
+
 test('Red Sea zone helpers return all matching zones for a point', () => {
   assert.deepEqual(getRedSeaCrossingZones(12, 44), ['rs-south-out']);
   assert.deepEqual(getRedSeaCrossingZones(0, 0), []);

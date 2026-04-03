@@ -209,6 +209,9 @@ Current live-published AIS artifacts are:
 - `processed_core.json`
 - `processed_paths.json`
 - `processed_candidates.json`
+- `processed_playback_latest.json`
+- `processed_shipmeta_latest.json`
+- `processed_external_latest.json`
 - `processed_playback_24h.json`
 - `processed_playback_48h.json`
 - `processed_external_24h.json`
@@ -257,13 +260,7 @@ Current intended split:
 - `processed_shipmeta_24h.json`
 - `processed_shipmeta_48h.json`
 
-## Removed from live browser pipeline
-- `processed_playback_72h.json`
-- `processed_playback_all.json`
-- `processed_external_72h.json`
-- `processed_external_all.json`
-- `processed_shipmeta_72h.json`
-- `processed_shipmeta_all.json`
+## Legacy / non-primary
 - `processed.json`
 
 ## Why split
@@ -271,6 +268,31 @@ Current intended split:
 - better perceived performance
 - lazy loading of heavy windows/components
 - more scalable long-term than the monolith
+
+## Windowed rebuild validation path
+
+There is now a validation-only wrapper around the trusted batch builder for bounded historical rewrites.
+
+Commands:
+- `npm run windowed:baseline`
+- `npm run windowed:refresh`
+- `npm run windowed:rerun-all`
+
+Strategy:
+- baseline: build a frozen archive/current artifact set from a fixed source root
+- rolling refresh: rebuild a `14 day` context window, then replace only the newest `4 day` slice in the prior full artifacts
+- full rerun: rebuild history in `14 day` context windows with `7 day` commit slices, assembling into a separate output tree before any swap
+
+Directories:
+- staged manifests and source windows: `data/windowed-pipeline/`
+- merged validation outputs: `public/data-windowed/`
+
+Important:
+- production refresh now uses this wrapper via `refresh_and_upload_processed.sh`
+- `public/data-windowed/current` is the staged merged output and `public/data/` remains the promoted local publish directory
+- `scripts/build-data.mjs` remains the manual full-history fallback path
+- rolling refresh will use `public/data-windowed/current` when available and otherwise can fall back to the existing `public/data` archive
+- baseline is intentionally guarded on very large archives because `scripts/build-data.mjs` still does a whole-history in-memory replay; safer full-history validation should use `windowed:rerun-all`
 
 ---
 
@@ -300,7 +322,8 @@ This logic exists because direct two-sided observation can be missed when AIS go
 - repeated detections are further guarded by a 72-hour cooldown per `shipId + crossingType`
 - the saved daily series is continuous by UTC day, so quiet days remain visible as explicit zeroes
 - route payloads keep a bounded display window around the event instead of persisting the full 30-day raw track
-- confirmed Hormuz crossing events and Red Sea crossing events include per-event transponder review metrics: `transponderGapHours`, `transponderBridgeKm`, `transponderOvershootKm`, and `transponderStatus`
+- Red Sea transponder review now prefers fixed choke-point gate logic: Bab el-Mandeb for south crossings and the Suez entrance for north crossings
+- when a valid gate-bracketing pair exists, Red Sea `transponderStatus` is derived from gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain as fallback diagnostics
 
 ## “Once crossed, always crossed”
 - crossing events and crossing paths are merged cumulatively across runs using previous processed outputs

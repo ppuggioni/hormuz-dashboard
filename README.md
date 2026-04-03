@@ -107,10 +107,16 @@ The news pipeline also maintains runtime JSON state under `data/`. The news scri
 Generated news artifacts and local news runtime JSON state are also intended to stay out of Git:
 - `/public/data/news_feed.json`
 - `/public/data/vessel_attacks_latest.json`
+- `/public/data/iran_updates.json`
+- `/public/data/iran_update_figures.json`
+- `/public/data/iran_update_figures/*`
 - `/public/data/confirmed_crossing_exclusions.json`
 - `/data/news-history.json`
 - `/data/news-latest-run.json`
 - `/data/news-inbox.json`
+- `/data/iran-update-history.json`
+- `/data/iran-update-latest-run.json`
+- `/data/iran-update-figure-extractions/*`
 
 ## Useful scripts
 
@@ -128,6 +134,32 @@ Optional source controls:
 ```bash
 ./refresh_and_upload_processed.sh
 ```
+
+- Ingest + build ISW Iran Update artifacts locally:
+```bash
+npm run ingest:iran-updates
+npm run build:iran-updates
+```
+
+- Run Codex-backed figure extraction for saved Iran Update images:
+```bash
+npm run extract:iran-update-figures
+```
+
+- Ingest, extract, build, and upload Iran Update artifacts to Supabase:
+```bash
+./upload_iran_updates_to_supabase.sh
+```
+
+Iran Update outputs:
+- `public/data/iran_updates.json`
+- `public/data/iran_update_figures.json`
+- `public/data/iran_update_figures/*`
+
+Remote publish paths:
+- `x-scrapes-public/hormuz/iran_updates.json`
+- `x-scrapes-public/hormuz/iran_update_figures.json`
+- `x-scrapes-public/hormuz/iran_update_figures/*`
 
 ## Windowed rebuild workflow
 

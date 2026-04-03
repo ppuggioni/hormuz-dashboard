@@ -288,6 +288,83 @@ type VesselAttacksFeedShape = {
   items: VesselAttackItem[];
 };
 
+type IranUpdateFigurePoint = {
+  label: string;
+  value: number;
+  seriesName?: string | null;
+  notes?: string | null;
+};
+
+type IranUpdateFigure = {
+  figureId: string;
+  articleId: string;
+  articleTitle: string;
+  articleUrl: string;
+  articlePublishedAt?: string | null;
+  ordinal: number;
+  sourceUrl: string;
+  imagePath: string;
+  localUrl: string;
+  objectPath: string;
+  remoteUrl: string;
+  alt?: string | null;
+  caption?: string | null;
+  kind: "histogram" | "map" | "other" | "unknown";
+  extractionStatus: "pending" | "completed" | "failed";
+  extractedAt?: string | null;
+  confidence?: number | null;
+  title?: string | null;
+  xAxisLabel?: string | null;
+  yAxisLabel?: string | null;
+  units?: string | null;
+  notes?: string | null;
+  points: IranUpdateFigurePoint[];
+};
+
+type IranUpdateItem = {
+  id: string;
+  slug: string;
+  title: string;
+  url: string;
+  canonicalUrl?: string;
+  publishedAt: string;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: string;
+  tags: string[];
+  keyTakeaways: string[];
+  figureCount: number;
+  histogramFigureCount: number;
+  mapFigureCount: number;
+  figures: IranUpdateFigure[];
+};
+
+type IranUpdatesFeedShape = {
+  metadata: {
+    generatedAt: string;
+    profile: string;
+    sourceUrl?: string;
+    itemCount: number;
+    figureCount: number;
+    histogramFigureCount: number;
+    extractedFigureCount: number;
+    lastRunAt?: string;
+    newItemCount?: number;
+    newFigureCount?: number;
+    latestPublishedAt?: string | null;
+  };
+  latestItem?: IranUpdateItem | null;
+  items: IranUpdateItem[];
+};
+
+type IranUpdateFiguresFeedShape = {
+  metadata: IranUpdatesFeedShape["metadata"];
+  figures: IranUpdateFigure[];
+  histogramFigures: IranUpdateFigure[];
+};
+
 type FetchFreshness = "cache" | "revalidate" | "bust";
 
 type CandidateEvent = CandidateCrosser & {
@@ -469,6 +546,48 @@ function deriveNewsDisplaySource(item: NewsItem) {
   } catch {
     return item.sourceName || "Unknown source";
   }
+}
+
+function formatDateYmd(value?: string | null) {
+  if (!value) return "Unknown date";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeIranFigurePointLabel(label: string, articlePublishedAt?: string | null) {
+  if (!label) return label;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(label)) return label;
+  const articleDate = articlePublishedAt ? new Date(articlePublishedAt) : null;
+  const articleYear = articleDate && !Number.isNaN(articleDate.getTime()) ? articleDate.getUTCFullYear() : null;
+  const normalized = label.replace(/\s+/g, " ").trim();
+  const monthDayMatch = normalized.match(/^([A-Za-z]+)\s+(\d{1,2})$/);
+  if (!monthDayMatch || !articleYear) return normalized;
+  const parsed = new Date(`${monthDayMatch[1]} ${monthDayMatch[2]}, ${articleYear} UTC`);
+  if (Number.isNaN(parsed.getTime())) return normalized;
+  return parsed.toISOString().slice(0, 10);
+}
+
+function getIranHistogramTickInterval(pointCount: number) {
+  if (pointCount >= 28) return 3;
+  if (pointCount >= 18) return 2;
+  if (pointCount >= 10) return 1;
+  return 0;
+}
+
+function getRecentWindowStartIso(values: string[], days: number) {
+  const latest = [...values]
+    .filter(Boolean)
+    .sort((a, b) => +new Date(b) - +new Date(a))[0];
+  if (!latest) return null;
+  const latestDate = new Date(latest);
+  if (Number.isNaN(latestDate.getTime())) return null;
+  const startMs = Date.UTC(
+    latestDate.getUTCFullYear(),
+    latestDate.getUTCMonth(),
+    latestDate.getUTCDate(),
+  ) - ((days - 1) * 24 * 60 * 60 * 1000);
+  return new Date(startMs).toISOString();
 }
 
 function alignHours(
@@ -987,8 +1106,11 @@ export default function Page() {
   const [candidateSort, setCandidateSort] = useState<{ key: "ship" | "lastSeen" | "darkHours" | "alignedPoints" | "speedQuality" | "approachConfidence" | "score" | "confidence"; dir: "asc" | "desc" }>({ key: "confidence", dir: "desc" });
   const [newsFeed, setNewsFeed] = useState<NewsFeedShape | null>(null);
   const [attacksFeed, setAttacksFeed] = useState<VesselAttacksFeedShape | null>(null);
+  const [iranUpdatesFeed, setIranUpdatesFeed] = useState<IranUpdatesFeedShape | null>(null);
+  const [iranUpdateFiguresFeed, setIranUpdateFiguresFeed] = useState<IranUpdateFiguresFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newsSourceFilter, setNewsSourceFilter] = useState<string>("all");
+  const [showAllNewsItems, setShowAllNewsItems] = useState(false);
   const [selectedAttackIndex, setSelectedAttackIndex] = useState(0);
   const [selectedRedSeaCrossingTypes, setSelectedRedSeaCrossingTypes] = useState<RedSeaCrossingType[]>(RED_SEA_CROSSING_TYPES);
   const [selectedRedSeaVesselTypes, setSelectedRedSeaVesselTypes] = useState<RedSeaVesselType[]>(["tanker"]);
@@ -1009,8 +1131,12 @@ export default function Page() {
   const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
   const remoteNewsUrl = process.env.NEXT_PUBLIC_HORMUZ_NEWS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/news_feed.json";
   const remoteAttacksUrl = process.env.NEXT_PUBLIC_HORMUZ_ATTACKS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/vessel_attacks_latest.json";
+  const remoteIranUpdatesUrl = process.env.NEXT_PUBLIC_HORMUZ_IRAN_UPDATES_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/iran_updates.json";
+  const remoteIranUpdateFiguresUrl = process.env.NEXT_PUBLIC_HORMUZ_IRAN_UPDATE_FIGURES_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/iran_update_figures.json";
   const localNewsUrl = "/data/news_feed.json";
   const localAttacksUrl = "/data/vessel_attacks_latest.json";
+  const localIranUpdatesUrl = "/data/iran_updates.json";
+  const localIranUpdateFiguresUrl = "/data/iran_update_figures.json";
 
   const fetchJson = useMemo(() => async (url: string, options?: { freshness?: FetchFreshness }) => {
     const freshness = options?.freshness || "revalidate";
@@ -1069,10 +1195,42 @@ export default function Page() {
     }
   }, [fetchJson, localAttacksUrl, remoteAttacksUrl]);
 
+  const loadIranUpdates = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+    try {
+      const updates = await fetchJson(remoteIranUpdatesUrl, { freshness });
+      setIranUpdatesFeed(updates as IranUpdatesFeedShape);
+      return;
+    } catch {
+      // fall through to local artifact
+    }
+    try {
+      const updates = await fetchJson(localIranUpdatesUrl, { freshness });
+      setIranUpdatesFeed(updates as IranUpdatesFeedShape);
+    } catch {
+      setIranUpdatesFeed(null);
+    }
+  }, [fetchJson, localIranUpdatesUrl, remoteIranUpdatesUrl]);
+
+  const loadIranUpdateFigures = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+    try {
+      const figures = await fetchJson(remoteIranUpdateFiguresUrl, { freshness });
+      setIranUpdateFiguresFeed(figures as IranUpdateFiguresFeedShape);
+      return;
+    } catch {
+      // fall through to local artifact
+    }
+    try {
+      const figures = await fetchJson(localIranUpdateFiguresUrl, { freshness });
+      setIranUpdateFiguresFeed(figures as IranUpdateFiguresFeedShape);
+    } catch {
+      setIranUpdateFiguresFeed(null);
+    }
+  }, [fetchJson, localIranUpdateFiguresUrl, remoteIranUpdateFiguresUrl]);
+
   const loadDashboardData = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
     const isLiveRevalidate = freshness !== "cache";
     if (isLiveRevalidate) lastLiveRevalidateAtRef.current = Date.now();
-    await Promise.all([loadNews(freshness), loadAttacks(freshness)]);
+    await Promise.all([loadNews(freshness), loadAttacks(freshness), loadIranUpdates(freshness), loadIranUpdateFigures(freshness)]);
     try {
       const core = await fetchJson(`${root}/processed_core.json`, { freshness });
       const paths = await fetchJson(`${root}/processed_paths.json`, { freshness });
@@ -1122,7 +1280,7 @@ export default function Page() {
     } catch (err) {
       console.error("Failed to load split dashboard artifacts", err);
     }
-  }, [fetchJson, loadAttacks, loadNews, root]);
+  }, [fetchJson, loadAttacks, loadIranUpdateFigures, loadIranUpdates, loadNews, root]);
 
   useEffect(() => {
     void loadDashboardData("revalidate");
@@ -1309,9 +1467,21 @@ export default function Page() {
     () => highConfidenceCandidateEvents.filter((e) => !discardSuspectedSpoofing || !isSuspectedCandidateSpoofingEvent(e)),
     [highConfidenceCandidateEvents, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys],
   );
+  const recentNewsStartIso = useMemo(
+    () => getRecentWindowStartIso((newsFeed?.items || []).map((item) => item.publishedAt), 7),
+    [newsFeed],
+  );
+  const visibleNewsItems = useMemo(() => {
+    const items = newsFeed?.items || [];
+    const sourceFiltered = newsSourceFilter === "all"
+      ? items
+      : items.filter((item) => deriveNewsDisplaySource(item) === newsSourceFilter);
+    if (showAllNewsItems || !recentNewsStartIso) return sourceFiltered;
+    return sourceFiltered.filter((item) => item.publishedAt && item.publishedAt >= recentNewsStartIso);
+  }, [newsFeed, newsSourceFilter, recentNewsStartIso, showAllNewsItems]);
   const newsDays = useMemo(() => {
     const byDay = new Map<string, { day: string; headline: string; items: NewsItem[] }>();
-    for (const item of newsFeed?.items || []) {
+    for (const item of visibleNewsItems) {
       const d = new Date(item.publishedAt);
       d.setUTCHours(0, 0, 0, 0);
       const day = d.toISOString();
@@ -1324,7 +1494,7 @@ export default function Page() {
         items: [...entry.items].sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt)),
       }))
       .sort((a, b) => +new Date(b.day) - +new Date(a.day));
-  }, [newsFeed]);
+  }, [visibleNewsItems]);
   const selectedNewsDayEntry = useMemo(() => {
     if (!newsDays.length) return null;
     if (!selectedNewsDay) return newsDays[0];
@@ -1334,11 +1504,20 @@ export default function Page() {
     const labels = [...new Set((newsFeed?.items || []).map((item) => deriveNewsDisplaySource(item)).filter(Boolean))];
     return labels.sort((a, b) => a.localeCompare(b));
   }, [newsFeed]);
-  const filteredNewsItems = useMemo(() => {
-    const items = newsFeed?.items || [];
-    if (newsSourceFilter === "all") return items;
-    return items.filter((item) => deriveNewsDisplaySource(item) === newsSourceFilter);
-  }, [newsFeed, newsSourceFilter]);
+  const filteredNewsItems = useMemo(() => visibleNewsItems, [visibleNewsItems]);
+  const latestIranUpdateItem = useMemo(() => iranUpdatesFeed?.latestItem || iranUpdatesFeed?.items?.[0] || null, [iranUpdatesFeed]);
+  const latestIranHistogramFigures = useMemo(
+    () => (iranUpdateFiguresFeed?.figures || [])
+      .filter((figure) => figure.articleId === latestIranUpdateItem?.id)
+      .filter((figure) => figure.kind === "histogram" && figure.points.length > 0),
+    [iranUpdateFiguresFeed, latestIranUpdateItem?.id],
+  );
+  const latestIranMapCount = useMemo(
+    () => (iranUpdateFiguresFeed?.figures || [])
+      .filter((figure) => figure.articleId === latestIranUpdateItem?.id)
+      .filter((figure) => figure.kind === "map").length,
+    [iranUpdateFiguresFeed, latestIranUpdateItem?.id],
+  );
 
   const vesselAttackItems = useMemo(() => {
     const items = Array.isArray(attacksFeed?.items) ? attacksFeed.items : [];
@@ -2250,7 +2429,7 @@ export default function Page() {
               </div>
             ))}
           </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-4">
             <div className="rounded-xl border border-fuchsia-300/60 bg-fuchsia-500/10 p-3">
               <div className="text-xs text-fuchsia-200">News — last update</div>
               <div className="mt-1 text-sm font-semibold leading-snug text-fuchsia-100">{newsFeed?.lastUpdateSummary?.headline || "No latest news summary yet"}</div>
@@ -2279,6 +2458,33 @@ export default function Page() {
                 className="mt-2 rounded-md border border-rose-300/60 px-2 py-1 text-[11px] text-rose-100"
               >
                 Jump to attacks section
+              </button>
+            </div>
+            <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
+              <div className="text-xs text-amber-200">Iran ballistic missiles</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-amber-100">
+                {latestIranUpdateItem
+                  ? `Institute for the Study of War report: ${formatDateYmd(latestIranUpdateItem.publishedAt)}`
+                  : "Institute for the Study of War report: not available"}
+              </div>
+              <div className="mt-1 text-[11px] leading-relaxed text-amber-100/80">
+                {latestIranUpdateItem?.sourceName || "Institute for the Study of War"}
+              </div>
+              {latestIranUpdateItem?.url ? (
+                <a
+                  href={latestIranUpdateItem.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex text-[11px] text-amber-100 underline underline-offset-2"
+                >
+                  Source report
+                </a>
+              ) : null}
+              <button
+                onClick={() => document.getElementById("iran-updates")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 block rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
+              >
+                Click here to see details
               </button>
             </div>
           </div>
@@ -2784,7 +2990,7 @@ export default function Page() {
               </thead>
               <tbody>
                 {candidateTableRows.map((c) => (
-                  <tr key={`cand-${c.shipId}`} className="border-t border-slate-800">
+                  <tr key={`cand-${c.eventId}`} className="border-t border-slate-800">
                     <td className="p-2">
                       <input
                         type="checkbox"
@@ -3040,7 +3246,7 @@ export default function Page() {
                   </thead>
                   <tbody>
                     {candidateTableRows.map((c) => (
-                      <tr key={`cand-map-${c.shipId}-${c.lastSeenAt}`} className="border-t border-slate-800">
+                      <tr key={`cand-map-${c.eventId}`} className="border-t border-slate-800">
                         <td className="p-2">
                           <input
                             type="checkbox"
@@ -3321,6 +3527,145 @@ export default function Page() {
           </div>
         </section>
 
+        <section id="iran-updates" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-amber-300">ISW Iran updates</div>
+              <h2 className="mt-1 text-xl font-semibold text-slate-100">Key takeaways and missile-launch histograms</h2>
+              <p className="mt-2 max-w-3xl text-sm text-slate-400">
+                Structured Iran Update coverage from the Institute for the Study of War. We store the Key Takeaways directly, keep the original source link, and extract the latest histogram figures into reusable chart data.
+              </p>
+            </div>
+            <div className="text-xs text-slate-400 md:text-right">
+              <div>Reports loaded: {iranUpdatesFeed?.metadata?.itemCount ?? 0}</div>
+              <div>Latest histograms: {latestIranHistogramFigures.length}</div>
+              <div>Latest maps saved: {latestIranMapCount}</div>
+              <div>Last run: {iranUpdatesFeed?.metadata?.lastRunAt ? new Date(iranUpdatesFeed.metadata.lastRunAt).toUTCString() : "Not available yet"}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-amber-900/40 bg-amber-950/20 p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-amber-300">Latest source report</div>
+                <div className="mt-1 text-lg font-semibold text-slate-100">
+                  {latestIranUpdateItem?.title || "No Iran Update report ingested yet"}
+                </div>
+                <div className="mt-2 text-xs text-slate-400">
+                  {latestIranUpdateItem?.publishedAt ? formatDateYmd(latestIranUpdateItem.publishedAt) : "Waiting for first run"}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {latestIranUpdateItem?.url ? (
+                  <a
+                    href={latestIranUpdateItem.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center rounded-md border border-amber-300/60 px-3 py-1.5 text-xs font-semibold text-amber-100 underline underline-offset-2"
+                  >
+                    Source: {latestIranUpdateItem.sourceName}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+
+            {(latestIranUpdateItem?.keyTakeaways || []).length ? (
+              <div className="mt-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-amber-300/90">Key Takeaways</div>
+                <ol className="mt-3 space-y-3 pl-5 text-sm leading-6 text-slate-200">
+                  {latestIranUpdateItem?.keyTakeaways.map((takeaway, index) => (
+                    <li key={`${latestIranUpdateItem?.id}-takeaway-${index}`}>{takeaway}</li>
+                  ))}
+                </ol>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-amber-900/50 bg-slate-950/30 p-4 text-sm text-slate-400">
+                The latest Iran Update report has not been scraped into Key Takeaways yet.
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Extracted histograms</div>
+                <div className="mt-1 text-lg font-semibold text-slate-100">Latest report figures, two per row</div>
+              </div>
+              <div className="text-xs text-slate-500">
+                Source: {latestIranUpdateItem?.sourceName || "Institute for the Study of War"}
+              </div>
+            </div>
+
+            {latestIranHistogramFigures.length ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {latestIranHistogramFigures.map((figure) => (
+                  <div key={figure.figureId} className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-100">{figure.title || figure.articleTitle}</div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {formatDateYmd(figure.articlePublishedAt)}
+                          {figure.units ? ` · ${figure.units}` : ""}
+                          {figure.confidence != null ? ` · confidence ${(figure.confidence * 100).toFixed(0)}%` : ""}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 text-[11px]">
+                        <a href={figure.articleUrl} target="_blank" rel="noreferrer" className="text-cyan-300 underline underline-offset-2">
+                          Source report
+                        </a>
+                        <a href={figure.sourceUrl} target="_blank" rel="noreferrer" className="text-slate-400 underline underline-offset-2">
+                          Original figure
+                        </a>
+                      </div>
+                    </div>
+                    <div className="mt-3 h-72">
+                      {(() => {
+                        const chartData = figure.points.map((point) => ({
+                          ...point,
+                          displayLabel: normalizeIranFigurePointLabel(point.label, figure.articlePublishedAt),
+                        }));
+                        const tickInterval = getIranHistogramTickInterval(chartData.length);
+                        const needsTilt = chartData.length > 8;
+                        return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 12, right: 16, left: 0, bottom: 28 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis
+                            dataKey="displayLabel"
+                            interval={tickInterval}
+                            minTickGap={24}
+                            angle={needsTilt ? -35 : 0}
+                            textAnchor={needsTilt ? "end" : "middle"}
+                            height={needsTilt ? 88 : 48}
+                            stroke="#94a3b8"
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis stroke="#94a3b8" />
+                          <Tooltip
+                            labelFormatter={(value) => String(value)}
+                            contentStyle={{ backgroundColor: "#020617", border: "1px solid #334155" }}
+                          />
+                          <Legend />
+                          <Bar dataKey="value" name={figure.units || figure.yAxisLabel || "Value"} fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                        );
+                      })()}
+                    </div>
+                    {figure.notes ? (
+                      <p className="mt-3 text-xs leading-5 text-slate-400">{figure.notes}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                No histogram extractions are available yet for the latest Iran Update report.
+              </div>
+            )}
+          </div>
+        </section>
+
         <section id="newsfeed" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
@@ -3390,7 +3735,11 @@ export default function Page() {
                 <div className="mt-1 text-lg font-semibold text-slate-100">Datetime, source link, summary</div>
               </div>
               <div className="flex flex-col gap-2 md:items-end">
-                <div className="text-xs text-slate-500">Most recent items first</div>
+                <div className="text-xs text-slate-500">
+                  {showAllNewsItems
+                    ? "Showing full news history"
+                    : `Showing latest 7 days${recentNewsStartIso ? ` since ${formatDateYmd(recentNewsStartIso)}` : ""}`}
+                </div>
                 <label className="text-xs text-slate-400">
                   <span className="mr-2">Filter by source</span>
                   <select
@@ -3404,6 +3753,13 @@ export default function Page() {
                     ))}
                   </select>
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAllNewsItems((value) => !value)}
+                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                >
+                  {showAllNewsItems ? "Show last 7 days" : "Load all"}
+                </button>
               </div>
             </div>
 

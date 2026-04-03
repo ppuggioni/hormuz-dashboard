@@ -470,6 +470,48 @@ Primary pattern:
 
 ---
 
+## 7b) ISW Iran Update ingestion and figure extraction
+
+This repo now also carries a dedicated ISW Iran Update pipeline alongside the existing regional news feed.
+
+Scripts:
+- `scripts/ingest-iran-updates.mjs`
+- `scripts/build-iran-updates.mjs`
+- `scripts/extract-iran-update-figures.mjs`
+- `upload_iran_updates_to_supabase.sh`
+
+Runtime state:
+- `data/iran-update-history.json`
+- `data/iran-update-latest-run.json`
+- `data/iran-update-figure-extractions/*`
+
+Generated artifacts:
+- `public/data/iran_updates.json`
+- `public/data/iran_update_figures.json`
+- `public/data/iran_update_figures/*`
+
+Behavior:
+- the ingest step polls the ISW Iran Update listing page, fetches recent report pages, stores the Key Takeaways, and downloads the article figure images into `public/data/iran_update_figures/`
+- the figure extractor invokes Codex one image at a time and writes one JSON result per figure under `data/iran-update-figure-extractions/`
+- the build step flattens the stored history plus figure-extraction outputs into small publish artifacts for the frontend
+
+Supabase publish paths:
+- `x-scrapes-public/hormuz/iran_updates.json`
+- `x-scrapes-public/hormuz/iran_update_figures.json`
+- `x-scrapes-public/hormuz/iran_update_figures/*`
+
+Frontend/runtime paths:
+- remote: `x-scrapes-public/hormuz/iran_updates.json`
+- fallback: local `/data/iran_updates.json`
+- remote: `x-scrapes-public/hormuz/iran_update_figures.json`
+- fallback: local `/data/iran_update_figures.json`
+
+Operational note:
+- the first figures on some reports are maps, not charts; Codex will classify those as `map` and return empty points
+- histogram-style figures can return extracted numeric series directly into `iran_update_figures.json`
+
+---
+
 ## 8) News workflow rules and editorial policy
 
 The news agent follows these rules:
@@ -518,6 +560,10 @@ The news section is appended near the end of the page and includes:
 - feed cards ordered by publication time
 - exact source links
 - figure/operational note callouts when useful
+- a dedicated ISW Iran Update section with:
+  - latest report and stored Key Takeaways
+  - recent-report list
+  - chart explorer backed by extracted figure JSON
 - green “New in last run” badge for newly added items
 
 ---

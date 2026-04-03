@@ -45,6 +45,9 @@ next-env.d.ts
 /public/data/processed*.json.gz
 /public/data/news_feed.json
 /public/data/vessel_attacks_latest.json
+/public/data/iran_updates.json
+/public/data/iran_update_figures.json
+/public/data/iran_update_figures/*
 /public/data/confirmed_crossing_exclusions.json
 
 # news pipeline runtime state
@@ -53,6 +56,9 @@ next-env.d.ts
 /data/news-latest-run.json
 /data/news-run-artifacts/*.json
 /data/attacks-run-artifacts/*.json
+/data/iran-update-history.json
+/data/iran-update-latest-run.json
+/data/iran-update-figure-extractions/
 
 # incremental pipeline runtime state
 /state/*.json

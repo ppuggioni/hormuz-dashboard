@@ -99,6 +99,13 @@ Ignored patterns live in `.gitignore`.
 News pipeline note:
 - `scripts/ingest-news.mjs`, `scripts/build-news.mjs`, and `scripts/dispatch-telegram-news.mjs` auto-bootstrap missing `data/news-history.json`, `data/news-latest-run.json`, and `data/news-inbox.json` so a fresh clone can run without pre-seeded news state files
 - generated news artifacts under `public/data/` and local news runtime JSON state under `data/` are runtime files and should not be committed
+- the ISW Iran Update pipeline now also uses local runtime state plus generated artifacts:
+  - ingest: `scripts/ingest-iran-updates.mjs`
+  - build: `scripts/build-iran-updates.mjs`
+  - figure extraction: `scripts/extract-iran-update-figures.mjs`
+  - upload: `upload_iran_updates_to_supabase.sh`
+  - runtime state: `data/iran-update-history.json`, `data/iran-update-latest-run.json`, `data/iran-update-figure-extractions/*`
+  - generated artifacts: `public/data/iran_updates.json`, `public/data/iran_update_figures.json`, `public/data/iran_update_figures/*`
 
 ## Data model guidance
 

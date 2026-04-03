@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "title",
+    "xAxisLabel",
+    "yAxisLabel",
+    "units",
+    "notes",
+    "confidence",
+    "points"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["histogram", "map", "other", "unknown"]
+    },
+    "title": {
+      "type": ["string", "null"]
+    },
+    "xAxisLabel": {
+      "type": ["string", "null"]
+    },
+    "yAxisLabel": {
+      "type": ["string", "null"]
+    },
+    "units": {
+      "type": ["string", "null"]
+    },
+    "notes": {
+      "type": ["string", "null"]
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "value", "seriesName", "notes"],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "seriesName": {
+            "type": ["string", "null"]
+          },
+          "notes": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  }
+}

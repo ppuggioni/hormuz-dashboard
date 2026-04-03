@@ -61,6 +61,12 @@
       "excludedAt": "2026-04-01T09:01:00Z"
     },
     {
+      "eventId": "757062|2026-04-03T16:57:36.496288Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GAS RAY crossing",
+      "excludedAt": "2026-04-03T23:33:00Z"
+    },
+    {
       "eventId": "9537112|2026-04-01T22:40:29.461216Z|east_to_west",
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for PIONEER GAS latest crossing",

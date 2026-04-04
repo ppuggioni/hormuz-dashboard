@@ -5,6 +5,20 @@ export const IRAN_UPDATE_LIST_URL = 'https://understandingwar.org/research/?_pro
 export const IRAN_UPDATE_SOURCE_ID = 'isw-iran-update';
 export const IRAN_UPDATE_SOURCE_NAME = 'Institute for the Study of War';
 export const DEFAULT_PUBLIC_BUCKET_ROOT = 'https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public';
+const MONTH_NAMES = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
 
 const HTML_ENTITY_MAP = {
   '&nbsp;': ' ',
@@ -57,6 +71,37 @@ function extractAttribute(tag, attr) {
 
 export function slugFromIranUpdateUrl(url) {
   return url.replace(/\/+$/, '').split('/').pop() || 'iran-update';
+}
+
+function toIsoDate(year, monthName, day) {
+  const monthIndex = MONTH_NAMES.indexOf(String(monthName || '').toLowerCase());
+  if (monthIndex < 0) return null;
+  const parsed = new Date(Date.UTC(Number(year), monthIndex, Number(day)));
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
+}
+
+export function extractIranUpdateReportDate({ title, slug, publishedAt }) {
+  const normalizedTitle = stripHtml(title || '');
+  const titleMatch = normalizedTitle.match(/\b([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\b/);
+  if (titleMatch) {
+    const [, monthName, day, year] = titleMatch;
+    const iso = toIsoDate(year, monthName, day);
+    if (iso) return iso;
+  }
+
+  const normalizedSlug = String(slug || '').toLowerCase();
+  const slugMatch = normalizedSlug.match(/-(january|february|march|april|may|june|july|august|september|october|november|december)-(\d{1,2})-(\d{4})$/);
+  if (slugMatch) {
+    const [, monthName, day, year] = slugMatch;
+    const iso = toIsoDate(year, monthName, day);
+    if (iso) return iso;
+  }
+
+  if (!publishedAt) return null;
+  const parsed = new Date(publishedAt);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
 }
 
 export function extractIranUpdateLinks(html) {
@@ -116,6 +161,7 @@ export function extractFigureImages(html, publishedAt) {
 
 export function parseIranUpdateArticleHtml(html, url) {
   const canonicalUrl = extractMetaContent(html, /<link[^>]+rel="canonical"[^>]+href="([^"]+)"/i) || url;
+  const slug = slugFromIranUpdateUrl(canonicalUrl);
   const title = extractMetaContent(html, /<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
     || extractMetaContent(html, /<title>([^<]+)<\/title>/i)
     || slugFromIranUpdateUrl(url);
@@ -124,7 +170,7 @@ export function parseIranUpdateArticleHtml(html, url) {
     || null;
   const keyTakeaways = extractKeyTakeaways(html);
   const figures = extractFigureImages(html, publishedAt);
-  const slug = slugFromIranUpdateUrl(canonicalUrl);
+  const reportDate = extractIranUpdateReportDate({ title, slug, publishedAt });
   return {
     id: `${IRAN_UPDATE_SOURCE_ID}:${slug}`,
     slug,
@@ -132,6 +178,7 @@ export function parseIranUpdateArticleHtml(html, url) {
     url: canonicalUrl,
     title,
     publishedAt,
+    reportDate,
     keyTakeaways,
     figures,
     sourceId: IRAN_UPDATE_SOURCE_ID,

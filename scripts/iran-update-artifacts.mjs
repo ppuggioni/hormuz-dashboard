@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { extractIranUpdateReportDate } from './iran-update-source.mjs';
 
 export async function loadIranUpdateExtractionRecords(rootDir) {
   const records = new Map();
@@ -35,6 +36,7 @@ export function buildIranUpdateArtifacts({ history, latestRun, extractionRecords
   const items = [...(history.items || [])]
     .sort((a, b) => +new Date(b.publishedAt || 0) - +new Date(a.publishedAt || 0))
     .map((item) => {
+      const reportDate = item.reportDate || extractIranUpdateReportDate(item);
       const figures = (item.figures || []).map((figure) => {
         const extraction = extractionRecords.get(figure.figureId);
         const result = extraction?.result || null;
@@ -45,6 +47,7 @@ export function buildIranUpdateArtifacts({ history, latestRun, extractionRecords
           articleTitle: item.title,
           articleUrl: item.url,
           articlePublishedAt: item.publishedAt,
+          articleReportDate: reportDate,
           ordinal: figure.ordinal,
           sourceUrl: figure.sourceUrl,
           imagePath: figure.imagePath,
@@ -72,6 +75,7 @@ export function buildIranUpdateArtifacts({ history, latestRun, extractionRecords
         url: item.url,
         canonicalUrl: item.canonicalUrl || item.url,
         publishedAt: item.publishedAt,
+        reportDate,
         firstSeenAt: item.firstSeenAt || latestRun.runAt,
         lastSeenAt: item.lastSeenAt || latestRun.runAt,
         sourceId: item.sourceId,

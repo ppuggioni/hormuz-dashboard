@@ -5,18 +5,12 @@ import {
   loadIranUpdateHistory,
   loadIranUpdatePublishState,
 } from './iran-update-runtime.mjs';
+import { extractIranUpdateReportDate } from './iran-update-source.mjs';
 
 const ROOT = process.cwd();
 const HISTORY_PATH = path.join(ROOT, 'data', 'iran-update-history.json');
 const PUBLISH_STATE_PATH = path.join(ROOT, 'data', 'iran-update-publish-state.json');
 const FORCE = process.env.HORMUZ_IRAN_UPDATE_FORCE_PUBLISH === '1';
-
-function formatDateYmd(value) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
-}
 
 const history = await loadIranUpdateHistory(HISTORY_PATH);
 const publishState = await loadIranUpdatePublishState(PUBLISH_STATE_PATH);
@@ -24,7 +18,7 @@ const latestItem = [...(history.items || [])]
   .sort((a, b) => +new Date(b.publishedAt || 0) - +new Date(a.publishedAt || 0))[0] || null;
 
 const latestReportId = latestItem?.id || null;
-const latestReportDate = formatDateYmd(latestItem?.publishedAt);
+const latestReportDate = latestItem ? extractIranUpdateReportDate(latestItem) : null;
 const reason = FORCE
   ? 'forced'
   : !latestReportId

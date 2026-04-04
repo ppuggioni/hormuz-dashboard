@@ -301,6 +301,7 @@ type IranUpdateFigure = {
   articleTitle: string;
   articleUrl: string;
   articlePublishedAt?: string | null;
+  articleReportDate?: string | null;
   ordinal: number;
   sourceUrl: string;
   imagePath: string;
@@ -328,6 +329,7 @@ type IranUpdateItem = {
   url: string;
   canonicalUrl?: string;
   publishedAt: string;
+  reportDate?: string | null;
   firstSeenAt?: string;
   lastSeenAt?: string;
   sourceId: string;
@@ -555,10 +557,45 @@ function formatDateYmd(value?: string | null) {
   return date.toISOString().slice(0, 10);
 }
 
-function normalizeIranFigurePointLabel(label: string, articlePublishedAt?: string | null) {
+function extractIranReportDateFromTitleOrSlug(title?: string | null, slug?: string | null) {
+  const normalizedTitle = (title || "").replace(/\s+/g, " ").trim();
+  const titleMatch = normalizedTitle.match(/\b([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})\b/);
+  if (titleMatch) {
+    const parsed = new Date(`${titleMatch[1]} ${titleMatch[2]}, ${titleMatch[3]} UTC`);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  }
+
+  const normalizedSlug = String(slug || "").toLowerCase();
+  const slugMatch = normalizedSlug.match(/-(january|february|march|april|may|june|july|august|september|october|november|december)-(\d{1,2})-(\d{4})$/);
+  if (slugMatch) {
+    const parsed = new Date(`${slugMatch[1]} ${slugMatch[2]}, ${slugMatch[3]} UTC`);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  }
+
+  return null;
+}
+
+function getIranUpdateDisplayDate(item?: Pick<IranUpdateItem, "reportDate" | "title" | "slug" | "publishedAt"> | null) {
+  if (!item) return "Unknown date";
+  return item.reportDate
+    || extractIranReportDateFromTitleOrSlug(item.title, item.slug)
+    || formatDateYmd(item.publishedAt);
+}
+
+function getIranFigureDisplayDate(figure?: Pick<IranUpdateFigure, "articleReportDate" | "articleTitle" | "articleId" | "articlePublishedAt"> | null) {
+  if (!figure) return "Unknown date";
+  const slug = figure.articleId?.split(":").slice(1).join(":") || null;
+  return figure.articleReportDate
+    || extractIranReportDateFromTitleOrSlug(figure.articleTitle, slug)
+    || formatDateYmd(figure.articlePublishedAt);
+}
+
+function normalizeIranFigurePointLabel(label: string, articlePublishedAt?: string | null, articleReportDate?: string | null) {
   if (!label) return label;
   if (/^\d{4}-\d{2}-\d{2}$/.test(label)) return label;
-  const articleDate = articlePublishedAt ? new Date(articlePublishedAt) : null;
+  const articleDate = articleReportDate
+    ? new Date(`${articleReportDate}T00:00:00Z`)
+    : (articlePublishedAt ? new Date(articlePublishedAt) : null);
   const articleYear = articleDate && !Number.isNaN(articleDate.getTime()) ? articleDate.getUTCFullYear() : null;
   const normalized = label.replace(/\s+/g, " ").trim();
   const monthDayMatch = normalized.match(/^([A-Za-z]+)\s+(\d{1,2})$/);
@@ -2464,7 +2501,7 @@ export default function Page() {
               <div className="text-xs text-amber-200">Iran ballistic missiles</div>
               <div className="mt-1 text-sm font-semibold leading-snug text-amber-100">
                 {latestIranUpdateItem
-                  ? `Institute for the Study of War report: ${formatDateYmd(latestIranUpdateItem.publishedAt)}`
+                  ? `Institute for the Study of War report: ${getIranUpdateDisplayDate(latestIranUpdateItem)}`
                   : "Institute for the Study of War report: not available"}
               </div>
               <div className="mt-1 text-[11px] leading-relaxed text-amber-100/80">
@@ -3552,7 +3589,7 @@ export default function Page() {
                   {latestIranUpdateItem?.title || "No Iran Update report ingested yet"}
                 </div>
                 <div className="mt-2 text-xs text-slate-400">
-                  {latestIranUpdateItem?.publishedAt ? formatDateYmd(latestIranUpdateItem.publishedAt) : "Waiting for first run"}
+                  {latestIranUpdateItem ? getIranUpdateDisplayDate(latestIranUpdateItem) : "Waiting for first run"}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -3604,7 +3641,7 @@ export default function Page() {
                       <div>
                         <div className="text-sm font-semibold text-slate-100">{figure.title || figure.articleTitle}</div>
                         <div className="mt-1 text-xs text-slate-500">
-                          {formatDateYmd(figure.articlePublishedAt)}
+                          {getIranFigureDisplayDate(figure)}
                           {figure.units ? ` · ${figure.units}` : ""}
                           {figure.confidence != null ? ` · confidence ${(figure.confidence * 100).toFixed(0)}%` : ""}
                         </div>
@@ -3620,9 +3657,10 @@ export default function Page() {
                     </div>
                     <div className="mt-3 h-72">
                       {(() => {
+                        const figureReportDate = getIranFigureDisplayDate(figure);
                         const chartData = figure.points.map((point) => ({
                           ...point,
-                          displayLabel: normalizeIranFigurePointLabel(point.label, figure.articlePublishedAt),
+                          displayLabel: normalizeIranFigurePointLabel(point.label, figure.articlePublishedAt, figureReportDate === "Unknown date" ? null : figureReportDate),
                         }));
                         const tickInterval = getIranHistogramTickInterval(chartData.length);
                         const needsTilt = chartData.length > 8;

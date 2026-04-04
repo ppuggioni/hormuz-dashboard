@@ -104,8 +104,9 @@ News pipeline note:
   - build: `scripts/build-iran-updates.mjs`
   - figure extraction: `scripts/extract-iran-update-figures.mjs`
   - upload: `upload_iran_updates_to_supabase.sh`
-  - runtime state: `data/iran-update-history.json`, `data/iran-update-latest-run.json`, `data/iran-update-figure-extractions/*`
+  - runtime state: `data/iran-update-history.json`, `data/iran-update-latest-run.json`, `data/iran-update-publish-state.json`, `data/iran-update-figure-extractions/*`
   - generated artifacts: `public/data/iran_updates.json`, `public/data/iran_update_figures.json`, `public/data/iran_update_figures/*`
+  - the uploader is designed to be safe for hourly polling: it checks the latest report ID and exits as a no-op if that report was already published
 
 ## Data model guidance
 
@@ -124,10 +125,12 @@ Avoid deleting or renaming stable fields unless the frontend and pipeline are up
 
 If someone asks whether production is healthy, verify:
 1. `launchd` job `com.ppbot.hormuz.dashboard.refresh` is loaded and exiting cleanly
-2. region capture/sync jobs for the region in question are loaded and running cleanly (for Red Sea: `com.ppbot.redsea15m` and `com.ppbot.redsea.supabase.sync`)
-3. `refresh_and_upload_processed.sh` logs show recent successful uploads
-4. frontend still loads split artifacts first
-5. Supabase Storage contains fresh `multi_region/*` files
+2. `launchd` job `com.ppbot.hormuz.iranupdates.publish` is loaded and exiting cleanly
+3. region capture/sync jobs for the region in question are loaded and running cleanly (for Red Sea: `com.ppbot.redsea15m` and `com.ppbot.redsea.supabase.sync`)
+4. `refresh_and_upload_processed.sh` logs show recent successful uploads
+5. `upload_iran_updates_to_supabase.sh` logs show recent successful polls or no-op checks
+6. frontend still loads split artifacts first
+7. Supabase Storage contains fresh `multi_region/*` files
 
 ## Documentation hygiene
 

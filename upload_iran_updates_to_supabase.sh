@@ -7,6 +7,7 @@ LOG="$WORKROOT/hormuz_iran_updates_remote.log"
 UPDATES_FILE="$ROOT/public/data/iran_updates.json"
 FIGURES_FILE="$ROOT/public/data/iran_update_figures.json"
 FIGURE_DIR="$ROOT/public/data/iran_update_figures"
+PUBLISH_STATE_PATH="$ROOT/data/iran-update-publish-state.json"
 BUCKET="x-scrapes-public"
 UPDATES_OBJECT_PATH="hormuz/iran_updates.json"
 FIGURES_OBJECT_PATH="hormuz/iran_update_figures.json"
@@ -54,10 +55,26 @@ upload_file() {
     --data-binary "@${file_path}" >/tmp/hormuz_iran_updates_upload.json
 }
 
+write_publish_state() {
+  local publish_check_json="$1"
+  PUBLISH_CHECK_JSON="$publish_check_json" node -e "const fs = require('fs'); const parsed = JSON.parse(process.env.PUBLISH_CHECK_JSON); fs.writeFileSync(parsed.publishStatePath, JSON.stringify(parsed.nextState, null, 2) + '\n', 'utf8');"
+}
+
 {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] iran-updates upload start"
   cd "$ROOT"
   npm run -s ingest:iran-updates
+
+  publish_check="$(node scripts/should-publish-iran-updates.mjs)"
+  echo "$publish_check"
+  should_publish="$(printf '%s' "$publish_check" | node -e "let data='';process.stdin.on('data',d=>data+=d);process.stdin.on('end',()=>{const parsed=JSON.parse(data);process.stdout.write(parsed.shouldPublish ? '1' : '0');});")"
+
+  if [[ "$should_publish" != "1" ]]; then
+    write_publish_state "$publish_check"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] iran-updates no-op; latest report already published"
+    exit 0
+  fi
+
   if [[ "$RUN_EXTRACTION" == "1" ]]; then
     HORMUZ_IRAN_UPDATE_RECENT_DAYS="$EXTRACT_RECENT_DAYS" npm run -s extract:iran-update-figures
   fi
@@ -82,7 +99,6 @@ upload_file() {
     done < <(
       HORMUZ_IRAN_UPDATE_UPLOAD_RECENT_DAYS="$UPLOAD_RECENT_DAYS" node - <<'NODE'
 const fs = require('fs');
-const path = require('path');
 const payload = JSON.parse(fs.readFileSync('public/data/iran_updates.json', 'utf8'));
 const recentDays = Number.parseInt(process.env.HORMUZ_IRAN_UPDATE_UPLOAD_RECENT_DAYS || '1', 10);
 const items = Array.isArray(payload.items) ? payload.items : [];
@@ -102,4 +118,6 @@ for (const item of items) {
 NODE
     )
   fi
+
+  write_publish_state "$publish_check"
 } >> "$LOG" 2>&1

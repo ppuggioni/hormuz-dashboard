@@ -118,7 +118,11 @@ There are **two different scheduling systems** in play:
 - `com.ppbot.redsea.supabase.sync` — `353s`
 
 ### Processed dashboard publish job
-- `com.ppbot.hormuz.dashboard.refresh` — `900s`
+- `com.ppbot.hormuz.dashboard.refresh` — `3600s`
+
+### Iran Update publish job
+- `com.ppbot.hormuz.iranupdates.publish` — `3600s`
+- safe to poll hourly because `upload_iran_updates_to_supabase.sh` no-ops when the latest ISW report ID has already been published
 
 ### Hardening choices
 - Per-region lock files prevent overlapping capture runs
@@ -483,6 +487,7 @@ Scripts:
 Runtime state:
 - `data/iran-update-history.json`
 - `data/iran-update-latest-run.json`
+- `data/iran-update-publish-state.json`
 - `data/iran-update-figure-extractions/*`
 
 Generated artifacts:
@@ -494,6 +499,7 @@ Behavior:
 - the ingest step polls the ISW Iran Update listing page, fetches recent report pages, stores the Key Takeaways, and downloads the article figure images into `public/data/iran_update_figures/`
 - the figure extractor invokes Codex one image at a time and writes one JSON result per figure under `data/iran-update-figure-extractions/`
 - the build step flattens the stored history plus figure-extraction outputs into small publish artifacts for the frontend
+- the uploader can run hourly safely because it records the latest published report ID and exits as a no-op when the latest ISW report has not changed
 
 Supabase publish paths:
 - `x-scrapes-public/hormuz/iran_updates.json`

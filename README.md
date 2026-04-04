@@ -69,7 +69,9 @@ Production refresh is handled locally via `launchd`, not just GitHub Actions.
 
 Important job:
 - `com.ppbot.hormuz.dashboard.refresh`
-- `StartInterval = 900` seconds
+- `StartInterval = 3600` seconds
+- `com.ppbot.hormuz.iranupdates.publish`
+- `StartInterval = 3600` seconds
 
 Region-specific examples now also include the Red Sea additions:
 - capture: `com.ppbot.redsea15m`
@@ -116,6 +118,7 @@ Generated news artifacts and local news runtime JSON state are also intended to 
 - `/data/news-inbox.json`
 - `/data/iran-update-history.json`
 - `/data/iran-update-latest-run.json`
+- `/data/iran-update-publish-state.json`
 - `/data/iran-update-figure-extractions/*`
 
 ## Useful scripts
@@ -150,6 +153,12 @@ npm run extract:iran-update-figures
 ```bash
 ./upload_iran_updates_to_supabase.sh
 ```
+
+Operational note:
+- the Iran Update uploader is now safe to run hourly
+- it polls the ISW listing page every run, but after the current latest report has already been published it exits as a no-op instead of rebuilding and re-uploading everything
+- the launchd job for this is `com.ppbot.hormuz.iranupdates.publish`
+- set `HORMUZ_IRAN_UPDATE_FORCE_PUBLISH=1` to override that guard
 
 Iran Update outputs:
 - `public/data/iran_updates.json`

@@ -35,10 +35,24 @@ export function createEmptyIranUpdateLatestRun(runAt = new Date().toISOString())
   };
 }
 
+export function createEmptyIranUpdatePublishState(runAt = new Date().toISOString()) {
+  return {
+    version: 1,
+    lastCheckedAt: runAt,
+    lastPublishedAt: null,
+    lastPublishedReportId: null,
+    lastPublishedReportDate: null,
+  };
+}
+
 export async function loadIranUpdateHistory(filePath) {
   return readJsonWithBootstrap(filePath, () => createEmptyIranUpdateHistory());
 }
 
 export async function loadIranUpdateLatestRun(filePath) {
   return readJsonWithBootstrap(filePath, () => createEmptyIranUpdateLatestRun());
+}
+
+export async function loadIranUpdatePublishState(filePath) {
+  return readJsonWithBootstrap(filePath, () => createEmptyIranUpdatePublishState());
 }

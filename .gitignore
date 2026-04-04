@@ -58,6 +58,7 @@ next-env.d.ts
 /data/attacks-run-artifacts/*.json
 /data/iran-update-history.json
 /data/iran-update-latest-run.json
+/data/iran-update-publish-state.json
 /data/iran-update-figure-extractions/
 
 # incremental pipeline runtime state

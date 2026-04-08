@@ -157,6 +157,7 @@ npm run extract:iran-update-figures
 - Ingest + build USNI Fleet Tracker artifacts locally:
 ```bash
 npm run ingest:usni-fleet
+npm run extract:usni-fleet-maps
 npm run build:usni-fleet
 ```
 
@@ -192,10 +193,13 @@ USNI Fleet Tracker remote publish paths:
 USNI Fleet Tracker runtime state:
 - `data/usni-fleet-history.json`
 - `data/usni-fleet-latest-run.json`
+- `data/usni-fleet-map-extractions.json`
 
 USNI Fleet Tracker notes:
 - the ingest uses the USNI WordPress API rather than raw page scraping because the API is more reliable for unattended polling
 - weekly Fleet Tracker map images are downloaded into `public/data/usni_fleet_maps/`
+- OCR extractions of those weekly maps are cached into `data/usni-fleet-map-extractions.json`
+- the builder now combines tracker text with weekly map-label OCR so vague prose like `CENTCOM area of responsibility` can still inherit the correct tracker-map placement
 - the first-pass artifact includes per-vessel rough position history and movement rows relative to an Arabian Sea reference point
 
 ## Windowed rebuild workflow

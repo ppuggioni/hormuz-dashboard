@@ -524,14 +524,17 @@ This repo now also carries a separate USNI Fleet Tracker ingestion stream for we
 
 Scripts:
 - `scripts/ingest-usni-fleet.mjs`
+- `scripts/extract-usni-fleet-maps.mjs`
 - `scripts/build-usni-fleet.mjs`
 - `scripts/usni-fleet-source.mjs`
 - `scripts/usni-fleet-artifacts.mjs`
+- `scripts/usni-fleet-map-ocr.swift`
 - `upload_usni_fleet_to_supabase.sh`
 
 Runtime state:
 - `data/usni-fleet-history.json`
 - `data/usni-fleet-latest-run.json`
+- `data/usni-fleet-map-extractions.json`
 
 Generated artifacts:
 - `public/data/usni_fleet_tracker.json`
@@ -544,6 +547,8 @@ Supabase publish paths:
 Behavior:
 - the ingest step polls the USNI WordPress API for the `fleet-tracker` category and a small set of region/movement search terms
 - weekly Fleet Tracker map images are downloaded into `public/data/usni_fleet_maps/`
+- weekly tracker-map OCR is cached in `data/usni-fleet-map-extractions.json`
+- artifact generation now combines section-aware text extraction with OCR labels from the weekly tracker maps so image-only placement changes are retained in the vessel history and movement rows
 - the build step extracts ship mentions from tracker sections and relevant USNI news text, assigns rough coordinates from known region references, and emits a compact vessel-history and movement artifact
 - movement rows are classified relative to an Arabian Sea reference point so the frontend can highlight ships moving toward or away from the combat theater
 

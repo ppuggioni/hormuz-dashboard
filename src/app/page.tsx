@@ -1887,6 +1887,10 @@ export default function Page() {
     () => usniFleetFeed?.relevantMovements || [],
     [usniFleetFeed],
   );
+  const usniTrackedMovements = useMemo(
+    () => (usniFleetFeed?.movementRows || []).filter((row) => row.direction !== "unchanged"),
+    [usniFleetFeed],
+  );
   const usniReferenceAt = useMemo(
     () => usniFleetFeed?.metadata?.latestPublishedAt || usniFleetFeed?.metadata?.lastRunAt || null,
     [usniFleetFeed?.metadata?.lastRunAt, usniFleetFeed?.metadata?.latestPublishedAt],
@@ -1931,8 +1935,8 @@ export default function Page() {
     return null;
   }, [usni30dStartIso, usni7dStartIso, usniMovementWindow]);
   const usniMovementsInWindow = useMemo(
-    () => usniRelevantMovements.filter((row) => !usniMovementWindowStartIso || +new Date(`${row.date}T00:00:00Z`) >= +new Date(usniMovementWindowStartIso)),
-    [usniMovementWindowStartIso, usniRelevantMovements],
+    () => usniTrackedMovements.filter((row) => !usniMovementWindowStartIso || +new Date(`${row.date}T00:00:00Z`) >= +new Date(usniMovementWindowStartIso)),
+    [usniMovementWindowStartIso, usniTrackedMovements],
   );
   const usniMovementRowsForDisplay = useMemo(
     () => usniMovementsInWindow.filter((row) => (
@@ -4131,6 +4135,7 @@ export default function Page() {
             </div>
             <div className="text-xs text-slate-400 md:text-right">
               <div>Relevant movements: {usniFleetFeed?.metadata?.relevantMovementCount ?? 0}</div>
+              <div>Tracked moves: {usniTrackedMovements.length}</div>
               <div>Tracker snapshots: {usniFleetFeed?.metadata?.trackerSnapshotCount ?? 0}</div>
               <div>Last tracker date: {formatCalendarDate(usniFleetFeed?.metadata?.latestPublishedAt || null)}</div>
               <div>Last run: {usniFleetFeed?.metadata?.lastRunAt ? new Date(usniFleetFeed.metadata.lastRunAt).toUTCString() : "Not available yet"}</div>
@@ -4161,7 +4166,7 @@ export default function Page() {
                 {usniMovementWindow === "all" ? "All history loaded" : usniMovementWindow === "30d" ? "Rolling 30 days" : "Rolling 7 days"}
               </div>
               <div className="mt-1 text-[11px] text-slate-400">
-                {usniMovementRowsForDisplay.length} movement row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} currently shown.
+                {usniMovementRowsForDisplay.length} tracked movement row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} currently shown.
               </div>
             </div>
           </div>
@@ -4191,7 +4196,7 @@ export default function Page() {
                           onClick={() => setUsniMovementFilter(filter)}
                           className={`rounded-md border px-3 py-1.5 ${usniMovementFilter === filter ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"}`}
                         >
-                          {filter === "all" ? "All directions" : filter === "toward" ? "Toward / entered" : "Away / exited"}
+                          {filter === "all" ? "All tracked moves" : filter === "toward" ? "Toward / entered" : "Away / exited"}
                         </button>
                       ))}
                     </div>
@@ -4221,7 +4226,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="mt-3 text-xs leading-relaxed text-slate-500">
-                    Movement lines use text-derived rough coordinates. Grey dots show vessels from the selected weekly Fleet Tracker snapshot so you can compare the current map image with the normalized positions.
+                    Movement lines use image-aware rough coordinates. Grey dots show vessels from the selected weekly Fleet Tracker snapshot so you can compare the saved map image with the normalized positions.
                   </div>
                 </div>
 
@@ -4345,7 +4350,7 @@ export default function Page() {
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Movement table</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-100">Relevant vessel movements</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-100">Tracked vessel movements</div>
                   </div>
                   <div className="text-xs text-slate-500">
                     Showing {usniMovementRowsForDisplay.length} row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} from {usniMovementWindow === "all" ? "all loaded history" : usniMovementWindow === "30d" ? "the last 30 days" : "the last 7 days"}.

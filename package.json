@@ -14,6 +14,7 @@
     "extract:iran-update-figures": "node scripts/extract-iran-update-figures.mjs",
     "build:iran-updates": "node scripts/build-iran-updates.mjs",
     "ingest:usni-fleet": "node scripts/ingest-usni-fleet.mjs",
+    "extract:usni-fleet-maps": "node scripts/extract-usni-fleet-maps.mjs",
     "build:usni-fleet": "node scripts/build-usni-fleet.mjs",
     "build": "npm run build:news && npm run build:iran-updates && npm run build:usni-fleet && next build",
     "start": "next start",

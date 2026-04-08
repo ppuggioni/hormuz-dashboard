@@ -53,6 +53,7 @@ upload_file() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] usni-fleet upload start"
   cd "$ROOT"
   npm run -s ingest:usni-fleet
+  npm run -s extract:usni-fleet-maps
   npm run -s build:usni-fleet
 
   [[ -f "$FLEET_FILE" ]] || { echo "usni_fleet_tracker.json missing after build"; exit 1; }

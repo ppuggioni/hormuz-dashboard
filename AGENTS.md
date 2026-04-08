@@ -124,13 +124,16 @@ News pipeline note:
   - the uploader is designed to be safe for hourly polling: it checks the latest report ID and exits as a no-op if that report was already published
 - the USNI Fleet Tracker pipeline also uses local runtime state plus generated artifacts:
   - ingest: `scripts/ingest-usni-fleet.mjs`
+  - map OCR extraction: `scripts/extract-usni-fleet-maps.mjs`
   - build: `scripts/build-usni-fleet.mjs`
   - upload: `upload_usni_fleet_to_supabase.sh`
   - source helpers: `scripts/usni-fleet-source.mjs`
   - artifact builder: `scripts/usni-fleet-artifacts.mjs`
-  - runtime state: `data/usni-fleet-history.json`, `data/usni-fleet-latest-run.json`
+  - OCR helper: `scripts/usni-fleet-map-ocr.swift`
+  - runtime state: `data/usni-fleet-history.json`, `data/usni-fleet-latest-run.json`, `data/usni-fleet-map-extractions.json`
   - generated artifacts: `public/data/usni_fleet_tracker.json`, `public/data/usni_fleet_maps/*`
   - remote publish paths: `x-scrapes-public/hormuz/usni_fleet_tracker.json`, `x-scrapes-public/hormuz/usni_fleet_maps/*`
+  - the builder now carries tracker heading context across nested `Carrier Strike Group` / `ARG` sections and uses OCR from the saved weekly map images to recover vessel placements and explicit stops like `Split, Croatia` or `Diego Garcia`
   - ingest prefers the USNI WordPress API over raw HTML page fetches because the site’s normal pages can sit behind anti-bot checks
   - the first-pass artifact stores rough region coordinates and movement rows toward or away from an Arabian Sea reference point; map-image vision extraction can be layered on later
 

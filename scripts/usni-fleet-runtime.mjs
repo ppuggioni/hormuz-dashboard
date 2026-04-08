@@ -41,10 +41,24 @@ export function createEmptyUsniFleetLatestRun(runAt = new Date().toISOString()) 
   };
 }
 
+export function createEmptyUsniFleetMapExtractions() {
+  return {
+    version: 1,
+    generatedAt: null,
+    itemCount: 0,
+    extractedCount: 0,
+    items: {},
+  };
+}
+
 export async function loadUsniFleetHistory(filePath) {
   return readJsonWithBootstrap(filePath, () => createEmptyUsniFleetHistory());
 }
 
 export async function loadUsniFleetLatestRun(filePath) {
   return readJsonWithBootstrap(filePath, () => createEmptyUsniFleetLatestRun());
+}
+
+export async function loadUsniFleetMapExtractions(filePath) {
+  return readJsonWithBootstrap(filePath, () => createEmptyUsniFleetMapExtractions());
 }

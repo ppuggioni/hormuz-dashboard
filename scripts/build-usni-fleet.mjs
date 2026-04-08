@@ -1,17 +1,23 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { buildUsniFleetArtifacts } from './usni-fleet-artifacts.mjs';
-import { loadUsniFleetHistory, loadUsniFleetLatestRun } from './usni-fleet-runtime.mjs';
+import {
+  loadUsniFleetHistory,
+  loadUsniFleetLatestRun,
+  loadUsniFleetMapExtractions,
+} from './usni-fleet-runtime.mjs';
 
 const ROOT = process.cwd();
 const HISTORY_PATH = path.join(ROOT, 'data', 'usni-fleet-history.json');
 const LATEST_RUN_PATH = path.join(ROOT, 'data', 'usni-fleet-latest-run.json');
+const MAP_EXTRACTIONS_PATH = path.join(ROOT, 'data', 'usni-fleet-map-extractions.json');
 const OUT_DIR = path.join(ROOT, 'public', 'data');
 const OUT_PATH = path.join(OUT_DIR, 'usni_fleet_tracker.json');
 
 const history = await loadUsniFleetHistory(HISTORY_PATH);
 const latestRun = await loadUsniFleetLatestRun(LATEST_RUN_PATH);
-const payload = buildUsniFleetArtifacts({ history, latestRun });
+const mapExtractions = await loadUsniFleetMapExtractions(MAP_EXTRACTIONS_PATH);
+const payload = buildUsniFleetArtifacts({ history, latestRun, mapExtractions });
 
 await fs.mkdir(OUT_DIR, { recursive: true });
 await fs.writeFile(OUT_PATH, JSON.stringify(payload, null, 2) + '\n');

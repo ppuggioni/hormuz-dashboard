@@ -64,6 +64,7 @@ next-env.d.ts
 /data/iran-update-figure-extractions/
 /data/usni-fleet-history.json
 /data/usni-fleet-latest-run.json
+/data/usni-fleet-map-extractions.json
 
 # incremental pipeline runtime state
 /state/*.json

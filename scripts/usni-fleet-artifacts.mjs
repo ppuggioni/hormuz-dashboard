@@ -133,6 +133,13 @@ function splitSentences(text) {
     .filter(Boolean);
 }
 
+function shouldTreatSentenceLocationAsHomeport(sentence, sectionLocation, sentenceLocation) {
+  if (!sectionLocation || !sentenceLocation) return false;
+  if (sectionLocation.id === sentenceLocation.id) return false;
+  const normalized = normalizeWhitespace(sentence).toLowerCase();
+  return normalized.includes('homeported');
+}
+
 function buildMention({
   vesselKey,
   vesselPrefix,
@@ -254,7 +261,10 @@ function extractTrackerMentions(item) {
     if (headingLocation) activeLocation = headingLocation;
     const sectionLocation = headingLocation || activeLocation;
     for (const sentence of splitSentences(section.bodyText)) {
-      const sentenceLocation = getLocationReference(sentence);
+      const rawSentenceLocation = getLocationReference(sentence);
+      const sentenceLocation = shouldTreatSentenceLocationAsHomeport(sentence, sectionLocation, rawSentenceLocation)
+        ? null
+        : rawSentenceLocation;
       const effectiveLocation = sentenceLocation || sectionLocation;
       const locationSourceType = sentenceLocation
         ? 'explicit_sentence'

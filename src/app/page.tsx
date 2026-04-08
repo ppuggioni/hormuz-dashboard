@@ -608,6 +608,125 @@ const USNI_PRIMARY_POSITION_LABELS = new Set([
   "Eastern Mediterranean Sea",
   "Diego Garcia",
 ]);
+const FAQ_SECTIONS = [
+  {
+    id: "crossings",
+    kicker: "Crossings",
+    kickerClass: "text-cyan-300",
+    panelClass: "border-cyan-900/40 bg-cyan-950/10",
+    items: [
+      {
+        question: "How do you confirm a Hormuz crossing if a vessel goes dark?",
+        answer:
+          "A confirmed crossing still needs at least one reported AIS point inside the Gulf-side logic. If later points reappear on the opposite side, or in linked routes such as Suez, Malacca, Cape of Good Hope, or the wider Indian Ocean side, the pipeline can infer a side change. If that second anchor never appears, the ship stays a likely candidate rather than a confirmed crossing.",
+      },
+      {
+        question: "Why can the webapp count differ from the raw artifact?",
+        answer:
+          "The raw artifacts keep all detected crossing rows, but the default UI can hide manually excluded rows and suspected spoofing cases. Some widgets also count unique ships over a short window rather than counting every crossing row. That is why a CSV export from the raw artifact can be larger than what the default screen shows.",
+      },
+      {
+        question: "What are likely dark-transit candidates?",
+        answer:
+          "These are ships that approach the strait, disappear for a meaningful period, and do not show a clear U-turn before dropping out. They are pattern-based leads, not confirmed crossings. We keep them separate so the dashboard distinguishes observed crossings from plausible but unproven dark passages.",
+      },
+      {
+        question: "How fresh is the crossing data?",
+        answer:
+          "The collectors run continuously in the background, and the dashboard usually lands with an end-to-end lag of roughly 15 to 30 minutes once capture, sync, processing, and upload are combined. The exact lag can vary by region and by whether a fresh publish has already been promoted.",
+      },
+    ],
+  },
+  {
+    id: "us-navy",
+    kicker: "US Navy Positions",
+    kickerClass: "text-sky-300",
+    panelClass: "border-sky-900/40 bg-sky-950/10",
+    items: [
+      {
+        question: "Where do the US Navy positions come from?",
+        answer:
+          "They come from USNI Fleet Tracker posts, related USNI movement reporting, and OCR of the saved weekly tracker maps. The text and the map labels are merged into a single per-vessel history so the app can keep both the latest fleet picture and the movement rows in one artifact.",
+      },
+      {
+        question: "How often is the USNI fleet feed updated?",
+        answer:
+          "The USNI fleet pipeline now runs automatically every 6 hours. Each run ingests new USNI tracker and news items, reprocesses the saved map labels, rebuilds the fleet artifact, and uploads the refreshed JSON and map images to Supabase. Tracker posts themselves are usually weekly, so many 6-hour runs will be valid no-change refreshes.",
+      },
+      {
+        question: "Are the coordinates exact ship positions?",
+        answer:
+          "No. They are rough reference coordinates tied to named regions or map labels such as Arabian Sea, Eastern Mediterranean, Persian Gulf, or Diego Garcia. This section is for theater-level fleet positioning and movement direction, not AIS-grade navigation tracks.",
+      },
+      {
+        question: "What does 'homeported at Norfolk' or 'homeported in Yokosuka' mean?",
+        answer:
+          "Homeport is the ship's permanent base, not its current operating location. If USNI lists a ship under the Arabian Sea section and says it is homeported at Norfolk, we treat the current location as Arabian Sea and the homeport as background metadata. Homeport should not override an explicit regional placement from the tracker.",
+      },
+      {
+        question: "What do the movement colors mean?",
+        answer:
+          "Red means entered the combat zone, yellow means moved toward the Arabian Sea, green means exited the combat zone, and black means some other repositioning. In the fleet blobs, ships that have not moved inside the active 7-day or 30-day window stay white, while recently moving ships inherit the same movement color palette as the arrows.",
+      },
+    ],
+  },
+  {
+    id: "iran-missiles",
+    kicker: "Iran Missiles",
+    kickerClass: "text-amber-300",
+    panelClass: "border-amber-900/40 bg-amber-950/10",
+    items: [
+      {
+        question: "What is the Iran missile section actually showing?",
+        answer:
+          "It shows structured Institute for the Study of War Iran Update content: the latest report metadata, the extracted Key Takeaways, and the latest reusable histogram figures. The goal is to make the most actionable report elements browsable without losing the original source link.",
+      },
+      {
+        question: "Are the missile charts screenshots or rebuilt data?",
+        answer:
+          "They are rebuilt chart data extracted from the source figures, not just embedded screenshots. That makes them easier to compare across updates, but it also means the extraction can be imperfect when the original figure is visually noisy or formatted in an unusual way.",
+      },
+      {
+        question: "How often is the Iran Update pipeline refreshed?",
+        answer:
+          "The Iran Update publish job is designed for hourly polling. It checks for a newer ISW report each run and exits as a no-op when nothing new has been published, so the section can stay fresh without constantly rebuilding unchanged content.",
+      },
+      {
+        question: "Why does the latest report sometimes have no histogram panel?",
+        answer:
+          "Not every report contains a usable histogram, and some figures are maps or layouts that do not translate cleanly into chart points. In those cases, the source report can still appear with Key Takeaways while the histogram area remains empty until a compatible figure is available.",
+      },
+    ],
+  },
+  {
+    id: "news",
+    kicker: "News",
+    kickerClass: "text-emerald-300",
+    panelClass: "border-emerald-900/40 bg-emerald-950/10",
+    items: [
+      {
+        question: "What is the purpose of the news section?",
+        answer:
+          "It is the dashboard's regional intelligence layer. Instead of just listing headlines, it keeps a fresh summary, a rolling 24-hour summary, daily summaries, and a structured source log so you can move from the topline read to the underlying items quickly.",
+      },
+      {
+        question: "How are the summaries produced?",
+        answer:
+          "The summaries are built from the collected news items and source metadata saved by the news pipeline. The app keeps both the narrative summary and the source-by-source record, so the concise text always has an audit trail underneath it.",
+      },
+      {
+        question: "Does the news feed include every article from every source?",
+        answer:
+          "No. It is curated and deduplicated. The goal is to capture the most relevant regional shipping, security, and military developments rather than mirror every article verbatim from every source the collector touches.",
+      },
+      {
+        question: "How should I read the vessel-attacks lane versus the broader news summary?",
+        answer:
+          "The vessel-attacks card is a narrow operational read focused on the last 24 hours of attack reporting. The broader news summary is wider regional context. A quiet attacks card does not mean the wider region is quiet, and a busy regional summary does not automatically mean there were fresh attacks on shipping.",
+      },
+    ],
+  },
+] as const;
 
 function mixHexWithWhite(hex: string, ratio: number) {
   const normalized = hex.replace("#", "");
@@ -3196,61 +3315,22 @@ export default function Page() {
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <details>
             <summary className="cursor-pointer select-none text-lg font-medium">FAQ / Method Notes</summary>
-            <div className="space-y-3 mt-3">
-              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-                <summary className="cursor-pointer select-none font-medium text-slate-100">
-                  How do we detect a crossing if a vessel turns its transponder off?
-                </summary>
-                <p className="mt-3 leading-relaxed">
-                  To detect a crossing, a vessel must report AIS at least once while inside the Gulf-side boundary logic. If it later goes dark,
-                  the crossing can still be inferred when AIS returns in the Indian Ocean side, Cape of Good Hope route, Suez route, or Strait of
-                  Malacca route, because the last known side and next known side imply a side change.
-                </p>
-              </details>
-
-              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-                <summary className="cursor-pointer select-none font-medium text-slate-100">
-                  How often is data refreshed?
-                </summary>
-                <p className="mt-3 leading-relaxed">
-                  Data is refreshed continuously in the background and typically appears on the dashboard with an end-to-end delay of roughly
-                  15-30 minutes (capture, sync, processing, and upload cadence combined).
-                </p>
-              </details>
-
-              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-                <summary className="cursor-pointer select-none font-medium text-slate-100">
-                  What are the likely candidate dark crossers?
-                </summary>
-                <p className="mt-3 leading-relaxed">
-                  These are vessels that appear to be approaching the strait, then switch off their transponder for more than 6 hours, and do not
-                  show evidence of a U-turn before disappearing. In those cases, we cannot prove the transit directly, but the pattern is consistent
-                  with a likely passage through the Strait of Hormuz while dark.
-                </p>
-              </details>
-
-              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-                <summary className="cursor-pointer select-none font-medium text-slate-100">
-                  Are tankers and cargo vessels equally important?
-                </summary>
-                <p className="mt-3 leading-relaxed">
-                  No. We mainly focus on tankers because they are the vessels most directly tied to oil and gas flows. Cargo vessels are more frequent,
-                  but they also create a noisier signal, so they are shown for context and comparison rather than being reviewed with the same level of attention.
-                </p>
-              </details>
-
-              <details className="rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-                <summary className="cursor-pointer select-none font-medium text-slate-100">
-                  Where does the data come from, and what are the limitations?
-                </summary>
-                <p className="mt-3 leading-relaxed">
-                  The dashboard uses publicly reported live AIS transponder data. Limitations include spoofing, delayed reporting, and intentional
-                  AIS silence (especially in conflict or high-risk zones). The analysis is robust as long as a vessel switches AIS on at least once
-                  inside the Gulf corridor or at linked chokepoints; in practice this captures normal tanker traffic, including known reported voyages
-                  (for example the Greek tanker movement reported on the 4th would have been captured). The main blind spot is true ghost activity
-                  where AIS stays consistently off.
-                </p>
-              </details>
+            <div className="mt-4 space-y-4">
+              {FAQ_SECTIONS.map((section) => (
+                <div key={section.id} className={`rounded-2xl border p-4 ${section.panelClass}`}>
+                  <div className={`text-xs uppercase tracking-[0.2em] ${section.kickerClass}`}>{section.kicker}</div>
+                  <div className="mt-3 space-y-3">
+                    {section.items.map((item) => (
+                      <details key={`${section.id}-${item.question}`} className="rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
+                        <summary className="cursor-pointer select-none font-medium text-slate-100">
+                          {item.question}
+                        </summary>
+                        <p className="mt-3 leading-relaxed">{item.answer}</p>
+                      </details>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </details>
         </section>

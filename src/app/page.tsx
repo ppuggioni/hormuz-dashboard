@@ -2084,6 +2084,19 @@ export default function Page() {
     () => usniTrackedMovements.filter((row) => !usniMovementWindowStartIso || +new Date(`${row.date}T00:00:00Z`) >= +new Date(usniMovementWindowStartIso)),
     [usniMovementWindowStartIso, usniTrackedMovements],
   );
+  const usniMovementHighlightByVessel = useMemo(() => {
+    const latestByVessel = new Map<string, UsniFleetMovementDirection>();
+    const latestDateByVessel = new Map<string, number>();
+    for (const row of usniMovementsInWindow) {
+      const rowDate = +new Date(`${row.date}T00:00:00Z`);
+      const previousDate = latestDateByVessel.get(row.vesselKey) ?? Number.NEGATIVE_INFINITY;
+      if (rowDate >= previousDate) {
+        latestDateByVessel.set(row.vesselKey, rowDate);
+        latestByVessel.set(row.vesselKey, row.direction);
+      }
+    }
+    return Object.fromEntries(latestByVessel.entries());
+  }, [usniMovementsInWindow]);
   const usniMovementRowsForDisplay = useMemo(
     () => selectedUsniVesselKey
       ? selectedUsniVesselMovementRowsForTable
@@ -4408,6 +4421,7 @@ export default function Page() {
                       movements={usniMapMovementRows}
                       locationGroups={usniFleetPictureGroups}
                       selectedVesselKey={selectedUsniVesselKey || null}
+                      movementHighlightByVessel={usniMovementHighlightByVessel}
                       selectedTrajectory={selectedUsniVesselTrajectory}
                       onSelectVessel={setSelectedUsniVesselKey}
                     />

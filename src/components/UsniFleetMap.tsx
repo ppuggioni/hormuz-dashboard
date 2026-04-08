@@ -108,19 +108,61 @@ function reportDateLabel(date?: string | null) {
 }
 
 function popupGridTemplateRows(itemCount: number) {
-  return `repeat(${Math.max(1, Math.min(itemCount, 3))}, minmax(0, auto))`;
+  return `repeat(${Math.max(1, Math.min(itemCount, 4))}, minmax(0, auto))`;
+}
+
+function vesselChipStyle(direction: UsniMovementDirection | null | undefined, isSelected: boolean) {
+  if (!direction) {
+    return {
+      border: isSelected ? "1px solid rgba(103,232,249,0.9)" : "1px solid rgba(203,213,225,0.85)",
+      background: "#ffffff",
+      color: "#0f172a",
+    };
+  }
+
+  if (direction === "entered_combat_zone") {
+    return {
+      border: isSelected ? "1px solid rgba(103,232,249,0.9)" : "1px solid rgba(239,68,68,0.55)",
+      background: "rgba(127,29,29,0.92)",
+      color: "#fee2e2",
+    };
+  }
+
+  if (direction === "toward_arabian_sea") {
+    return {
+      border: isSelected ? "1px solid rgba(103,232,249,0.9)" : "1px solid rgba(250,204,21,0.65)",
+      background: "rgba(250,204,21,0.88)",
+      color: "#1c1917",
+    };
+  }
+
+  if (direction === "exited_combat_zone") {
+    return {
+      border: isSelected ? "1px solid rgba(103,232,249,0.9)" : "1px solid rgba(34,197,94,0.55)",
+      background: "rgba(20,83,45,0.92)",
+      color: "#dcfce7",
+    };
+  }
+
+  return {
+    border: isSelected ? "1px solid rgba(103,232,249,0.9)" : "1px solid rgba(15,23,42,0.92)",
+    background: "#020617",
+    color: "#f8fafc",
+  };
 }
 
 export default memo(function UsniFleetMap({
   movements,
   locationGroups,
   selectedVesselKey,
+  movementHighlightByVessel = {},
   selectedTrajectory = [],
   onSelectVessel,
 }: {
   movements: UsniFleetMovementRow[];
   locationGroups: UsniLatestLocationGroup[];
   selectedVesselKey?: string | null;
+  movementHighlightByVessel?: Record<string, UsniMovementDirection>;
   selectedTrajectory?: UsniTrajectoryPoint[];
   onSelectVessel?: (vesselKey: string) => void;
 }) {
@@ -237,13 +279,14 @@ export default memo(function UsniFleetMap({
                       gap: 6,
                       gridTemplateRows: popupGridTemplateRows(visibleVessels.length),
                       gridAutoFlow: "column",
-                      gridAutoColumns: "minmax(148px, 1fr)",
+                      gridAutoColumns: "minmax(132px, 1fr)",
                       alignItems: "stretch",
-                      minWidth: selectedVessel ? 180 : Math.min(640, Math.max(220, Math.ceil(visibleVessels.length / 3) * 156)),
+                      minWidth: selectedVessel ? 170 : Math.min(620, Math.max(220, Math.ceil(visibleVessels.length / 4) * 140)),
                     }}
                   >
                     {visibleVessels.map((vessel) => {
                       const isSelected = vessel.vesselKey === selectedVesselKey;
+                      const chipStyle = vesselChipStyle(movementHighlightByVessel[vessel.vesselKey], isSelected);
                       return (
                         <button
                           key={`latest-vessel-${vessel.vesselKey}`}
@@ -253,20 +296,21 @@ export default memo(function UsniFleetMap({
                             width: "100%",
                             textAlign: "left",
                             borderRadius: 9,
-                            border: isSelected ? "1px solid rgba(103,232,249,0.7)" : "1px solid rgba(148,163,184,0.35)",
-                            background: isSelected ? "rgba(6,182,212,0.12)" : "rgba(15,23,42,0.92)",
-                            color: "#e2e8f0",
-                            padding: "6px 8px",
+                            border: chipStyle.border,
+                            background: chipStyle.background,
+                            color: chipStyle.color,
+                            padding: "5px 7px",
                             cursor: "pointer",
+                            boxShadow: isSelected ? "0 0 0 1px rgba(103,232,249,0.25) inset" : undefined,
                           }}
                         >
                           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-                            <div style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.2 }}>{vessel.vesselName}</div>
-                            <div style={{ fontSize: 10, opacity: 0.72, whiteSpace: "nowrap" }}>
+                            <div style={{ fontWeight: 600, fontSize: 11, lineHeight: 1.15 }}>{vessel.vesselName}</div>
+                            <div style={{ fontSize: 9.5, opacity: 0.72, whiteSpace: "nowrap" }}>
                               {reportDateLabel(vessel.reportDate)}
                             </div>
                           </div>
-                          <div style={{ marginTop: 2, fontSize: 10.5, opacity: 0.78, lineHeight: 1.2 }}>{vessel.vesselType}</div>
+                          <div style={{ marginTop: 1.5, fontSize: 9.5, opacity: 0.8, lineHeight: 1.15 }}>{vessel.vesselType}</div>
                         </button>
                       );
                     })}

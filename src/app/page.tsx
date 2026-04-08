@@ -1124,9 +1124,13 @@ export default function Page() {
   const [discardSuspectedSpoofing, setDiscardSuspectedSpoofing] = useState(true);
   const [hideSpoofingDetectedCrossings, setHideSpoofingDetectedCrossings] = useState(true);
   const [selectedCrossingShipIds, setSelectedCrossingShipIds] = useState<string[]>([]);
-  const [playbackWindow, setPlaybackWindow] = useState<"24h" | "48h">("24h");
   const [playbackLoading, setPlaybackLoading] = useState(false);
   const [playbackDataMode, setPlaybackDataMode] = useState<"latest" | "24h" | "48h">("latest");
+  const [latestPlaybackSnapshots, setLatestPlaybackSnapshots] = useState<Snapshot[]>([]);
+  const [latestPlaybackShipMeta, setLatestPlaybackShipMeta] = useState<Record<string, ShipMeta>>({});
+  const [latestRelevantExternalPoints, setLatestRelevantExternalPoints] = useState<ExternalPresencePoint[]>([]);
+  const [selectedPlaybackShipId, setSelectedPlaybackShipId] = useState<string | null>(null);
+  const [playbackShipSearch, setPlaybackShipSearch] = useState("");
   const [splitMode, setSplitMode] = useState(false);
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
   const [tankerCandidatesData, setTankerCandidatesData] = useState<CandidateCrosser[]>([]);
@@ -1299,14 +1303,18 @@ export default function Page() {
         externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
         confirmedCrossingExclusions: Array.isArray(core?.data?.confirmedCrossingExclusions) ? core.data.confirmedCrossingExclusions : [],
       };
+      const latestRelevantExternal = Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : [];
 
       setSplitMode(true);
       setData(normalized);
+      setLatestPlaybackSnapshots(normalized.snapshots);
+      setLatestPlaybackShipMeta(normalized.shipMeta);
+      setLatestRelevantExternalPoints(latestRelevantExternal);
       setTankerCandidatesData(Array.isArray(candidates?.data?.tankerCandidates) ? candidates.data.tankerCandidates : []);
       setCargoCandidatesData(Array.isArray(candidates?.data?.cargoCandidates) ? candidates.data.cargoCandidates : []);
       setTankerCandidateEventsData(Array.isArray(candidates?.data?.tankerCandidateEvents) ? candidates.data.tankerCandidateEvents : []);
       setCargoCandidateEventsData(Array.isArray(candidates?.data?.cargoCandidateEvents) ? candidates.data.cargoCandidateEvents : []);
-      setExternalPoints(Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : []);
+      setExternalPoints(latestRelevantExternal);
       const defaults = normalized.vesselTypes.includes("tanker") ? ["tanker"] : normalized.vesselTypes;
       setSelectedTypes(defaults);
       setCrossingMapTypes(normalized.vesselTypes.includes("tanker") ? ["tanker"] : defaults);
@@ -1422,8 +1430,21 @@ export default function Page() {
   }, [playing, data?.snapshots?.length]);
 
   useEffect(() => {
+    if (playbackDataMode !== "latest") return;
+    setData((prev) => (prev ? { ...prev, snapshots: latestPlaybackSnapshots, shipMeta: latestPlaybackShipMeta } : prev));
+    setExternalPoints(latestRelevantExternalPoints);
+    setFrameIndex(latestPlaybackSnapshots.length ? latestPlaybackSnapshots.length - 1 : 0);
+  }, [latestPlaybackShipMeta, latestPlaybackSnapshots, latestRelevantExternalPoints, playbackDataMode]);
+
+  useEffect(() => {
+    if ((data?.snapshots?.length || 0) > 1) return;
+    setPlaying(false);
+  }, [data?.snapshots?.length]);
+
+  useEffect(() => {
     if (!splitMode || !data || playbackDataMode === "latest") return;
     const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
+    let cancelled = false;
 
     const fetchJsonMaybeGzip = async (url: string) => {
       const r = await fetch(url, { cache: "force-cache" });
@@ -1448,6 +1469,7 @@ export default function Page() {
         const playbackJson = await fetchJsonMaybeGzip(`${root}/processed_playback_${playbackDataMode}.json`);
         const shipmetaJson = await fetchJsonMaybeGzip(`${root}/processed_shipmeta_${playbackDataMode}.json`);
         const externalJson = loadAllRegions ? await fetchJsonMaybeGzip(`${root}/processed_external_${playbackDataMode}.json`) : null;
+        if (cancelled) return;
         const snaps = Array.isArray(playbackJson?.data?.snapshots) ? playbackJson.data.snapshots : [];
         const ext = Array.isArray(externalJson?.data?.externalPresencePoints) ? externalJson.data.externalPresencePoints : [];
         const sm = shipmetaJson?.data?.shipMeta || {};
@@ -1455,19 +1477,107 @@ export default function Page() {
         setExternalPoints(ext);
         setFrameIndex(snaps.length ? snaps.length - 1 : 0);
       } finally {
-        setPlaybackLoading(false);
+        if (!cancelled) setPlaybackLoading(false);
       }
     };
 
-    fetchWindowData();
+    void fetchWindowData();
+    return () => {
+      cancelled = true;
+    };
   }, [splitMode, loadAllRegions, playbackDataMode]);
 
   const currentSnapshot = data?.snapshots?.[frameIndex];
+  const latestSnapshot = data?.snapshots?.length ? data.snapshots[data.snapshots.length - 1] : null;
 
   const filteredCurrentPoints = useMemo(() => {
     if (!currentSnapshot) return [];
-    return currentSnapshot.points.filter((p) => selectedTypes.includes(p.vesselType));
-  }, [currentSnapshot, selectedTypes]);
+    return currentSnapshot.points
+      .filter((p) => selectedTypes.includes(p.vesselType))
+      .map((p) => ({
+        ...p,
+        flag: data?.shipMeta?.[p.shipId]?.flag,
+        destination: data?.shipMeta?.[p.shipId]?.destination,
+      }));
+  }, [currentSnapshot, data?.shipMeta, selectedTypes]);
+
+  const playbackShipOptions = useMemo(() => {
+    const seen = new Map<string, {
+      shipId: string;
+      shipName: string;
+      vesselType: string;
+      flag?: string;
+      destination?: string;
+      label: string;
+      searchText: string;
+    }>();
+
+    for (const point of latestSnapshot?.points || []) {
+      const meta = data?.shipMeta?.[point.shipId];
+      seen.set(point.shipId, {
+        shipId: point.shipId,
+        shipName: point.shipName,
+        vesselType: point.vesselType,
+        flag: meta?.flag,
+        destination: meta?.destination,
+        label: `${formatShipDisplayName(point.shipName, meta?.flag)} (${point.shipId})`,
+        searchText: `${point.shipName} ${point.shipId} ${point.vesselType} ${meta?.flag || ""} ${meta?.destination || ""}`.toLowerCase(),
+      });
+    }
+
+    return [...seen.values()].sort((a, b) => a.shipName.localeCompare(b.shipName) || a.shipId.localeCompare(b.shipId));
+  }, [data?.shipMeta, latestSnapshot]);
+
+  const selectedPlaybackShipOption = useMemo(() => {
+    if (!selectedPlaybackShipId) return null;
+    const fromOptions = playbackShipOptions.find((option) => option.shipId === selectedPlaybackShipId);
+    if (fromOptions) return fromOptions;
+    const meta = data?.shipMeta?.[selectedPlaybackShipId];
+    if (!meta) return null;
+    return {
+      shipId: selectedPlaybackShipId,
+      shipName: meta.shipName || "Unknown",
+      vesselType: meta.vesselType || "unknown",
+      flag: meta.flag,
+      destination: meta.destination,
+      label: `${formatShipDisplayName(meta.shipName || "Unknown", meta.flag)} (${selectedPlaybackShipId})`,
+      searchText: `${meta.shipName || ""} ${selectedPlaybackShipId} ${meta.vesselType || ""} ${meta.flag || ""} ${meta.destination || ""}`.toLowerCase(),
+    };
+  }, [data?.shipMeta, playbackShipOptions, selectedPlaybackShipId]);
+
+  const playbackShipMatches = useMemo(() => {
+    const query = playbackShipSearch.trim().toLowerCase();
+    const base = query
+      ? playbackShipOptions.filter((option) => option.searchText.includes(query))
+      : playbackShipOptions;
+    if (!selectedPlaybackShipOption) return base.slice(0, 60);
+    return [selectedPlaybackShipOption, ...base.filter((option) => option.shipId !== selectedPlaybackShipOption.shipId)].slice(0, 60);
+  }, [playbackShipOptions, playbackShipSearch, selectedPlaybackShipOption]);
+
+  const selectedPlaybackShipLatestPoint = useMemo(
+    () => latestSnapshot?.points.find((point) => point.shipId === selectedPlaybackShipId) || null,
+    [latestSnapshot, selectedPlaybackShipId],
+  );
+
+  const selectedPlaybackShipFallbackTrail = useMemo(
+    () => data?.crossingPaths.find((path) => path.shipId === selectedPlaybackShipId)?.points || [],
+    [data?.crossingPaths, selectedPlaybackShipId],
+  );
+
+  const playbackPointsForMap = useMemo(() => {
+    const pointMap = new Map(filteredCurrentPoints.map((point) => [point.shipId, point]));
+    if (selectedPlaybackShipId && currentSnapshot) {
+      const selectedPoint = currentSnapshot.points.find((point) => point.shipId === selectedPlaybackShipId);
+      if (selectedPoint) {
+        pointMap.set(selectedPoint.shipId, {
+          ...selectedPoint,
+          flag: data?.shipMeta?.[selectedPoint.shipId]?.flag,
+          destination: data?.shipMeta?.[selectedPoint.shipId]?.destination,
+        });
+      }
+    }
+    return [...pointMap.values()];
+  }, [currentSnapshot, data?.shipMeta, filteredCurrentPoints, selectedPlaybackShipId]);
 
   const filteredCrossingPaths = useMemo(() => {
     if (!data) return [];
@@ -1969,10 +2079,22 @@ export default function Page() {
   const filteredCrossingPathsForMap = useMemo(() => {
     if (!data) return [] as CrossingPath[];
     const visibleShipIds = new Set(filteredCrossingEvents.map((e) => e.shipId));
-    return (data.crossingPaths || [])
-      .filter((p) => crossingMapTypes.includes(p.vesselType) && visibleShipIds.has(p.shipId))
-      .map((p) => ({ ...p, flag: data.shipMeta?.[p.shipId]?.flag || p.flag || "" }));
-  }, [data, crossingMapTypes, filteredCrossingEvents]);
+    const byShipId = new Map<string, CrossingPath>();
+
+    for (const path of data.crossingPaths || []) {
+      if (!crossingMapTypes.includes(path.vesselType) || !visibleShipIds.has(path.shipId)) continue;
+      byShipId.set(path.shipId, { ...path, flag: data.shipMeta?.[path.shipId]?.flag || path.flag || "" });
+    }
+
+    // Keep manually selected traces inspectable even when they fall outside the
+    // active type filter or the default visible event subset.
+    for (const path of data.crossingPaths || []) {
+      if (!selectedCrossingShipIdSet.has(path.shipId)) continue;
+      byShipId.set(path.shipId, { ...path, flag: data.shipMeta?.[path.shipId]?.flag || path.flag || "" });
+    }
+
+    return [...byShipId.values()];
+  }, [data, crossingMapTypes, filteredCrossingEvents, selectedCrossingShipIdSet]);
 
   const crossingMapTitle = useMemo(() => {
     if (crossingMapTypes.length === 1 && crossingMapTypes[0] === "tanker") {
@@ -2028,7 +2150,17 @@ export default function Page() {
         deltaDh: r.deltaDh,
       }));
   }, [externalLinkRows, crossingVisibleShipIds, data]);
-  const crossingMapPaths = useMemo(() => filteredCrossingPathsForMap.slice(0, 180), [filteredCrossingPathsForMap]);
+  const crossingMapPaths = useMemo(() => {
+    if (!selectedCrossingShipIdSet.size) return filteredCrossingPathsForMap.slice(0, 180);
+
+    const selected: CrossingPath[] = [];
+    const unselected: CrossingPath[] = [];
+    for (const path of filteredCrossingPathsForMap) {
+      if (selectedCrossingShipIdSet.has(path.shipId)) selected.push(path);
+      else unselected.push(path);
+    }
+    return [...selected, ...unselected].slice(0, 180);
+  }, [filteredCrossingPathsForMap, selectedCrossingShipIdSet]);
   const crossingSummary = useMemo(() => {
     const uniqueShipIds = new Set(filteredCrossingEvents.map((e) => e.shipId));
     return {
@@ -2695,35 +2827,132 @@ export default function Page() {
         <section id="playback-map" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Playback Map (filtered vessels)</h2>
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               {splitMode ? (
-                <div className="flex items-center gap-1 mr-2">
+                <div className="flex flex-wrap items-center gap-1 mr-2">
+                  <button
+                    onClick={() => {
+                      setPlaying(false);
+                      setPlaybackDataMode("latest");
+                    }}
+                    className={`rounded-md border px-2 py-1 ${playbackDataMode === "latest" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                  >
+                    Latest only
+                  </button>
                   {(["24h", "48h"] as const).map((w) => (
                     <button
                       key={w}
                       onClick={() => {
-                        setPlaybackWindow(w);
-                        if (playbackDataMode !== "latest") setPlaybackDataMode(w);
+                        setPlaying(false);
+                        setPlaybackDataMode(w);
                       }}
-                      className={`rounded-md border px-2 py-1 ${playbackWindow === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                      className={`rounded-md border px-2 py-1 ${playbackDataMode === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
                     >
-                      {w}
+                      {playbackDataMode === w ? `${w} loaded` : `Load ${w} trace`}
                     </button>
                   ))}
                 </div>
               ) : null}
               <button
-                onClick={() => {
-                  if (!playing && playbackDataMode === "latest") {
-                    setPlaybackDataMode(playbackWindow);
-                  }
-                  setPlaying((v) => !v);
-                }}
-                className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 hover:bg-slate-700"
+                onClick={() => setPlaying((v) => !v)}
+                disabled={(data.snapshots?.length || 0) <= 1}
+                className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {playing ? "Pause" : "Play"}
               </button>
-              <span className="text-slate-400">{currentSnapshot?.t ? new Date(currentSnapshot.t).toUTCString() : "-"}{playbackLoading ? " (loading...)" : ""}</span>
+              <span className="text-slate-400">
+                {currentSnapshot?.t ? new Date(currentSnapshot.t).toUTCString() : "-"}
+                {playbackLoading ? " (loading...)" : playbackDataMode === "latest" ? " (latest positions)" : ` (${playbackDataMode} history)`}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+              <label className="block">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Find vessel</span>
+                <input
+                  type="search"
+                  value={playbackShipSearch}
+                  onChange={(e) => setPlaybackShipSearch(e.target.value)}
+                  placeholder="Type vessel name, ship ID, flag, destination"
+                  className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Matching vessels</span>
+                <select
+                  value={selectedPlaybackShipId || ""}
+                  onChange={(e) => {
+                    const nextShipId = e.target.value || null;
+                    setSelectedPlaybackShipId(nextShipId);
+                    setFrameIndex(data.snapshots?.length ? data.snapshots.length - 1 : 0);
+                  }}
+                  size={Math.min(Math.max(playbackShipMatches.length, 2), 6)}
+                  className="mt-2 h-full min-h-[120px] w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                >
+                  {!playbackShipMatches.length ? <option value="">No matching vessels in the latest frame</option> : null}
+                  {playbackShipMatches.map((option) => (
+                    <option key={option.shipId} value={option.shipId}>
+                      {option.label} — {option.vesselType}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPlaybackShipId(null);
+                  setPlaybackShipSearch("");
+                }}
+                className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+              >
+                Clear vessel
+              </button>
+              {selectedPlaybackShipId ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlaying(false);
+                      setPlaybackDataMode("24h");
+                    }}
+                    className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                  >
+                    Show 24h trace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlaying(false);
+                      setPlaybackDataMode("48h");
+                    }}
+                    className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                  >
+                    Show 48h trace
+                  </button>
+                </>
+              ) : null}
+            </div>
+
+            <div className="mt-3 text-xs text-slate-400">
+              {selectedPlaybackShipOption ? (
+                <>
+                  <span className="text-slate-200">{selectedPlaybackShipOption.label}</span>
+                  {selectedPlaybackShipLatestPoint && latestSnapshot?.t ? ` last seen ${formatUtcTime(latestSnapshot.t)}` : ""}
+                  {selectedPlaybackShipFallbackTrail.length > 1 && playbackDataMode === "latest"
+                    ? " • showing saved crossing path until you load a longer playback trace"
+                    : playbackDataMode === "latest"
+                      ? " • showing latest position only; load 24h or 48h if you want the fuller route"
+                      : ` • showing ${playbackDataMode} playback history`}
+                </>
+              ) : (
+                <>Latest positions stay lightweight by default. Pick a ship, then load `24h` or `48h` only when you want the heavier trace.</>
+              )}
             </div>
           </div>
 
@@ -2758,7 +2987,7 @@ export default function Page() {
 
           <div className="h-[460px] rounded-xl overflow-hidden border border-slate-800">
             <PlaybackMap
-              points={filteredCurrentPoints}
+              points={playbackPointsForMap}
               snapshots={data.snapshots || []}
               eastLon={data.metadata.eastLon}
               westLon={data.metadata.westLon}
@@ -2768,6 +2997,13 @@ export default function Page() {
               showNonCrossing={showNonCrossing}
               linkedPoints={playbackLinkedPoints}
               currentTimestamp={currentSnapshot?.t}
+              selectedShipId={selectedPlaybackShipId}
+              onSelectShipId={(shipId) => {
+                setSelectedPlaybackShipId(shipId);
+                if (shipId) setFrameIndex(data.snapshots?.length ? data.snapshots.length - 1 : 0);
+              }}
+              selectedShipFallbackTrail={selectedPlaybackShipFallbackTrail}
+              shipMetaById={data.shipMeta}
             />
           </div>
         </section>

@@ -11,6 +11,8 @@ type Point = { shipId: string; shipName: string; vesselType: string; flag?: stri
 type Snapshot = { t: string; points: Point[] };
 type LinkedPoint = { shipId: string; shipName: string; vesselType: string; flag?: string; region: string; lat: number; lon: number; deltaDh: string };
 type MonitoredArea = { minLat: number; maxLat: number; minLon: number; maxLon: number; color?: string; label?: string };
+type TrailPoint = { t: string; lat: number; lon: number };
+type ShipMetaRecord = Record<string, { shipName?: string; vesselType?: string; flag?: string; destination?: string }>;
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
@@ -55,6 +57,10 @@ export default memo(function PlaybackMap({
   linkedPoints,
   monitoredAreas,
   currentTimestamp,
+  selectedShipId,
+  onSelectShipId,
+  selectedShipFallbackTrail,
+  shipMetaById,
 }: {
   points: Point[];
   snapshots: Snapshot[];
@@ -67,8 +73,17 @@ export default memo(function PlaybackMap({
   linkedPoints?: LinkedPoint[];
   monitoredAreas?: MonitoredArea[];
   currentTimestamp?: string;
+  selectedShipId?: string | null;
+  onSelectShipId?: (shipId: string | null) => void;
+  selectedShipFallbackTrail?: TrailPoint[];
+  shipMetaById?: ShipMetaRecord;
 }) {
-  const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
+  const [internalSelectedShipId, setInternalSelectedShipId] = useState<string | null>(null);
+  const activeSelectedShipId = selectedShipId === undefined ? internalSelectedShipId : selectedShipId;
+  const handleSelectShipId = (shipId: string | null) => {
+    if (selectedShipId === undefined) setInternalSelectedShipId(shipId);
+    onSelectShipId?.(shipId);
+  };
   const snapshotIndexByTimestamp = useMemo(
     () => new Map(snapshots.map((snapshot, index) => [snapshot.t, index])),
     [snapshots],
@@ -78,27 +93,41 @@ export default memo(function PlaybackMap({
     [snapshots],
   );
 
-  const selectedTrail = useMemo(() => {
-    if (!selectedShipId || !snapshots?.length) return [] as Array<{ t: string; lat: number; lon: number }>;
+  const selectedTrailFromSnapshots = useMemo(() => {
+    if (!activeSelectedShipId || !snapshots?.length) return [] as TrailPoint[];
 
     const raw = snapshots
       .flatMap((s) => s.points
-        .filter((p) => p.shipId === selectedShipId)
+        .filter((p) => p.shipId === activeSelectedShipId)
         .map((p) => ({ t: s.t, lat: p.lat, lon: p.lon })))
       .sort((a, b) => +new Date(a.t) - +new Date(b.t));
 
     if (raw.length <= 1500) return raw;
     const step = Math.ceil(raw.length / 1500);
     return raw.filter((_, i) => i % step === 0);
-  }, [selectedShipId, snapshots]);
+  }, [activeSelectedShipId, snapshots]);
+
+  const usingFallbackTrail = selectedTrailFromSnapshots.length <= 1 && (selectedShipFallbackTrail?.length || 0) > 1;
+  const selectedTrail = useMemo(
+    () => (usingFallbackTrail ? selectedShipFallbackTrail || [] : selectedTrailFromSnapshots),
+    [selectedShipFallbackTrail, selectedTrailFromSnapshots, usingFallbackTrail],
+  );
 
   const selectedShipMeta = useMemo(() => {
-    if (!selectedShipId) return null;
+    if (!activeSelectedShipId) return null;
     const hit = snapshots
       .flatMap((s) => s.points)
-      .find((p) => p.shipId === selectedShipId);
-    return hit || null;
-  }, [selectedShipId, snapshots]);
+      .find((p) => p.shipId === activeSelectedShipId);
+    const shipMeta = shipMetaById?.[activeSelectedShipId] || null;
+    if (!hit && !shipMeta) return null;
+    return {
+      shipId: activeSelectedShipId,
+      shipName: hit?.shipName || shipMeta?.shipName || "Unknown",
+      vesselType: hit?.vesselType || shipMeta?.vesselType || "unknown",
+      flag: hit?.flag || shipMeta?.flag,
+      destination: hit?.destination || shipMeta?.destination,
+    };
+  }, [activeSelectedShipId, shipMetaById, snapshots]);
 
   const selectedTrailWithDir = useMemo(() => {
     return selectedTrail.map((p, idx) => {
@@ -215,7 +244,9 @@ export default memo(function PlaybackMap({
           <div><strong>Name:</strong> {formatShipDisplayName(selectedShipMeta.shipName, selectedShipMeta.flag)}</div>
           <div><strong>Ship ID:</strong> {selectedShipMeta.shipId}</div>
           <div><strong>Type:</strong> {selectedShipMeta.vesselType}</div>
-          <div><strong>Window pings:</strong> {selectedTrail.length}</div>
+          <div><strong>Trace points:</strong> {selectedTrail.length}</div>
+          <div><strong>Trace source:</strong> {usingFallbackTrail ? "saved crossing path" : "loaded playback"}</div>
+          {selectedShipMeta.destination ? <div><strong>Destination:</strong> {selectedShipMeta.destination}</div> : null}
           <div style={{ marginTop: 4 }}>
             <a
               href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${selectedShipMeta.shipId}`}
@@ -265,7 +296,7 @@ export default memo(function PlaybackMap({
         const isFinal = idx === selectedTrailWithDir.length - 1;
         return (
           <Marker
-            key={`trail-point-shape-${selectedShipId}-${idx}`}
+            key={`trail-point-shape-${activeSelectedShipId}-${idx}`}
             position={[p.lat, p.lon]}
             icon={divIcon({
               className: "",
@@ -282,14 +313,14 @@ export default memo(function PlaybackMap({
       })}
       {labeledTrailPoints.map((p, idx) => (
         <Polyline
-          key={`trail-ts-line-${selectedShipId}-${idx}`}
+          key={`trail-ts-line-${activeSelectedShipId}-${idx}`}
           positions={[[p.lat, p.lon], [p.lat + 0.018, p.lon]]}
           pathOptions={{ color: "#6b7280", weight: 1.5, opacity: 0.95 }}
         />
       ))}
       {labeledTrailPoints.map((p, idx) => (
         <Marker
-          key={`trail-ts-${selectedShipId}-${idx}`}
+          key={`trail-ts-${activeSelectedShipId}-${idx}`}
           position={[p.lat + 0.018, p.lon]}
           icon={divIcon({
             className: "",
@@ -301,7 +332,7 @@ export default memo(function PlaybackMap({
       ))}
       {segmentArrows.map((p, idx) => (
         <Marker
-          key={`trail-arrow-seg-${selectedShipId}-${idx}`}
+          key={`trail-arrow-seg-${activeSelectedShipId}-${idx}`}
           position={[p.lat, p.lon]}
           icon={divIcon({
             className: "",
@@ -350,7 +381,7 @@ export default memo(function PlaybackMap({
             key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
             position={[p.lat, p.lon]}
             icon={getPlaybackTriangleIcon(color, heading.deg, 8, isCrosser, heading.lowMovement)}
-            eventHandlers={{ click: () => setSelectedShipId(p.shipId) }}
+            eventHandlers={{ click: () => handleSelectShipId(p.shipId) }}
           >
             <Tooltip>
               {formatShipDisplayName(p.shipName, p.flag)} ({p.shipId}) — {isCrosser ? "crossing" : "non-crossing"}

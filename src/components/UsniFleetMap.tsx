@@ -41,6 +41,18 @@ type UsniTrackerSnapshotVessel = {
   comments?: string | null;
 };
 
+type UsniLatestLocationGroup = {
+  groupKey: string;
+  positionLabel: string;
+  positionLat: number;
+  positionLon: number;
+  vessels: Array<UsniTrackerSnapshotVessel & {
+    reportDate?: string | null;
+    evidenceSources?: string[];
+    historyPointCount?: number;
+  }>;
+};
+
 function formatLatLon(lat: number, lon: number) {
   const latSuffix = lat >= 0 ? "N" : "S";
   const lonSuffix = lon >= 0 ? "E" : "W";
@@ -89,10 +101,14 @@ function movementLabel(direction: UsniMovementDirection) {
 
 export default memo(function UsniFleetMap({
   movements,
-  snapshotVessels,
+  locationGroups,
+  selectedVesselKey,
+  onSelectVessel,
 }: {
   movements: UsniFleetMovementRow[];
-  snapshotVessels: UsniTrackerSnapshotVessel[];
+  locationGroups: UsniLatestLocationGroup[];
+  selectedVesselKey?: string | null;
+  onSelectVessel?: (vesselKey: string) => void;
 }) {
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
@@ -160,23 +176,85 @@ export default memo(function UsniFleetMap({
           );
         })}
 
-        {snapshotVessels.map((vessel) => (
+        {locationGroups.map((group) => {
+          const containsSelected = Boolean(selectedVesselKey && group.vessels.some((vessel) => vessel.vesselKey === selectedVesselKey));
+          const count = group.vessels.length;
+          const radius = Math.min(7 + (count * 1.8), 16);
+          return (
           <CircleMarker
-            key={`snapshot-${vessel.vesselKey}`}
-            center={[vessel.positionLat, vessel.positionLon]}
-            radius={4}
-            pathOptions={{ color: "#cbd5e1", fillColor: "#0f172a", fillOpacity: 0.9, weight: 2 }}
+            key={`latest-group-${group.groupKey}`}
+            center={[group.positionLat, group.positionLon]}
+            radius={radius}
+            pathOptions={{
+              color: containsSelected ? "#67e8f9" : "#cbd5e1",
+              fillColor: containsSelected ? "#164e63" : "#0f172a",
+              fillOpacity: 0.92,
+              weight: containsSelected ? 3 : 2,
+            }}
           >
             <Tooltip>
-              {vessel.vesselName} ({vessel.vesselType}) — {vessel.positionLabel}
+              {group.positionLabel} — {count} vessel{count === 1 ? "" : "s"}
+            </Tooltip>
+            <Popup>
+              <div style={{ minWidth: 250 }}>
+                <div><strong>{group.positionLabel}</strong></div>
+                <div>{formatLatLon(group.positionLat, group.positionLon)}</div>
+                <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>
+                  {count} vessel{count === 1 ? "" : "s"} at this latest tracked location
+                </div>
+                <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  {group.vessels.map((vessel) => {
+                    const isSelected = vessel.vesselKey === selectedVesselKey;
+                    return (
+                      <button
+                        key={`latest-vessel-${vessel.vesselKey}`}
+                        type="button"
+                        onClick={() => onSelectVessel?.(vessel.vesselKey)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          borderRadius: 10,
+                          border: isSelected ? "1px solid rgba(103,232,249,0.7)" : "1px solid rgba(148,163,184,0.35)",
+                          background: isSelected ? "rgba(6,182,212,0.12)" : "rgba(15,23,42,0.92)",
+                          color: "#e2e8f0",
+                          padding: "8px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600 }}>{vessel.vesselName}</div>
+                        <div style={{ marginTop: 2, fontSize: 12, opacity: 0.85 }}>
+                          {vessel.hullNumber ? `${vessel.hullNumber} · ` : ""}{vessel.vesselType}
+                        </div>
+                        <div style={{ marginTop: 4, fontSize: 11, opacity: 0.75 }}>
+                          Latest report: {vessel.reportDate || "unknown"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </Popup>
+          </CircleMarker>
+          );
+        })}
+
+        {locationGroups.flatMap((group) => group.vessels.filter((vessel) => vessel.vesselKey === selectedVesselKey).map((vessel) => (
+          <CircleMarker
+            key={`selected-current-${vessel.vesselKey}`}
+            center={[vessel.positionLat, vessel.positionLon]}
+            radius={7}
+            pathOptions={{ color: "#67e8f9", fillColor: "#083344", fillOpacity: 0.95, weight: 3 }}
+          >
+            <Tooltip>
+              Selected: {vessel.vesselName} — {vessel.positionLabel}
             </Tooltip>
             <Popup>
               <div style={{ minWidth: 220 }}>
                 <div><strong>{vessel.vesselName}</strong>{vessel.hullNumber ? ` (${vessel.hullNumber})` : ""}</div>
                 <div><strong>Type:</strong> {vessel.vesselType}</div>
-                <div><strong>Snapshot position:</strong> {vessel.positionLabel}</div>
+                <div><strong>Current tracked position:</strong> {vessel.positionLabel}</div>
                 <div><strong>Coordinates:</strong> {formatLatLon(vessel.positionLat, vessel.positionLon)}</div>
-                {vessel.comments ? <div style={{ marginTop: 8, lineHeight: 1.4 }}>{vessel.comments}</div> : null}
+                {vessel.reportDate ? <div style={{ marginTop: 6 }}><strong>Latest report:</strong> {vessel.reportDate}</div> : null}
                 {vessel.sourceUrl ? (
                   <div style={{ marginTop: 8 }}>
                     <a href={vessel.sourceUrl} target="_blank" rel="noreferrer">Open source</a>
@@ -185,7 +263,7 @@ export default memo(function UsniFleetMap({
               </div>
             </Popup>
           </CircleMarker>
-        ))}
+        )))}
 
         <Marker
           position={[17.5, 65.5]}

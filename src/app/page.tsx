@@ -416,6 +416,55 @@ type UsniTrackerSnapshot = {
   vessels: UsniTrackerSnapshotVessel[];
 };
 
+type UsniVesselHistoryPosition = {
+  reportDate?: string | null;
+  positionLabel: string;
+  positionLat: number;
+  positionLon: number;
+  sourceUrl?: string | null;
+  comments?: string | null;
+  evidenceSources?: string[];
+};
+
+type UsniVesselLatestPosition = {
+  date?: string | null;
+  position: string;
+  coordinates: { lat: number; lon: number };
+  sourceUrl?: string | null;
+  evidenceSources?: string[];
+};
+
+type UsniVesselHistoryEntry = {
+  vesselKey: string;
+  vesselName: string;
+  vesselType: string;
+  hullNumber?: string | null;
+  latestPosition?: UsniVesselLatestPosition | null;
+  positions: UsniVesselHistoryPosition[];
+};
+
+type UsniLatestFleetVessel = {
+  vesselKey: string;
+  vesselName: string;
+  vesselType: string;
+  hullNumber?: string | null;
+  positionLabel: string;
+  positionLat: number;
+  positionLon: number;
+  sourceUrl?: string | null;
+  reportDate?: string | null;
+  evidenceSources?: string[];
+  historyPointCount: number;
+};
+
+type UsniLatestFleetGroup = {
+  groupKey: string;
+  positionLabel: string;
+  positionLat: number;
+  positionLon: number;
+  vessels: UsniLatestFleetVessel[];
+};
+
 type UsniFleetFeedShape = {
   metadata: {
     generatedAt: string;
@@ -435,6 +484,7 @@ type UsniFleetFeedShape = {
   };
   relevantMovements: UsniFleetMovementRow[];
   movementRows: UsniFleetMovementRow[];
+  vesselHistory: UsniVesselHistoryEntry[];
   trackerSnapshots: UsniTrackerSnapshot[];
 };
 
@@ -1299,6 +1349,7 @@ export default function Page() {
   const [usniMovementWindow, setUsniMovementWindow] = useState<"7d" | "30d" | "all">("7d");
   const [usniMovementFilter, setUsniMovementFilter] = useState<"all" | "toward" | "away">("all");
   const [selectedUsniSnapshotDate, setSelectedUsniSnapshotDate] = useState<string>("");
+  const [selectedUsniVesselKey, setSelectedUsniVesselKey] = useState<string>("");
   const [selectedRedSeaCrossingTypes, setSelectedRedSeaCrossingTypes] = useState<RedSeaCrossingType[]>(RED_SEA_CROSSING_TYPES);
   const [selectedRedSeaVesselTypes, setSelectedRedSeaVesselTypes] = useState<RedSeaVesselType[]>(["tanker"]);
   const [redSeaWindow, setRedSeaWindow] = useState<"24h" | "48h" | "all">("24h");
@@ -1887,6 +1938,10 @@ export default function Page() {
     () => usniFleetFeed?.relevantMovements || [],
     [usniFleetFeed],
   );
+  const usniVesselHistory = useMemo(
+    () => usniFleetFeed?.vesselHistory || [],
+    [usniFleetFeed],
+  );
   const usniTrackedMovements = useMemo(
     () => (usniFleetFeed?.movementRows || []).filter((row) => row.direction !== "unchanged"),
     [usniFleetFeed],
@@ -1929,6 +1984,72 @@ export default function Page() {
     () => [...(selectedUsniSnapshot?.vessels || [])].sort((a, b) => a.vesselName.localeCompare(b.vesselName)),
     [selectedUsniSnapshot],
   );
+  const usniLatestFleetVessels = useMemo(
+    () => usniVesselHistory
+      .filter((vessel) => vessel.latestPosition?.coordinates)
+      .map((vessel) => ({
+        vesselKey: vessel.vesselKey,
+        vesselName: vessel.vesselName,
+        vesselType: vessel.vesselType,
+        hullNumber: vessel.hullNumber || null,
+        positionLabel: vessel.latestPosition?.position || "Unknown position",
+        positionLat: vessel.latestPosition?.coordinates.lat ?? 0,
+        positionLon: vessel.latestPosition?.coordinates.lon ?? 0,
+        sourceUrl: vessel.latestPosition?.sourceUrl || null,
+        reportDate: vessel.latestPosition?.date || null,
+        evidenceSources: vessel.latestPosition?.evidenceSources || [],
+        historyPointCount: vessel.positions.length,
+      }))
+      .filter((vessel) => Number.isFinite(vessel.positionLat) && Number.isFinite(vessel.positionLon))
+      .sort((a, b) => a.vesselName.localeCompare(b.vesselName)),
+    [usniVesselHistory],
+  );
+  const usniLatestFleetGroups = useMemo(() => {
+    const groups = new Map<string, UsniLatestFleetGroup>();
+    for (const vessel of usniLatestFleetVessels) {
+      const groupKey = `${vessel.positionLabel}|${vessel.positionLat.toFixed(3)}|${vessel.positionLon.toFixed(3)}`;
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          groupKey,
+          positionLabel: vessel.positionLabel,
+          positionLat: vessel.positionLat,
+          positionLon: vessel.positionLon,
+          vessels: [],
+        });
+      }
+      groups.get(groupKey)!.vessels.push(vessel);
+    }
+    return [...groups.values()]
+      .map((group) => ({
+        ...group,
+        vessels: [...group.vessels].sort((a, b) => a.vesselName.localeCompare(b.vesselName)),
+      }))
+      .sort((a, b) => (b.vessels.length - a.vessels.length) || a.positionLabel.localeCompare(b.positionLabel));
+  }, [usniLatestFleetVessels]);
+  const selectedUsniVessel = useMemo(
+    () => usniVesselHistory.find((vessel) => vessel.vesselKey === selectedUsniVesselKey) || null,
+    [selectedUsniVesselKey, usniVesselHistory],
+  );
+  const selectedUsniVesselMovements = useMemo(
+    () => selectedUsniVesselKey
+      ? usniTrackedMovements.filter((row) => row.vesselKey === selectedUsniVesselKey)
+      : [],
+    [selectedUsniVesselKey, usniTrackedMovements],
+  );
+  const selectedUsniVesselMovementRowsForMap = useMemo(
+    () => [...selectedUsniVesselMovements].sort((a, b) => +new Date(a.date || 0) - +new Date(b.date || 0)),
+    [selectedUsniVesselMovements],
+  );
+  const selectedUsniVesselMovementRowsForTable = useMemo(
+    () => [...selectedUsniVesselMovements].sort((a, b) => +new Date(b.date || 0) - +new Date(a.date || 0)),
+    [selectedUsniVesselMovements],
+  );
+  const selectedUsniVesselTrajectory = useMemo(
+    () => selectedUsniVessel
+      ? [...(selectedUsniVessel.positions || [])].sort((a, b) => +new Date(`${a.reportDate || "1970-01-01"}T00:00:00Z`) - +new Date(`${b.reportDate || "1970-01-01"}T00:00:00Z`))
+      : [],
+    [selectedUsniVessel],
+  );
   const usniMovementWindowStartIso = useMemo(() => {
     if (usniMovementWindow === "7d") return usni7dStartIso;
     if (usniMovementWindow === "30d") return usni30dStartIso;
@@ -1939,18 +2060,22 @@ export default function Page() {
     [usniMovementWindowStartIso, usniTrackedMovements],
   );
   const usniMovementRowsForDisplay = useMemo(
-    () => usniMovementsInWindow.filter((row) => (
-      usniMovementFilter === "all"
-        ? true
-        : usniMovementFilter === "toward"
-          ? isUsniTowardMovement(row.direction)
-          : isUsniAwayMovement(row.direction)
-    )),
-    [usniMovementFilter, usniMovementsInWindow],
+    () => selectedUsniVesselKey
+      ? selectedUsniVesselMovementRowsForTable
+      : usniMovementsInWindow.filter((row) => (
+        usniMovementFilter === "all"
+          ? true
+          : usniMovementFilter === "toward"
+            ? isUsniTowardMovement(row.direction)
+            : isUsniAwayMovement(row.direction)
+      )),
+    [selectedUsniVesselKey, selectedUsniVesselMovementRowsForTable, usniMovementFilter, usniMovementsInWindow],
   );
   const usniMapMovementRows = useMemo(
-    () => [...usniMovementRowsForDisplay].slice(0, 24).sort((a, b) => +new Date(a.date) - +new Date(b.date)),
-    [usniMovementRowsForDisplay],
+    () => selectedUsniVesselKey
+      ? selectedUsniVesselMovementRowsForMap
+      : [...usniMovementRowsForDisplay].slice(0, 24).sort((a, b) => +new Date(a.date) - +new Date(b.date)),
+    [selectedUsniVesselKey, selectedUsniVesselMovementRowsForMap, usniMovementRowsForDisplay],
   );
   const latestUsniRelevantMovement = useMemo(
     () => usniRelevantMovements[0] || null,
@@ -1979,6 +2104,13 @@ export default function Page() {
       setSelectedUsniSnapshotDate(usniTrackerSnapshots[usniTrackerSnapshots.length - 1]?.date || "");
     }
   }, [selectedUsniSnapshotDate, usniTrackerSnapshots]);
+
+  useEffect(() => {
+    if (!selectedUsniVesselKey) return;
+    if (!usniVesselHistory.some((vessel) => vessel.vesselKey === selectedUsniVesselKey)) {
+      setSelectedUsniVesselKey("");
+    }
+  }, [selectedUsniVesselKey, usniVesselHistory]);
 
   const selectedAttack = vesselAttackItems[selectedAttackIndex] || vesselAttackItems[vesselAttackItems.length - 1] || null;
   const vesselAttacksSummary = attacksFeed?.vesselAttacks24hSummary || null;
@@ -4163,10 +4295,18 @@ export default function Page() {
             <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-3">
               <div className="text-xs text-slate-300">Current analysis window</div>
               <div className="mt-1 text-sm font-semibold text-slate-100">
-                {usniMovementWindow === "all" ? "All history loaded" : usniMovementWindow === "30d" ? "Rolling 30 days" : "Rolling 7 days"}
+                {selectedUsniVessel
+                  ? `${selectedUsniVessel.vesselName} full history`
+                  : usniMovementWindow === "all"
+                    ? "All history loaded"
+                    : usniMovementWindow === "30d"
+                      ? "Rolling 30 days"
+                      : "Rolling 7 days"}
               </div>
               <div className="mt-1 text-[11px] text-slate-400">
-                {usniMovementRowsForDisplay.length} tracked movement row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} currently shown.
+                {selectedUsniVessel
+                  ? `${selectedUsniVesselMovementRowsForTable.length} movement row${selectedUsniVesselMovementRowsForTable.length === 1 ? "" : "s"} for the selected ship.`
+                  : `${usniMovementRowsForDisplay.length} tracked movement row${usniMovementRowsForDisplay.length === 1 ? "" : "s"} currently shown.`}
               </div>
             </div>
           </div>
@@ -4178,14 +4318,16 @@ export default function Page() {
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Movement map</div>
-                      <div className="mt-1 text-lg font-semibold text-slate-100">Recent repositioning with arrows</div>
+                      <div className="mt-1 text-lg font-semibold text-slate-100">
+                        {selectedUsniVessel ? `${selectedUsniVessel.vesselName} movement history` : "Latest fleet picture with recent movement arrows"}
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-2 text-[11px]">
                       {(["7d", "30d", "all"] as const).map((window) => (
                         <button
                           key={`usni-window-${window}`}
                           onClick={() => setUsniMovementWindow(window)}
-                          className={`rounded-md border px-3 py-1.5 ${usniMovementWindow === window ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"}`}
+                          className={`rounded-md border px-3 py-1.5 ${usniMovementWindow === window ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"} ${selectedUsniVessel ? "opacity-60" : ""}`}
                         >
                           {window === "all" ? "All" : window.toUpperCase()}
                         </button>
@@ -4194,11 +4336,19 @@ export default function Page() {
                         <button
                           key={`usni-filter-${filter}`}
                           onClick={() => setUsniMovementFilter(filter)}
-                          className={`rounded-md border px-3 py-1.5 ${usniMovementFilter === filter ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"}`}
+                          className={`rounded-md border px-3 py-1.5 ${usniMovementFilter === filter ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"} ${selectedUsniVessel ? "opacity-60" : ""}`}
                         >
                           {filter === "all" ? "All tracked moves" : filter === "toward" ? "Toward / entered" : "Away / exited"}
                         </button>
                       ))}
+                      {selectedUsniVessel ? (
+                        <button
+                          onClick={() => setSelectedUsniVesselKey("")}
+                          className="rounded-md border border-amber-300/60 bg-amber-500/10 px-3 py-1.5 text-amber-100"
+                        >
+                          Clear ship selection
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
@@ -4216,17 +4366,24 @@ export default function Page() {
                     </span>
                     <span className="inline-flex items-center gap-2 rounded-full border border-slate-600 px-2.5 py-1">
                       <span className="h-2.5 w-2.5 rounded-full border border-slate-300 bg-slate-950" />
-                      Selected weekly snapshot positions
+                      Latest tracked fleet positions
                     </span>
                   </div>
+                  {selectedUsniVessel ? (
+                    <div className="mt-3 rounded-xl border border-amber-300/30 bg-amber-500/10 p-3 text-xs text-amber-100/90">
+                      Showing the full tracked movement history for <span className="font-semibold text-amber-50">{selectedUsniVessel.vesselName}</span>. The window and direction buttons stay visible for when you clear the ship selection.
+                    </div>
+                  ) : null}
                   <div className="mt-4 h-[480px] overflow-hidden rounded-2xl border border-slate-800">
                     <UsniFleetMap
                       movements={usniMapMovementRows}
-                      snapshotVessels={selectedUsniSnapshotVessels}
+                      locationGroups={usniLatestFleetGroups}
+                      selectedVesselKey={selectedUsniVesselKey || null}
+                      onSelectVessel={setSelectedUsniVesselKey}
                     />
                   </div>
                   <div className="mt-3 text-xs leading-relaxed text-slate-500">
-                    Movement lines use image-aware rough coordinates. Grey dots show vessels from the selected weekly Fleet Tracker snapshot so you can compare the saved map image with the normalized positions.
+                    The base layer is the latest tracked fleet picture. Recent movement arrows are overlaid by the selected window, and choosing a ship switches the map to that ship’s full tracked trajectory while keeping the current fleet positions visible for context.
                   </div>
                 </div>
 
@@ -4308,38 +4465,128 @@ export default function Page() {
                   </div>
 
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Snapshot vessel list</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-100">Who is where on the selected weekly map</div>
-                    {selectedUsniSnapshotVessels.length ? (
-                      <div className="mt-3 max-h-[320px] overflow-auto rounded-xl border border-slate-800">
-                        <table className="w-full text-left text-sm">
-                          <thead className="sticky top-0 bg-slate-950/95 text-slate-300">
-                            <tr>
-                              <th className="p-2">Vessel</th>
-                              <th className="p-2">Type</th>
-                              <th className="p-2">Rough position</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedUsniSnapshotVessels.map((vessel) => (
-                              <tr key={`usni-snapshot-vessel-${vessel.vesselKey}`} className="border-t border-slate-800 align-top">
-                                <td className="p-2">
-                                  <div className="font-medium text-slate-100">{vessel.vesselName}</div>
-                                  {vessel.hullNumber ? <div className="text-[11px] text-slate-500">{vessel.hullNumber}</div> : null}
-                                </td>
-                                <td className="p-2 text-slate-300">{vessel.vesselType}</td>
-                                <td className="p-2">
-                                  <div className="text-slate-200">{vessel.positionLabel}</div>
-                                  <div className="text-[11px] text-slate-500">{formatLatLon(vessel.positionLat, vessel.positionLon)}</div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Latest fleet picture</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-100">Current tracked positions grouped by location</div>
+                    {usniLatestFleetGroups.length ? (
+                      <div className="mt-3 space-y-3">
+                        {usniLatestFleetGroups.map((group) => (
+                          <div key={group.groupKey} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="font-medium text-slate-100">{group.positionLabel}</div>
+                                <div className="mt-1 text-[11px] text-slate-500">{formatLatLon(group.positionLat, group.positionLon)}</div>
+                              </div>
+                              <div className="rounded-full border border-slate-700 px-2 py-1 text-[11px] text-slate-300">
+                                {group.vessels.length} vessel{group.vessels.length === 1 ? "" : "s"}
+                              </div>
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {group.vessels.map((vessel) => {
+                                const isSelected = vessel.vesselKey === selectedUsniVesselKey;
+                                return (
+                                  <button
+                                    key={`usni-current-vessel-${vessel.vesselKey}`}
+                                    type="button"
+                                    onClick={() => setSelectedUsniVesselKey(vessel.vesselKey)}
+                                    className={`rounded-lg border px-2.5 py-2 text-left text-xs transition ${isSelected ? "border-cyan-300/70 bg-cyan-500/10 text-cyan-100" : "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-slate-500"}`}
+                                  >
+                                    <div className="font-medium">{vessel.vesselName}</div>
+                                    <div className="mt-0.5 text-[11px] text-slate-400">{vessel.hullNumber || vessel.vesselType}</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="mt-3 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
-                        No snapshot vessels are loaded for this date yet.
+                        No latest vessel positions are loaded yet.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Selected ship</div>
+                        <div className="mt-1 text-lg font-semibold text-slate-100">
+                          {selectedUsniVessel ? selectedUsniVessel.vesselName : "Click a vessel to inspect it"}
+                        </div>
+                      </div>
+                      {selectedUsniVessel ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUsniVesselKey("")}
+                          className="rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-300"
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </div>
+                    {selectedUsniVessel ? (
+                      <>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-400">
+                          <div>
+                            <div className="text-slate-500">Type</div>
+                            <div className="mt-1 text-slate-200">{selectedUsniVessel.vesselType}</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-500">Hull</div>
+                            <div className="mt-1 text-slate-200">{selectedUsniVessel.hullNumber || "Unknown"}</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-500">Latest position</div>
+                            <div className="mt-1 text-slate-200">{selectedUsniVessel.latestPosition?.position || "Unknown"}</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-500">Latest date</div>
+                            <div className="mt-1 text-slate-200">{formatCalendarDate(selectedUsniVessel.latestPosition?.date || null)}</div>
+                          </div>
+                        </div>
+                        {selectedUsniVessel.latestPosition?.coordinates ? (
+                          <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-300">
+                            <div className="font-medium text-slate-100">Current rough coordinates</div>
+                            <div className="mt-1">{formatLatLon(selectedUsniVessel.latestPosition.coordinates.lat, selectedUsniVessel.latestPosition.coordinates.lon)}</div>
+                            <div className="mt-2 text-slate-400">
+                              {selectedUsniVesselMovementRowsForTable.length} tracked movement row{selectedUsniVesselMovementRowsForTable.length === 1 ? "" : "s"} and {selectedUsniVesselTrajectory.length} saved position point{selectedUsniVesselTrajectory.length === 1 ? "" : "s"}.
+                            </div>
+                          </div>
+                        ) : null}
+                        <div className="mt-3">
+                          <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Trajectory</div>
+                          {selectedUsniVesselTrajectory.length ? (
+                            <div className="mt-2 max-h-[260px] overflow-auto rounded-xl border border-slate-800">
+                              <table className="w-full text-left text-sm">
+                                <thead className="sticky top-0 bg-slate-950/95 text-slate-300">
+                                  <tr>
+                                    <th className="p-2">Date</th>
+                                    <th className="p-2">Position</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedUsniVesselTrajectory.map((position, index) => (
+                                    <tr key={`usni-vessel-position-${selectedUsniVessel.vesselKey}-${position.reportDate || "na"}-${index}`} className="border-t border-slate-800 align-top">
+                                      <td className="p-2 text-slate-300">{formatCalendarDate(position.reportDate || null)}</td>
+                                      <td className="p-2">
+                                        <div className="text-slate-100">{position.positionLabel}</div>
+                                        <div className="text-[11px] text-slate-500">{formatLatLon(position.positionLat, position.positionLon)}</div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <div className="mt-2 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                              No saved trajectory points for this vessel yet.
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                        Select any vessel from the map or the location list to show its full movement history and saved trajectory.
                       </div>
                     )}
                   </div>
@@ -4350,10 +4597,25 @@ export default function Page() {
                 <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Movement table</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-100">Tracked vessel movements</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-100">
+                      {selectedUsniVessel ? `${selectedUsniVessel.vesselName} full movement history` : "Tracked vessel movements"}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    Showing {usniMovementRowsForDisplay.length} row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} from {usniMovementWindow === "all" ? "all loaded history" : usniMovementWindow === "30d" ? "the last 30 days" : "the last 7 days"}.
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="text-xs text-slate-500">
+                      {selectedUsniVessel
+                        ? `Showing ${usniMovementRowsForDisplay.length} row${usniMovementRowsForDisplay.length === 1 ? "" : "s"} from the full saved history for this ship.`
+                        : `Showing ${usniMovementRowsForDisplay.length} row${usniMovementRowsForDisplay.length === 1 ? "" : "s"} from ${usniMovementWindow === "all" ? "all loaded history" : usniMovementWindow === "30d" ? "the last 30 days" : "the last 7 days"}.`}
+                    </div>
+                    {selectedUsniVessel ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUsniVesselKey("")}
+                        className="rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-300"
+                      >
+                        Back to fleet view
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 {usniMovementRowsForDisplay.length ? (
@@ -4374,7 +4636,13 @@ export default function Page() {
                         {usniMovementRowsForDisplay.map((row, idx) => (
                           <tr key={`usni-move-${row.vesselKey}-${row.date}-${idx}`} className="border-t border-slate-800 align-top">
                             <td className="p-2">
-                              <div className="font-medium text-slate-100">{row.vesselName}</div>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedUsniVesselKey(row.vesselKey)}
+                                className={`text-left font-medium ${row.vesselKey === selectedUsniVesselKey ? "text-cyan-200" : "text-slate-100 hover:text-cyan-200"}`}
+                              >
+                                {row.vesselName}
+                              </button>
                             </td>
                             <td className="p-2 text-slate-300">{row.vesselType}</td>
                             <td className="p-2 text-slate-300">{formatCalendarDate(row.date)}</td>

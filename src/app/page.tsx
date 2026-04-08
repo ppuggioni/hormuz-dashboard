@@ -1129,8 +1129,10 @@ export default function Page() {
   const [latestPlaybackSnapshots, setLatestPlaybackSnapshots] = useState<Snapshot[]>([]);
   const [latestPlaybackShipMeta, setLatestPlaybackShipMeta] = useState<Record<string, ShipMeta>>({});
   const [latestRelevantExternalPoints, setLatestRelevantExternalPoints] = useState<ExternalPresencePoint[]>([]);
-  const [selectedPlaybackShipId, setSelectedPlaybackShipId] = useState<string | null>(null);
+  const [playbackSelectionMode, setPlaybackSelectionMode] = useState(false);
+  const [selectedPlaybackShipIds, setSelectedPlaybackShipIds] = useState<string[]>([]);
   const [playbackShipSearch, setPlaybackShipSearch] = useState("");
+  const [playbackShipPickerValue, setPlaybackShipPickerValue] = useState("");
   const [splitMode, setSplitMode] = useState(false);
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
   const [tankerCandidatesData, setTankerCandidatesData] = useState<CandidateCrosser[]>([]);
@@ -1442,6 +1444,12 @@ export default function Page() {
   }, [data?.snapshots?.length]);
 
   useEffect(() => {
+    if (!playbackSelectionMode) return;
+    setPlaying(false);
+    if (playbackDataMode === "latest") setPlaybackDataMode("24h");
+  }, [playbackDataMode, playbackSelectionMode]);
+
+  useEffect(() => {
     if (!splitMode || !data || playbackDataMode === "latest") return;
     const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
     let cancelled = false;
@@ -1489,6 +1497,7 @@ export default function Page() {
 
   const currentSnapshot = data?.snapshots?.[frameIndex];
   const latestSnapshot = data?.snapshots?.length ? data.snapshots[data.snapshots.length - 1] : null;
+  const playbackTimestamp = playbackSelectionMode ? latestSnapshot?.t : currentSnapshot?.t;
 
   const filteredCurrentPoints = useMemo(() => {
     if (!currentSnapshot) return [];
@@ -1528,56 +1537,102 @@ export default function Page() {
     return [...seen.values()].sort((a, b) => a.shipName.localeCompare(b.shipName) || a.shipId.localeCompare(b.shipId));
   }, [data?.shipMeta, latestSnapshot]);
 
-  const selectedPlaybackShipOption = useMemo(() => {
-    if (!selectedPlaybackShipId) return null;
-    const fromOptions = playbackShipOptions.find((option) => option.shipId === selectedPlaybackShipId);
-    if (fromOptions) return fromOptions;
-    const meta = data?.shipMeta?.[selectedPlaybackShipId];
-    if (!meta) return null;
-    return {
-      shipId: selectedPlaybackShipId,
-      shipName: meta.shipName || "Unknown",
-      vesselType: meta.vesselType || "unknown",
-      flag: meta.flag,
-      destination: meta.destination,
-      label: `${formatShipDisplayName(meta.shipName || "Unknown", meta.flag)} (${selectedPlaybackShipId})`,
-      searchText: `${meta.shipName || ""} ${selectedPlaybackShipId} ${meta.vesselType || ""} ${meta.flag || ""} ${meta.destination || ""}`.toLowerCase(),
-    };
-  }, [data?.shipMeta, playbackShipOptions, selectedPlaybackShipId]);
+  const playbackShipOptionsById = useMemo(
+    () => new Map(playbackShipOptions.map((option) => [option.shipId, option])),
+    [playbackShipOptions],
+  );
 
   const playbackShipMatches = useMemo(() => {
     const query = playbackShipSearch.trim().toLowerCase();
-    const base = query
+    const selectedShipIdSet = new Set(selectedPlaybackShipIds);
+    const base = (query
       ? playbackShipOptions.filter((option) => option.searchText.includes(query))
-      : playbackShipOptions;
-    if (!selectedPlaybackShipOption) return base.slice(0, 60);
-    return [selectedPlaybackShipOption, ...base.filter((option) => option.shipId !== selectedPlaybackShipOption.shipId)].slice(0, 60);
-  }, [playbackShipOptions, playbackShipSearch, selectedPlaybackShipOption]);
+      : playbackShipOptions
+    ).filter((option) => !selectedShipIdSet.has(option.shipId));
+    return base.slice(0, 60);
+  }, [playbackShipOptions, playbackShipSearch, selectedPlaybackShipIds]);
 
-  const selectedPlaybackShipLatestPoint = useMemo(
-    () => latestSnapshot?.points.find((point) => point.shipId === selectedPlaybackShipId) || null,
-    [latestSnapshot, selectedPlaybackShipId],
+  const selectedPlaybackShipOptions = useMemo(
+    () => selectedPlaybackShipIds
+      .map((shipId) => {
+        const fromOptions = playbackShipOptionsById.get(shipId);
+        if (fromOptions) return fromOptions;
+        const meta = data?.shipMeta?.[shipId];
+        if (!meta) return null;
+        return {
+          shipId,
+          shipName: meta.shipName || "Unknown",
+          vesselType: meta.vesselType || "unknown",
+          flag: meta.flag,
+          destination: meta.destination,
+          label: `${formatShipDisplayName(meta.shipName || "Unknown", meta.flag)} (${shipId})`,
+          searchText: `${meta.shipName || ""} ${shipId} ${meta.vesselType || ""} ${meta.flag || ""} ${meta.destination || ""}`.toLowerCase(),
+        };
+      })
+      .filter((option): option is NonNullable<typeof option> => Boolean(option)),
+    [data?.shipMeta, playbackShipOptionsById, selectedPlaybackShipIds],
   );
 
-  const selectedPlaybackShipFallbackTrail = useMemo(
-    () => data?.crossingPaths.find((path) => path.shipId === selectedPlaybackShipId)?.points || [],
-    [data?.crossingPaths, selectedPlaybackShipId],
+  const selectedPlaybackShipIdsSet = useMemo(
+    () => new Set(selectedPlaybackShipIds),
+    [selectedPlaybackShipIds],
+  );
+
+  const selectedPlaybackShipTraces = useMemo(() => {
+    return selectedPlaybackShipOptions.map((option) => {
+      const raw = (data?.snapshots || [])
+        .flatMap((snapshot) => snapshot.points
+          .filter((point) => point.shipId === option.shipId)
+          .map((point) => ({ t: snapshot.t, lat: point.lat, lon: point.lon })))
+        .sort((a, b) => +new Date(a.t) - +new Date(b.t));
+
+      const playbackPoints = raw.length <= 1500 ? raw : raw.filter((_, index) => index % Math.ceil(raw.length / 1500) === 0);
+      const fallbackPoints = data?.crossingPaths.find((path) => path.shipId === option.shipId)?.points || [];
+      const useFallback = playbackPoints.length <= 1 && fallbackPoints.length > 1;
+
+      return {
+        shipId: option.shipId,
+        shipName: option.shipName,
+        vesselType: option.vesselType,
+        flag: option.flag,
+        destination: option.destination,
+        traceSource: useFallback ? "saved crossing path" : "loaded playback",
+        points: useFallback ? fallbackPoints : playbackPoints,
+      };
+    });
+  }, [data?.crossingPaths, data?.snapshots, selectedPlaybackShipOptions]);
+
+  const selectedPlaybackShipTraceById = useMemo(
+    () => new Map(selectedPlaybackShipTraces.map((trace) => [trace.shipId, trace])),
+    [selectedPlaybackShipTraces],
+  );
+
+  const selectedPlaybackShipLatestPoints = useMemo(
+    () => selectedPlaybackShipOptions.map((option) => ({
+      shipId: option.shipId,
+      lastSeenAt: latestSnapshot?.points.some((point) => point.shipId === option.shipId) ? latestSnapshot?.t || null : null,
+      tracePointCount: selectedPlaybackShipTraceById.get(option.shipId)?.points.length || 0,
+      traceSource: selectedPlaybackShipTraceById.get(option.shipId)?.traceSource || "loaded playback",
+    })),
+    [latestSnapshot, selectedPlaybackShipOptions, selectedPlaybackShipTraceById],
   );
 
   const playbackPointsForMap = useMemo(() => {
-    const pointMap = new Map(filteredCurrentPoints.map((point) => [point.shipId, point]));
-    if (selectedPlaybackShipId && currentSnapshot) {
-      const selectedPoint = currentSnapshot.points.find((point) => point.shipId === selectedPlaybackShipId);
-      if (selectedPoint) {
-        pointMap.set(selectedPoint.shipId, {
-          ...selectedPoint,
-          flag: data?.shipMeta?.[selectedPoint.shipId]?.flag,
-          destination: data?.shipMeta?.[selectedPoint.shipId]?.destination,
-        });
-      }
+    if (!playbackSelectionMode) return filteredCurrentPoints;
+    if (!currentSnapshot || !selectedPlaybackShipIds.length) return [];
+
+    const pointMap = new Map<string, SnapshotPoint & { flag?: string; destination?: string }>();
+    for (const point of currentSnapshot.points) {
+      if (!selectedPlaybackShipIdsSet.has(point.shipId)) continue;
+      pointMap.set(point.shipId, {
+        ...point,
+        flag: data?.shipMeta?.[point.shipId]?.flag,
+        destination: data?.shipMeta?.[point.shipId]?.destination,
+      });
     }
+
     return [...pointMap.values()];
-  }, [currentSnapshot, data?.shipMeta, filteredCurrentPoints, selectedPlaybackShipId]);
+  }, [currentSnapshot, data?.shipMeta, filteredCurrentPoints, playbackSelectionMode, selectedPlaybackShipIds.length, selectedPlaybackShipIdsSet]);
 
   const filteredCrossingPaths = useMemo(() => {
     if (!data) return [];
@@ -2828,162 +2883,203 @@ export default function Page() {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-medium">Playback Map (filtered vessels)</h2>
             <div className="flex flex-wrap items-center gap-2 text-sm">
+              <button
+                onClick={() => setPlaybackSelectionMode((prev) => !prev)}
+                className={`rounded-md border px-2 py-1 ${playbackSelectionMode ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-300"}`}
+              >
+                Select vessels: {playbackSelectionMode ? "on" : "off"}
+              </button>
               {splitMode ? (
-                <div className="flex flex-wrap items-center gap-1 mr-2">
-                  <button
-                    onClick={() => {
-                      setPlaying(false);
-                      setPlaybackDataMode("latest");
-                    }}
-                    className={`rounded-md border px-2 py-1 ${playbackDataMode === "latest" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
-                  >
-                    Latest only
-                  </button>
-                  {(["24h", "48h"] as const).map((w) => (
+                playbackSelectionMode ? (
+                  <div className="flex flex-wrap items-center gap-1 mr-2">
+                    {(["24h", "48h"] as const).map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => {
+                          setPlaying(false);
+                          setPlaybackDataMode(w);
+                        }}
+                        className={`rounded-md border px-2 py-1 ${playbackDataMode === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                      >
+                        {w} traces
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-1 mr-2">
                     <button
-                      key={w}
                       onClick={() => {
                         setPlaying(false);
-                        setPlaybackDataMode(w);
+                        setPlaybackDataMode("latest");
                       }}
-                      className={`rounded-md border px-2 py-1 ${playbackDataMode === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                      className={`rounded-md border px-2 py-1 ${playbackDataMode === "latest" ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
                     >
-                      {playbackDataMode === w ? `${w} loaded` : `Load ${w} trace`}
+                      Latest only
                     </button>
-                  ))}
-                </div>
+                    {(["24h", "48h"] as const).map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => {
+                          setPlaying(false);
+                          setPlaybackDataMode(w);
+                        }}
+                        className={`rounded-md border px-2 py-1 ${playbackDataMode === w ? "border-cyan-300 text-cyan-200" : "border-slate-700 text-slate-400"}`}
+                      >
+                        {playbackDataMode === w ? `${w} loaded` : `Load ${w} trace`}
+                      </button>
+                    ))}
+                  </div>
+                )
               ) : null}
-              <button
-                onClick={() => setPlaying((v) => !v)}
-                disabled={(data.snapshots?.length || 0) <= 1}
-                className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {playing ? "Pause" : "Play"}
-              </button>
+              {!playbackSelectionMode ? (
+                <button
+                  onClick={() => setPlaying((v) => !v)}
+                  disabled={(data.snapshots?.length || 0) <= 1}
+                  className="rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {playing ? "Pause" : "Play"}
+                </button>
+              ) : null}
               <span className="text-slate-400">
-                {currentSnapshot?.t ? new Date(currentSnapshot.t).toUTCString() : "-"}
-                {playbackLoading ? " (loading...)" : playbackDataMode === "latest" ? " (latest positions)" : ` (${playbackDataMode} history)`}
+                {playbackTimestamp ? new Date(playbackTimestamp).toUTCString() : "-"}
+                {playbackLoading
+                  ? " (loading...)"
+                  : playbackSelectionMode
+                    ? ` (${playbackDataMode === "latest" ? "24h" : playbackDataMode} selected traces)`
+                    : playbackDataMode === "latest"
+                      ? " (latest positions)"
+                      : ` (${playbackDataMode} history)`}
               </span>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
-              <label className="block">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Find vessel</span>
-                <input
-                  type="search"
-                  value={playbackShipSearch}
-                  onChange={(e) => setPlaybackShipSearch(e.target.value)}
-                  placeholder="Type vessel name, ship ID, flag, destination"
-                  className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-                />
-              </label>
+          {playbackSelectionMode ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)_auto]">
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Find vessels</span>
+                  <input
+                    type="search"
+                    value={playbackShipSearch}
+                    onChange={(e) => setPlaybackShipSearch(e.target.value)}
+                    placeholder="Type vessel name, ship ID, flag, destination"
+                    className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
+                  />
+                </label>
 
-              <label className="block">
-                <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Matching vessels</span>
-                <select
-                  value={selectedPlaybackShipId || ""}
-                  onChange={(e) => {
-                    const nextShipId = e.target.value || null;
-                    setSelectedPlaybackShipId(nextShipId);
-                    setFrameIndex(data.snapshots?.length ? data.snapshots.length - 1 : 0);
-                  }}
-                  size={Math.min(Math.max(playbackShipMatches.length, 2), 6)}
-                  className="mt-2 h-full min-h-[120px] w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-                >
-                  {!playbackShipMatches.length ? <option value="">No matching vessels in the latest frame</option> : null}
-                  {playbackShipMatches.map((option) => (
-                    <option key={option.shipId} value={option.shipId}>
-                      {option.label} — {option.vesselType}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+                <label className="block">
+                  <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Matches</span>
+                  <select
+                    value={playbackShipPickerValue}
+                    onChange={(e) => setPlaybackShipPickerValue(e.target.value)}
+                    size={Math.min(Math.max(playbackShipMatches.length, 2), 6)}
+                    className="mt-2 h-full min-h-[120px] w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                  >
+                    {!playbackShipMatches.length ? <option value="">No matching vessels in the latest frame</option> : null}
+                    {playbackShipMatches.map((option) => (
+                      <option key={option.shipId} value={option.shipId}>
+                        {option.label} — {option.vesselType}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPlaybackShipId(null);
-                  setPlaybackShipSearch("");
-                }}
-                className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
-              >
-                Clear vessel
-              </button>
-              {selectedPlaybackShipId ? (
-                <>
+                <div className="flex flex-wrap items-end gap-2 lg:flex-col lg:justify-end">
                   <button
                     type="button"
                     onClick={() => {
+                      if (!playbackShipPickerValue || selectedPlaybackShipIdsSet.has(playbackShipPickerValue)) return;
                       setPlaying(false);
-                      setPlaybackDataMode("24h");
+                      setSelectedPlaybackShipIds((prev) => [...prev, playbackShipPickerValue]);
+                      setPlaybackShipPickerValue("");
+                      setFrameIndex(data.snapshots?.length ? data.snapshots.length - 1 : 0);
                     }}
-                    className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                    className="rounded-md border border-cyan-400/50 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={!playbackShipPickerValue}
                   >
-                    Show 24h trace
+                    Add vessel
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setPlaying(false);
-                      setPlaybackDataMode("48h");
+                      setSelectedPlaybackShipIds([]);
+                      setPlaybackShipSearch("");
+                      setPlaybackShipPickerValue("");
                     }}
-                    className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200"
+                    className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200"
                   >
-                    Show 48h trace
+                    Clear selected
                   </button>
-                </>
-              ) : null}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {selectedPlaybackShipOptions.length ? (
+                  selectedPlaybackShipOptions.map((option) => {
+                    const latestInfo = selectedPlaybackShipLatestPoints.find((item) => item.shipId === option.shipId);
+                    return (
+                      <div key={option.shipId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <div className="truncate text-slate-100">{option.label}</div>
+                          <div className="text-xs text-slate-400">
+                            {latestInfo?.lastSeenAt ? `last seen ${formatUtcTime(latestInfo.lastSeenAt)}` : "not in latest frame"}
+                            {` • ${latestInfo?.tracePointCount || 0} trace points`}
+                            {latestInfo?.traceSource ? ` • ${latestInfo.traceSource}` : ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlaybackShipIds((prev) => prev.filter((shipId) => shipId !== option.shipId))}
+                          className="rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-sm text-slate-400">
+                    No vessels selected yet. Turn this mode on, add one or more ships, and the map will show only those traces.
+                  </div>
+                )}
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 text-xs text-slate-400">
+                Toggle <span className="text-slate-200">Select vessels</span> if you want the map to hide everything else and show only chosen ship traces.
+              </div>
 
-            <div className="mt-3 text-xs text-slate-400">
-              {selectedPlaybackShipOption ? (
-                <>
-                  <span className="text-slate-200">{selectedPlaybackShipOption.label}</span>
-                  {selectedPlaybackShipLatestPoint && latestSnapshot?.t ? ` last seen ${formatUtcTime(latestSnapshot.t)}` : ""}
-                  {selectedPlaybackShipFallbackTrail.length > 1 && playbackDataMode === "latest"
-                    ? " • showing saved crossing path until you load a longer playback trace"
-                    : playbackDataMode === "latest"
-                      ? " • showing latest position only; load 24h or 48h if you want the fuller route"
-                      : ` • showing ${playbackDataMode} playback history`}
-                </>
-              ) : (
-                <>Latest positions stay lightweight by default. Pick a ship, then load `24h` or `48h` only when you want the heavier trace.</>
-              )}
-            </div>
-          </div>
+              <input
+                type="range"
+                min={0}
+                max={Math.max((data.snapshots?.length || 1) - 1, 0)}
+                value={frameIndex}
+                onChange={(e) => setFrameIndex(Number(e.target.value))}
+                className="w-full"
+              />
 
-          <input
-            type="range"
-            min={0}
-            max={Math.max((data.snapshots?.length || 1) - 1, 0)}
-            value={frameIndex}
-            onChange={(e) => setFrameIndex(Number(e.target.value))}
-            className="w-full"
-          />
-
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-            <span className="font-medium text-slate-200 mr-2">Legend (click to toggle)</span>
-            {data.vesselTypes.map((type) => {
-              const active = selectedTypes.includes(type);
-              return (
-                <button
-                  key={type}
-                  onClick={() => setSelectedTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]))}
-                  className={`px-2 py-1 rounded border ${active ? "border-slate-200" : "border-slate-700 opacity-50"}`}
-                >
-                  <span className={`inline-block w-3 h-3 rounded-full ${classForType(type)} mr-2`} />{type}
-                </button>
-              );
-            })}
-            <button onClick={() => setShowCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>✕ crossing</button>
-            <button onClick={() => setShowNonCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showNonCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>● non-crossing</button>
-            <button onClick={() => setLoadAllRegions((v) => !v)} className={`px-2 py-1 rounded border ${loadAllRegions ? "border-amber-300 text-amber-200" : "border-slate-700 text-slate-500"}`}>◎ load all regions: {loadAllRegions ? "on" : "off"}</button>
-            <button onClick={() => setShowOnlyLinkedExternal((v) => !v)} className={`px-2 py-1 rounded border ${showOnlyLinkedExternal ? "border-violet-300 text-violet-200" : "border-slate-700 text-slate-500"}`}>◉ display only linked ships: {showOnlyLinkedExternal ? "on" : "off (show all external ships)"}</button>
-          </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                <span className="font-medium text-slate-200 mr-2">Legend (click to toggle)</span>
+                {data.vesselTypes.map((type) => {
+                  const active = selectedTypes.includes(type);
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]))}
+                      className={`px-2 py-1 rounded border ${active ? "border-slate-200" : "border-slate-700 opacity-50"}`}
+                    >
+                      <span className={`inline-block w-3 h-3 rounded-full ${classForType(type)} mr-2`} />{type}
+                    </button>
+                  );
+                })}
+                <button onClick={() => setShowCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>✕ crossing</button>
+                <button onClick={() => setShowNonCrossing((v) => !v)} className={`px-2 py-1 rounded border ${showNonCrossing ? "border-slate-200" : "border-slate-700 opacity-50"}`}>● non-crossing</button>
+                <button onClick={() => setLoadAllRegions((v) => !v)} className={`px-2 py-1 rounded border ${loadAllRegions ? "border-amber-300 text-amber-200" : "border-slate-700 text-slate-500"}`}>◎ load all regions: {loadAllRegions ? "on" : "off"}</button>
+                <button onClick={() => setShowOnlyLinkedExternal((v) => !v)} className={`px-2 py-1 rounded border ${showOnlyLinkedExternal ? "border-violet-300 text-violet-200" : "border-slate-700 text-slate-500"}`}>◉ display only linked ships: {showOnlyLinkedExternal ? "on" : "off (show all external ships)"}</button>
+              </div>
+            </>
+          )}
 
           <div className="h-[460px] rounded-xl overflow-hidden border border-slate-800">
             <PlaybackMap
@@ -2993,17 +3089,13 @@ export default function Page() {
               westLon={data.metadata.westLon}
               crossingShipIds={crossingShipIds}
               candidateShipIds={candidateShipIds}
-              showCrossing={showCrossing}
-              showNonCrossing={showNonCrossing}
-              linkedPoints={playbackLinkedPoints}
-              currentTimestamp={currentSnapshot?.t}
-              selectedShipId={selectedPlaybackShipId}
-              onSelectShipId={(shipId) => {
-                setSelectedPlaybackShipId(shipId);
-                if (shipId) setFrameIndex(data.snapshots?.length ? data.snapshots.length - 1 : 0);
-              }}
-              selectedShipFallbackTrail={selectedPlaybackShipFallbackTrail}
-              shipMetaById={data.shipMeta}
+              showCrossing={playbackSelectionMode ? true : showCrossing}
+              showNonCrossing={playbackSelectionMode ? true : showNonCrossing}
+              linkedPoints={playbackSelectionMode ? [] : playbackLinkedPoints}
+              currentTimestamp={playbackTimestamp}
+              selectionMode={playbackSelectionMode}
+              selectedShipIds={selectedPlaybackShipIds}
+              selectedShipTraces={selectedPlaybackShipTraces}
             />
           </div>
         </section>

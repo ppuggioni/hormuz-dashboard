@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { Fragment, memo, useMemo } from "react";
 import { MapContainer, Marker, Popup, Polygon, Polyline, TileLayer, Tooltip } from "react-leaflet";
 import { divIcon } from "leaflet";
 
@@ -12,7 +12,15 @@ type Snapshot = { t: string; points: Point[] };
 type LinkedPoint = { shipId: string; shipName: string; vesselType: string; flag?: string; region: string; lat: number; lon: number; deltaDh: string };
 type MonitoredArea = { minLat: number; maxLat: number; minLon: number; maxLon: number; color?: string; label?: string };
 type TrailPoint = { t: string; lat: number; lon: number };
-type ShipMetaRecord = Record<string, { shipName?: string; vesselType?: string; flag?: string; destination?: string }>;
+type SelectedShipTrace = {
+  shipId: string;
+  shipName: string;
+  vesselType: string;
+  flag?: string;
+  destination?: string;
+  traceSource: string;
+  points: TrailPoint[];
+};
 
 const typeColor: Record<string, string> = {
   tanker: "#f43f5e",
@@ -22,6 +30,7 @@ const typeColor: Record<string, string> = {
   other: "#f59e0b",
   unknown: "#94a3b8",
 };
+const selectedTracePalette = ["#38bdf8", "#f97316", "#a3e635", "#f472b6", "#facc15", "#34d399", "#c084fc", "#fb7185"];
 
 function formatShipDisplayName(shipName: string, flag?: string | null) {
   const cleanName = String(shipName || "Unknown").trim() || "Unknown";
@@ -45,6 +54,13 @@ function timestampShort(ts: string): string {
   return `${day}/${month} ${hour}:${min} UTC`;
 }
 
+function colorForSelectedTrace(shipId: string, vesselType: string, selectionCount: number): string {
+  if (selectionCount <= 1) return typeColor[vesselType] || "#9ca3af";
+  let hash = 0;
+  for (let i = 0; i < shipId.length; i++) hash = ((hash << 5) - hash) + shipId.charCodeAt(i);
+  return selectedTracePalette[Math.abs(hash) % selectedTracePalette.length];
+}
+
 export default memo(function PlaybackMap({
   points,
   snapshots,
@@ -57,10 +73,9 @@ export default memo(function PlaybackMap({
   linkedPoints,
   monitoredAreas,
   currentTimestamp,
-  selectedShipId,
-  onSelectShipId,
-  selectedShipFallbackTrail,
-  shipMetaById,
+  selectionMode,
+  selectedShipIds,
+  selectedShipTraces,
 }: {
   points: Point[];
   snapshots: Snapshot[];
@@ -73,17 +88,10 @@ export default memo(function PlaybackMap({
   linkedPoints?: LinkedPoint[];
   monitoredAreas?: MonitoredArea[];
   currentTimestamp?: string;
-  selectedShipId?: string | null;
-  onSelectShipId?: (shipId: string | null) => void;
-  selectedShipFallbackTrail?: TrailPoint[];
-  shipMetaById?: ShipMetaRecord;
+  selectionMode?: boolean;
+  selectedShipIds?: string[];
+  selectedShipTraces?: SelectedShipTrace[];
 }) {
-  const [internalSelectedShipId, setInternalSelectedShipId] = useState<string | null>(null);
-  const activeSelectedShipId = selectedShipId === undefined ? internalSelectedShipId : selectedShipId;
-  const handleSelectShipId = (shipId: string | null) => {
-    if (selectedShipId === undefined) setInternalSelectedShipId(shipId);
-    onSelectShipId?.(shipId);
-  };
   const snapshotIndexByTimestamp = useMemo(
     () => new Map(snapshots.map((snapshot, index) => [snapshot.t, index])),
     [snapshots],
@@ -92,90 +100,9 @@ export default memo(function PlaybackMap({
     () => snapshots.map((snapshot) => new Map(snapshot.points.map((point) => [point.shipId, point]))),
     [snapshots],
   );
-
-  const selectedTrailFromSnapshots = useMemo(() => {
-    if (!activeSelectedShipId || !snapshots?.length) return [] as TrailPoint[];
-
-    const raw = snapshots
-      .flatMap((s) => s.points
-        .filter((p) => p.shipId === activeSelectedShipId)
-        .map((p) => ({ t: s.t, lat: p.lat, lon: p.lon })))
-      .sort((a, b) => +new Date(a.t) - +new Date(b.t));
-
-    if (raw.length <= 1500) return raw;
-    const step = Math.ceil(raw.length / 1500);
-    return raw.filter((_, i) => i % step === 0);
-  }, [activeSelectedShipId, snapshots]);
-
-  const usingFallbackTrail = selectedTrailFromSnapshots.length <= 1 && (selectedShipFallbackTrail?.length || 0) > 1;
-  const selectedTrail = useMemo(
-    () => (usingFallbackTrail ? selectedShipFallbackTrail || [] : selectedTrailFromSnapshots),
-    [selectedShipFallbackTrail, selectedTrailFromSnapshots, usingFallbackTrail],
-  );
-
-  const selectedShipMeta = useMemo(() => {
-    if (!activeSelectedShipId) return null;
-    const hit = snapshots
-      .flatMap((s) => s.points)
-      .find((p) => p.shipId === activeSelectedShipId);
-    const shipMeta = shipMetaById?.[activeSelectedShipId] || null;
-    if (!hit && !shipMeta) return null;
-    return {
-      shipId: activeSelectedShipId,
-      shipName: hit?.shipName || shipMeta?.shipName || "Unknown",
-      vesselType: hit?.vesselType || shipMeta?.vesselType || "unknown",
-      flag: hit?.flag || shipMeta?.flag,
-      destination: hit?.destination || shipMeta?.destination,
-    };
-  }, [activeSelectedShipId, shipMetaById, snapshots]);
-
-  const selectedTrailWithDir = useMemo(() => {
-    return selectedTrail.map((p, idx) => {
-      const next = selectedTrail[idx + 1] || null;
-      const prev = selectedTrail[idx - 1] || null;
-      const dirRef = next || prev;
-      const deg = dirRef
-        ? directionDegrees(
-            { lat: p.lat, lon: p.lon },
-            next ? { lat: next.lat, lon: next.lon } : { lat: p.lat + (p.lat - prev!.lat), lon: p.lon + (p.lon - prev!.lon) },
-          )
-        : 0;
-      return { ...p, dirDeg: deg };
-    });
-  }, [selectedTrail]);
-
-  const segmentArrows = useMemo(() => {
-    if (selectedTrail.length < 2) return [] as Array<{ lat: number; lon: number; dirDeg: number }>;
-    const out: Array<{ lat: number; lon: number; dirDeg: number }> = [];
-    const fractions = [0.25, 0.5, 0.75];
-    for (let i = 0; i < selectedTrail.length - 1; i++) {
-      const a = selectedTrail[i];
-      const b = selectedTrail[i + 1];
-      const dirDeg = directionDegrees({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon });
-      for (const f of fractions) {
-        out.push({
-          lat: a.lat + (b.lat - a.lat) * f,
-          lon: a.lon + (b.lon - a.lon) * f,
-          dirDeg,
-        });
-      }
-    }
-    return out;
-  }, [selectedTrail]);
-
-  const timestampLabelStep = useMemo(() => {
-    const n = selectedTrailWithDir.length;
-    if (n <= 40) return 1;
-    if (n <= 90) return 2;
-    if (n <= 180) return 3;
-    if (n <= 320) return 5;
-    if (n <= 600) return 8;
-    return 12;
-  }, [selectedTrailWithDir.length]);
-
-  const labeledTrailPoints = useMemo(
-    () => selectedTrailWithDir.filter((_, idx) => idx % timestampLabelStep === 0),
-    [selectedTrailWithDir, timestampLabelStep],
+  const selectedShipIdSet = useMemo(
+    () => new Set(selectedShipIds || []),
+    [selectedShipIds],
   );
 
   const currentFrameHeadingByShip = useMemo(() => {
@@ -224,41 +151,6 @@ export default memo(function PlaybackMap({
 
   return (
     <div style={{ position: "relative", height: "100%", width: "100%" }}>
-      {selectedShipMeta ? (
-        <div
-          style={{
-            position: "absolute",
-            zIndex: 900,
-            top: 10,
-            left: 10,
-            background: "rgba(2, 6, 23, 0.86)",
-            border: "1px solid rgba(148, 163, 184, 0.35)",
-            borderRadius: 10,
-            padding: "8px 10px",
-            color: "#e2e8f0",
-            fontSize: 12,
-            lineHeight: 1.4,
-            maxWidth: 320,
-          }}
-        >
-          <div><strong>Name:</strong> {formatShipDisplayName(selectedShipMeta.shipName, selectedShipMeta.flag)}</div>
-          <div><strong>Ship ID:</strong> {selectedShipMeta.shipId}</div>
-          <div><strong>Type:</strong> {selectedShipMeta.vesselType}</div>
-          <div><strong>Trace points:</strong> {selectedTrail.length}</div>
-          <div><strong>Trace source:</strong> {usingFallbackTrail ? "saved crossing path" : "loaded playback"}</div>
-          {selectedShipMeta.destination ? <div><strong>Destination:</strong> {selectedShipMeta.destination}</div> : null}
-          <div style={{ marginTop: 4 }}>
-            <a
-              href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${selectedShipMeta.shipId}`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ color: "#7dd3fc", textDecoration: "underline" }}
-            >
-              Open MarineTraffic
-            </a>
-          </div>
-        </div>
-      ) : null}
       <MapContainer center={[26.15, 56.2]} zoom={6} preferCanvas style={{ height: "100%", width: "100%" }}>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -286,62 +178,47 @@ export default memo(function PlaybackMap({
         </Polygon>
       ))}
 
-      {selectedTrail.length > 1 ? (
-        <Polyline
-          positions={selectedTrail.map((p) => [p.lat, p.lon] as [number, number])}
-          pathOptions={{ color: "#9ca3af", weight: 2, opacity: 0.92, dashArray: "3 9" }}
-        />
-      ) : null}
-      {selectedTrailWithDir.map((p, idx) => {
-        const isFinal = idx === selectedTrailWithDir.length - 1;
+      {(selectedShipTraces || []).map((trace) => {
+        const color = colorForSelectedTrace(trace.shipId, trace.vesselType, (selectedShipTraces || []).length);
+        const finalPoint = trace.points[trace.points.length - 1] || null;
         return (
-          <Marker
-            key={`trail-point-shape-${activeSelectedShipId}-${idx}`}
-            position={[p.lat, p.lon]}
-            icon={divIcon({
-              className: "",
-              html: isFinal
-                ? `<div style='width:10px;height:10px;background:#9ca3af;border:1px solid #e5e7eb;opacity:0.95;'></div>`
-                : `<div style='transform: rotate(${p.dirDeg}deg); color:#6b7280; font-size:18px; line-height:18px; opacity:0.98;'>▲</div>`,
-              iconSize: isFinal ? [10, 10] : [18, 18],
-              iconAnchor: isFinal ? [5, 5] : [9, 9],
-            })}
-          >
-            <Tooltip>{timestampShort(p.t)}</Tooltip>
-          </Marker>
+          <Fragment key={`trace-${trace.shipId}`}>
+            {trace.points.length > 1 ? (
+              <Polyline
+                positions={trace.points.map((point) => [point.lat, point.lon] as [number, number])}
+                pathOptions={{ color, weight: 3, opacity: 0.88 }}
+              />
+            ) : null}
+            {finalPoint ? (
+              <Marker
+                position={[finalPoint.lat, finalPoint.lon]}
+                icon={divIcon({
+                  className: "",
+                  html: `<div style='width:12px;height:12px;border-radius:999px;background:${color};border:2px solid #e2e8f0;box-shadow:0 1px 4px rgba(2,6,23,0.8);'></div>`,
+                  iconSize: [12, 12],
+                  iconAnchor: [6, 6],
+                })}
+              >
+                <Tooltip>
+                  {formatShipDisplayName(trace.shipName, trace.flag)} ({trace.shipId})
+                </Tooltip>
+                <Popup>
+                  <div style={{ minWidth: 200 }}>
+                    <div><strong>Name:</strong> {formatShipDisplayName(trace.shipName, trace.flag)}</div>
+                    <div><strong>Ship ID:</strong> {trace.shipId}</div>
+                    <div><strong>Type:</strong> {trace.vesselType}</div>
+                    <div><strong>Trace points:</strong> {trace.points.length}</div>
+                    <div><strong>Trace source:</strong> {trace.traceSource}</div>
+                    {trace.destination ? <div><strong>Destination:</strong> {trace.destination}</div> : null}
+                    <div><strong>Last trace point:</strong> {timestampShort(finalPoint.t)}</div>
+                    <div style={{ marginTop: 6 }}><a href={`https://www.marinetraffic.com/en/ais/details/ships/shipid:${trace.shipId}`} target="_blank" rel="noreferrer">Open MarineTraffic</a></div>
+                  </div>
+                </Popup>
+              </Marker>
+            ) : null}
+          </Fragment>
         );
       })}
-      {labeledTrailPoints.map((p, idx) => (
-        <Polyline
-          key={`trail-ts-line-${activeSelectedShipId}-${idx}`}
-          positions={[[p.lat, p.lon], [p.lat + 0.018, p.lon]]}
-          pathOptions={{ color: "#6b7280", weight: 1.5, opacity: 0.95 }}
-        />
-      ))}
-      {labeledTrailPoints.map((p, idx) => (
-        <Marker
-          key={`trail-ts-${activeSelectedShipId}-${idx}`}
-          position={[p.lat + 0.018, p.lon]}
-          icon={divIcon({
-            className: "",
-            html: `<div style='color:#f1f5f9;font-size:11px;font-weight:600;text-shadow:0 1px 2px rgba(2,6,23,0.95);white-space:nowrap;transform:translate(-50%,-2px);'>${timestampShort(p.t)}</div>`,
-            iconSize: [120, 14],
-            iconAnchor: [60, 12],
-          })}
-        />
-      ))}
-      {segmentArrows.map((p, idx) => (
-        <Marker
-          key={`trail-arrow-seg-${activeSelectedShipId}-${idx}`}
-          position={[p.lat, p.lon]}
-          icon={divIcon({
-            className: "",
-            html: `<div style='transform: rotate(${p.dirDeg - 90}deg); color:#6b7280; font-size:12px; line-height:12px; opacity:0.98;'>&gt;</div>`,
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
-          })}
-        />
-      ))}
 
       {(linkedPoints || []).map((p, idx) => {
         const color = typeColor[p.vesselType] || '#e5e7eb';
@@ -376,12 +253,12 @@ export default memo(function PlaybackMap({
         if (!isCrosser && !showNonCrossing) return null;
 
         const heading = currentFrameHeadingByShip.get(p.shipId) || { deg: 0, lowMovement: true };
+        const isSelected = selectionMode && selectedShipIdSet.has(p.shipId);
         return (
           <Marker
             key={`${p.shipId}-${p.lat}-${p.lon}-tri`}
             position={[p.lat, p.lon]}
-            icon={getPlaybackTriangleIcon(color, heading.deg, 8, isCrosser, heading.lowMovement)}
-            eventHandlers={{ click: () => handleSelectShipId(p.shipId) }}
+            icon={getPlaybackTriangleIcon(color, heading.deg, isSelected ? 10 : 8, isCrosser, heading.lowMovement)}
           >
             <Tooltip>
               {formatShipDisplayName(p.shipName, p.flag)} ({p.shipId}) — {isCrosser ? "crossing" : "non-crossing"}

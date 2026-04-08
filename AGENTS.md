@@ -26,6 +26,21 @@ Current source regions include:
 
 Region-specific browser sessions can use dedicated OpenClaw-managed profiles; the Red Sea collector uses profile `red-sea`.
 
+The AIS collectors also now have dedicated per-region Chrome keepalive services on the same fixed CDP ports the capture wrappers use:
+- `com.ppbot.hormuz.browser` on `19012`
+- `com.ppbot.suez.browser` on `19013`
+- `com.ppbot.malacca.browser` on `19014`
+- `com.ppbot.capegoodhope.browser` on `19015`
+- `com.ppbot.yemenchannel.browser` on `19016`
+- `com.ppbot.southsrilanka.browser` on `19017`
+- `com.ppbot.mumbai.browser` on `19018`
+- `com.ppbot.redsea.browser` on `19019`
+
+Operational intent:
+- capture jobs keep using the same wrapper scripts and same ports
+- browser lifecycle is owned by launchd per region
+- `region_watchdog_autoheal.sh` remains the fallback recovery path and now prefers restarting the dedicated browser jobs when present
+
 ## Processed artifacts
 
 Preferred artifacts:
@@ -107,6 +122,17 @@ News pipeline note:
   - runtime state: `data/iran-update-history.json`, `data/iran-update-latest-run.json`, `data/iran-update-publish-state.json`, `data/iran-update-figure-extractions/*`
   - generated artifacts: `public/data/iran_updates.json`, `public/data/iran_update_figures.json`, `public/data/iran_update_figures/*`
   - the uploader is designed to be safe for hourly polling: it checks the latest report ID and exits as a no-op if that report was already published
+- the USNI Fleet Tracker pipeline also uses local runtime state plus generated artifacts:
+  - ingest: `scripts/ingest-usni-fleet.mjs`
+  - build: `scripts/build-usni-fleet.mjs`
+  - upload: `upload_usni_fleet_to_supabase.sh`
+  - source helpers: `scripts/usni-fleet-source.mjs`
+  - artifact builder: `scripts/usni-fleet-artifacts.mjs`
+  - runtime state: `data/usni-fleet-history.json`, `data/usni-fleet-latest-run.json`
+  - generated artifacts: `public/data/usni_fleet_tracker.json`, `public/data/usni_fleet_maps/*`
+  - remote publish paths: `x-scrapes-public/hormuz/usni_fleet_tracker.json`, `x-scrapes-public/hormuz/usni_fleet_maps/*`
+  - ingest prefers the USNI WordPress API over raw HTML page fetches because the site’s normal pages can sit behind anti-bot checks
+  - the first-pass artifact stores rough region coordinates and movement rows toward or away from an Arabian Sea reference point; map-image vision extraction can be layered on later
 
 ## Data model guidance
 

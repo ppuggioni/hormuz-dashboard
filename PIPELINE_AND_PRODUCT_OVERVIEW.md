@@ -518,6 +518,41 @@ Operational note:
 
 ---
 
+## 7c) USNI Fleet Tracker ingestion
+
+This repo now also carries a separate USNI Fleet Tracker ingestion stream for weekly fleet maps plus related movement news.
+
+Scripts:
+- `scripts/ingest-usni-fleet.mjs`
+- `scripts/build-usni-fleet.mjs`
+- `scripts/usni-fleet-source.mjs`
+- `scripts/usni-fleet-artifacts.mjs`
+- `upload_usni_fleet_to_supabase.sh`
+
+Runtime state:
+- `data/usni-fleet-history.json`
+- `data/usni-fleet-latest-run.json`
+
+Generated artifacts:
+- `public/data/usni_fleet_tracker.json`
+- `public/data/usni_fleet_maps/*`
+
+Supabase publish paths:
+- `x-scrapes-public/hormuz/usni_fleet_tracker.json`
+- `x-scrapes-public/hormuz/usni_fleet_maps/*`
+
+Behavior:
+- the ingest step polls the USNI WordPress API for the `fleet-tracker` category and a small set of region/movement search terms
+- weekly Fleet Tracker map images are downloaded into `public/data/usni_fleet_maps/`
+- the build step extracts ship mentions from tracker sections and relevant USNI news text, assigns rough coordinates from known region references, and emits a compact vessel-history and movement artifact
+- movement rows are classified relative to an Arabian Sea reference point so the frontend can highlight ships moving toward or away from the combat theater
+
+Operational note:
+- this is intentionally a rough-position stream, not AIS-grade geolocation
+- image-aware map extraction is a later layer; the foundation stage stores the weekly maps and text-derived positions together so the visual comparison step can be added without changing the runtime model
+
+---
+
 ## 8) News workflow rules and editorial policy
 
 The news agent follows these rules:

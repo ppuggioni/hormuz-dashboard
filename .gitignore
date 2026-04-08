@@ -48,6 +48,8 @@ next-env.d.ts
 /public/data/iran_updates.json
 /public/data/iran_update_figures.json
 /public/data/iran_update_figures/*
+/public/data/usni_fleet_tracker.json
+/public/data/usni_fleet_maps/*
 /public/data/confirmed_crossing_exclusions.json
 
 # news pipeline runtime state
@@ -60,6 +62,8 @@ next-env.d.ts
 /data/iran-update-latest-run.json
 /data/iran-update-publish-state.json
 /data/iran-update-figure-extractions/
+/data/usni-fleet-history.json
+/data/usni-fleet-latest-run.json
 
 # incremental pipeline runtime state
 /state/*.json

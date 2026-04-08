@@ -154,6 +154,17 @@ npm run extract:iran-update-figures
 ./upload_iran_updates_to_supabase.sh
 ```
 
+- Ingest + build USNI Fleet Tracker artifacts locally:
+```bash
+npm run ingest:usni-fleet
+npm run build:usni-fleet
+```
+
+- Ingest, build, and upload USNI Fleet Tracker artifacts to Supabase:
+```bash
+./upload_usni_fleet_to_supabase.sh
+```
+
 Operational note:
 - the Iran Update uploader is now safe to run hourly
 - it polls the ISW listing page every run, but after the current latest report has already been published it exits as a no-op instead of rebuilding and re-uploading everything
@@ -169,6 +180,23 @@ Remote publish paths:
 - `x-scrapes-public/hormuz/iran_updates.json`
 - `x-scrapes-public/hormuz/iran_update_figures.json`
 - `x-scrapes-public/hormuz/iran_update_figures/*`
+
+USNI Fleet Tracker outputs:
+- `public/data/usni_fleet_tracker.json`
+- `public/data/usni_fleet_maps/*`
+
+USNI Fleet Tracker remote publish paths:
+- `x-scrapes-public/hormuz/usni_fleet_tracker.json`
+- `x-scrapes-public/hormuz/usni_fleet_maps/*`
+
+USNI Fleet Tracker runtime state:
+- `data/usni-fleet-history.json`
+- `data/usni-fleet-latest-run.json`
+
+USNI Fleet Tracker notes:
+- the ingest uses the USNI WordPress API rather than raw page scraping because the API is more reliable for unattended polling
+- weekly Fleet Tracker map images are downloaded into `public/data/usni_fleet_maps/`
+- the first-pass artifact includes per-vessel rough position history and movement rows relative to an Arabian Sea reference point
 
 ## Windowed rebuild workflow
 

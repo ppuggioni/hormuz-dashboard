@@ -367,6 +367,77 @@ type IranUpdateFiguresFeedShape = {
   histogramFigures: IranUpdateFigure[];
 };
 
+type UsniFleetMovementDirection =
+  | "toward_arabian_sea"
+  | "away_from_arabian_sea"
+  | "entered_combat_zone"
+  | "exited_combat_zone"
+  | "repositioned"
+  | "unchanged";
+
+type UsniFleetMovementRow = {
+  vesselKey: string;
+  vesselName: string;
+  vesselType: string;
+  date: string;
+  previousPosition: string;
+  previousCoordinates: { lat: number; lon: number };
+  currentPosition: string;
+  currentCoordinates: { lat: number; lon: number };
+  direction: UsniFleetMovementDirection;
+  comments: string;
+  previousSourceUrl?: string | null;
+  currentSourceUrl?: string | null;
+  previousMapImageLocalUrl?: string | null;
+  currentMapImageLocalUrl?: string | null;
+  previousMapImageRemoteUrl?: string | null;
+  currentMapImageRemoteUrl?: string | null;
+};
+
+type UsniTrackerSnapshotVessel = {
+  vesselKey: string;
+  vesselName: string;
+  vesselType: string;
+  hullNumber?: string | null;
+  positionLabel: string;
+  positionLat: number;
+  positionLon: number;
+  sourceUrl?: string | null;
+  comments?: string | null;
+};
+
+type UsniTrackerSnapshot = {
+  id: string;
+  date: string;
+  title: string;
+  url: string;
+  mapImageLocalUrl?: string | null;
+  mapImageRemoteUrl?: string | null;
+  vessels: UsniTrackerSnapshotVessel[];
+};
+
+type UsniFleetFeedShape = {
+  metadata: {
+    generatedAt: string;
+    profile: string;
+    sourceUrl?: string;
+    sourceApiUrl?: string;
+    itemCount: number;
+    trackerItemCount: number;
+    newsItemCount: number;
+    vesselCount: number;
+    movementCount: number;
+    relevantMovementCount: number;
+    trackerSnapshotCount: number;
+    latestPublishedAt?: string | null;
+    lastRunAt?: string;
+    combatReference?: { label: string; lat: number; lon: number };
+  };
+  relevantMovements: UsniFleetMovementRow[];
+  movementRows: UsniFleetMovementRow[];
+  trackerSnapshots: UsniTrackerSnapshot[];
+};
+
 type FetchFreshness = "cache" | "revalidate" | "bust";
 
 type CandidateEvent = CandidateCrosser & {
@@ -418,6 +489,7 @@ const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: fal
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
 const RedSeaCrossingMap = dynamic(() => import("@/components/RedSeaCrossingMap"), { ssr: false });
+const UsniFleetMap = dynamic(() => import("@/components/UsniFleetMap"), { ssr: false });
 const EXTERNAL_REGIONS = ["suez", "malacca", "cape_good_hope", "yemen_channel", "south_sri_lanka", "mumbai", "red_sea"] as const;
 const RED_SEA_CROSSING_TYPES: RedSeaCrossingType[] = ["south_outbound", "south_inbound", "north_outbound", "north_inbound"];
 const RED_SEA_CROSSING_TYPE_LABELS: Record<RedSeaCrossingType, string> = {
@@ -757,6 +829,74 @@ function formatUtcTime(iso: string) {
 
 function formatMetricNumber(value?: number | null, digits = 1) {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "-";
+}
+
+function formatCalendarDate(value?: string | null) {
+  if (!value) return "Unknown date";
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00Z`) : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString("en-GB", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatLatLon(lat?: number | null, lon?: number | null, digits = 1) {
+  if (typeof lat !== "number" || typeof lon !== "number" || !Number.isFinite(lat) || !Number.isFinite(lon)) return "-";
+  const latSuffix = lat >= 0 ? "N" : "S";
+  const lonSuffix = lon >= 0 ? "E" : "W";
+  return `${Math.abs(lat).toFixed(digits)}${latSuffix}, ${Math.abs(lon).toFixed(digits)}${lonSuffix}`;
+}
+
+function getRollingWindowStartIso(anchorValue: string | null | undefined, days: number) {
+  if (!anchorValue) return null;
+  const anchorDate = /^\d{4}-\d{2}-\d{2}$/.test(anchorValue) ? new Date(`${anchorValue}T00:00:00Z`) : new Date(anchorValue);
+  if (Number.isNaN(anchorDate.getTime())) return null;
+  const startMs = Date.UTC(
+    anchorDate.getUTCFullYear(),
+    anchorDate.getUTCMonth(),
+    anchorDate.getUTCDate(),
+  ) - ((days - 1) * 24 * 60 * 60 * 1000);
+  return new Date(startMs).toISOString();
+}
+
+function getUsniMovementDirectionLabel(direction: UsniFleetMovementDirection) {
+  switch (direction) {
+    case "entered_combat_zone":
+      return "Entered combat zone";
+    case "toward_arabian_sea":
+      return "Toward Arabian Sea";
+    case "exited_combat_zone":
+      return "Exited combat zone";
+    case "away_from_arabian_sea":
+      return "Away from Arabian Sea";
+    case "unchanged":
+      return "Unchanged";
+    default:
+      return "Repositioned";
+  }
+}
+
+function isUsniTowardMovement(direction: UsniFleetMovementDirection) {
+  return direction === "toward_arabian_sea" || direction === "entered_combat_zone";
+}
+
+function isUsniAwayMovement(direction: UsniFleetMovementDirection) {
+  return direction === "away_from_arabian_sea" || direction === "exited_combat_zone";
+}
+
+function getUsniMovementBadgeClass(direction: UsniFleetMovementDirection) {
+  switch (direction) {
+    case "entered_combat_zone":
+      return "border-cyan-400/40 bg-cyan-400/10 text-cyan-200";
+    case "toward_arabian_sea":
+      return "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
+    case "exited_combat_zone":
+      return "border-amber-400/40 bg-amber-400/10 text-amber-200";
+    case "away_from_arabian_sea":
+      return "border-rose-400/40 bg-rose-400/10 text-rose-200";
+    case "unchanged":
+      return "border-slate-500/40 bg-slate-500/10 text-slate-300";
+    default:
+      return "border-slate-500/40 bg-slate-500/10 text-slate-300";
+  }
 }
 
 function TransponderStatusBadge({ status }: { status?: "on" | "off" | null }) {
@@ -1151,10 +1291,14 @@ export default function Page() {
   const [attacksFeed, setAttacksFeed] = useState<VesselAttacksFeedShape | null>(null);
   const [iranUpdatesFeed, setIranUpdatesFeed] = useState<IranUpdatesFeedShape | null>(null);
   const [iranUpdateFiguresFeed, setIranUpdateFiguresFeed] = useState<IranUpdateFiguresFeedShape | null>(null);
+  const [usniFleetFeed, setUsniFleetFeed] = useState<UsniFleetFeedShape | null>(null);
   const [selectedNewsDay, setSelectedNewsDay] = useState<string | null>(null);
   const [newsSourceFilter, setNewsSourceFilter] = useState<string>("all");
   const [showAllNewsItems, setShowAllNewsItems] = useState(false);
   const [selectedAttackIndex, setSelectedAttackIndex] = useState(0);
+  const [usniMovementWindow, setUsniMovementWindow] = useState<"7d" | "30d" | "all">("7d");
+  const [usniMovementFilter, setUsniMovementFilter] = useState<"all" | "toward" | "away">("all");
+  const [selectedUsniSnapshotDate, setSelectedUsniSnapshotDate] = useState<string>("");
   const [selectedRedSeaCrossingTypes, setSelectedRedSeaCrossingTypes] = useState<RedSeaCrossingType[]>(RED_SEA_CROSSING_TYPES);
   const [selectedRedSeaVesselTypes, setSelectedRedSeaVesselTypes] = useState<RedSeaVesselType[]>(["tanker"]);
   const [redSeaWindow, setRedSeaWindow] = useState<"24h" | "48h" | "all">("24h");
@@ -1176,10 +1320,12 @@ export default function Page() {
   const remoteAttacksUrl = process.env.NEXT_PUBLIC_HORMUZ_ATTACKS_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/vessel_attacks_latest.json";
   const remoteIranUpdatesUrl = process.env.NEXT_PUBLIC_HORMUZ_IRAN_UPDATES_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/iran_updates.json";
   const remoteIranUpdateFiguresUrl = process.env.NEXT_PUBLIC_HORMUZ_IRAN_UPDATE_FIGURES_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/iran_update_figures.json";
+  const remoteUsniFleetUrl = process.env.NEXT_PUBLIC_HORMUZ_USNI_FLEET_URL || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/hormuz/usni_fleet_tracker.json";
   const localNewsUrl = "/data/news_feed.json";
   const localAttacksUrl = "/data/vessel_attacks_latest.json";
   const localIranUpdatesUrl = "/data/iran_updates.json";
   const localIranUpdateFiguresUrl = "/data/iran_update_figures.json";
+  const localUsniFleetUrl = "/data/usni_fleet_tracker.json";
 
   const fetchJson = useMemo(() => async (url: string, options?: { freshness?: FetchFreshness }) => {
     const freshness = options?.freshness || "revalidate";
@@ -1270,10 +1416,26 @@ export default function Page() {
     }
   }, [fetchJson, localIranUpdateFiguresUrl, remoteIranUpdateFiguresUrl]);
 
+  const loadUsniFleet = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+    try {
+      const fleet = await fetchJson(remoteUsniFleetUrl, { freshness });
+      setUsniFleetFeed(fleet as UsniFleetFeedShape);
+      return;
+    } catch {
+      // fall through to local artifact
+    }
+    try {
+      const fleet = await fetchJson(localUsniFleetUrl, { freshness });
+      setUsniFleetFeed(fleet as UsniFleetFeedShape);
+    } catch {
+      setUsniFleetFeed(null);
+    }
+  }, [fetchJson, localUsniFleetUrl, remoteUsniFleetUrl]);
+
   const loadDashboardData = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
     const isLiveRevalidate = freshness !== "cache";
     if (isLiveRevalidate) lastLiveRevalidateAtRef.current = Date.now();
-    await Promise.all([loadNews(freshness), loadAttacks(freshness), loadIranUpdates(freshness), loadIranUpdateFigures(freshness)]);
+    await Promise.all([loadNews(freshness), loadAttacks(freshness), loadIranUpdates(freshness), loadIranUpdateFigures(freshness), loadUsniFleet(freshness)]);
     try {
       const core = await fetchJson(`${root}/processed_core.json`, { freshness });
       const paths = await fetchJson(`${root}/processed_paths.json`, { freshness });
@@ -1327,7 +1489,7 @@ export default function Page() {
     } catch (err) {
       console.error("Failed to load split dashboard artifacts", err);
     }
-  }, [fetchJson, loadAttacks, loadIranUpdateFigures, loadIranUpdates, loadNews, root]);
+  }, [fetchJson, loadAttacks, loadIranUpdateFigures, loadIranUpdates, loadNews, loadUsniFleet, root]);
 
   useEffect(() => {
     void loadDashboardData("revalidate");
@@ -1652,11 +1814,6 @@ export default function Page() {
   const cargoCandidateCrossers = useMemo(() => cargoCandidatesData || [], [cargoCandidatesData]);
 
   const candidateCrossersForDisplay = useMemo(() => candidateCrossers, [candidateCrossers]);
-  const latestCandidateSnapshotTs = useMemo(
-    () => (data?.snapshots?.length ? +new Date(data.snapshots[data.snapshots.length - 1].t) : +new Date(data?.metadata?.generatedAt || 0)),
-    [data?.snapshots, data?.metadata?.generatedAt],
-  );
-
   const candidateShipIds = useMemo(() => new Set(candidateCrossers.map((c) => c.shipId)), [candidateCrossers]);
   const highConfidenceCandidates = useMemo(
     () => candidateCrossers.filter((c) => c.confidenceBand === "high"),
@@ -1726,6 +1883,75 @@ export default function Page() {
       .filter((figure) => figure.kind === "map").length,
     [iranUpdateFiguresFeed, latestIranUpdateItem?.id],
   );
+  const usniRelevantMovements = useMemo(
+    () => usniFleetFeed?.relevantMovements || [],
+    [usniFleetFeed],
+  );
+  const usniReferenceAt = useMemo(
+    () => usniFleetFeed?.metadata?.latestPublishedAt || usniFleetFeed?.metadata?.lastRunAt || null,
+    [usniFleetFeed?.metadata?.lastRunAt, usniFleetFeed?.metadata?.latestPublishedAt],
+  );
+  const usni7dStartIso = useMemo(
+    () => getRollingWindowStartIso(usniReferenceAt, 7),
+    [usniReferenceAt],
+  );
+  const usni30dStartIso = useMemo(
+    () => getRollingWindowStartIso(usniReferenceAt, 30),
+    [usniReferenceAt],
+  );
+  const usniTowardLast7dCount = useMemo(
+    () => usniRelevantMovements.filter((row) => usni7dStartIso && +new Date(`${row.date}T00:00:00Z`) >= +new Date(usni7dStartIso) && isUsniTowardMovement(row.direction)).length,
+    [usni7dStartIso, usniRelevantMovements],
+  );
+  const usniAwayLast7dCount = useMemo(
+    () => usniRelevantMovements.filter((row) => usni7dStartIso && +new Date(`${row.date}T00:00:00Z`) >= +new Date(usni7dStartIso) && isUsniAwayMovement(row.direction)).length,
+    [usni7dStartIso, usniRelevantMovements],
+  );
+  const usniTrackerSnapshots = useMemo(
+    () => [...(usniFleetFeed?.trackerSnapshots || [])].sort((a, b) => +new Date(a.date || 0) - +new Date(b.date || 0)),
+    [usniFleetFeed],
+  );
+  const selectedUsniSnapshot = useMemo(
+    () => usniTrackerSnapshots.find((snapshot) => snapshot.date === selectedUsniSnapshotDate) || usniTrackerSnapshots[usniTrackerSnapshots.length - 1] || null,
+    [selectedUsniSnapshotDate, usniTrackerSnapshots],
+  );
+  const selectedUsniSnapshotIndex = useMemo(
+    () => selectedUsniSnapshot ? usniTrackerSnapshots.findIndex((snapshot) => snapshot.date === selectedUsniSnapshot.date) : -1,
+    [selectedUsniSnapshot, usniTrackerSnapshots],
+  );
+  const selectedUsniSnapshotImageUrl = selectedUsniSnapshot?.mapImageRemoteUrl || selectedUsniSnapshot?.mapImageLocalUrl || null;
+  const selectedUsniSnapshotLocalImageUrl = selectedUsniSnapshot?.mapImageLocalUrl || null;
+  const selectedUsniSnapshotVessels = useMemo(
+    () => [...(selectedUsniSnapshot?.vessels || [])].sort((a, b) => a.vesselName.localeCompare(b.vesselName)),
+    [selectedUsniSnapshot],
+  );
+  const usniMovementWindowStartIso = useMemo(() => {
+    if (usniMovementWindow === "7d") return usni7dStartIso;
+    if (usniMovementWindow === "30d") return usni30dStartIso;
+    return null;
+  }, [usni30dStartIso, usni7dStartIso, usniMovementWindow]);
+  const usniMovementsInWindow = useMemo(
+    () => usniRelevantMovements.filter((row) => !usniMovementWindowStartIso || +new Date(`${row.date}T00:00:00Z`) >= +new Date(usniMovementWindowStartIso)),
+    [usniMovementWindowStartIso, usniRelevantMovements],
+  );
+  const usniMovementRowsForDisplay = useMemo(
+    () => usniMovementsInWindow.filter((row) => (
+      usniMovementFilter === "all"
+        ? true
+        : usniMovementFilter === "toward"
+          ? isUsniTowardMovement(row.direction)
+          : isUsniAwayMovement(row.direction)
+    )),
+    [usniMovementFilter, usniMovementsInWindow],
+  );
+  const usniMapMovementRows = useMemo(
+    () => [...usniMovementRowsForDisplay].slice(0, 24).sort((a, b) => +new Date(a.date) - +new Date(b.date)),
+    [usniMovementRowsForDisplay],
+  );
+  const latestUsniRelevantMovement = useMemo(
+    () => usniRelevantMovements[0] || null,
+    [usniRelevantMovements],
+  );
 
   const vesselAttackItems = useMemo(() => {
     const items = Array.isArray(attacksFeed?.items) ? attacksFeed.items : [];
@@ -1740,6 +1966,16 @@ export default function Page() {
     setSelectedAttackIndex(vesselAttackItems.length - 1);
   }, [vesselAttackItems]);
 
+  useEffect(() => {
+    if (!usniTrackerSnapshots.length) {
+      setSelectedUsniSnapshotDate("");
+      return;
+    }
+    if (!selectedUsniSnapshotDate || !usniTrackerSnapshots.some((snapshot) => snapshot.date === selectedUsniSnapshotDate)) {
+      setSelectedUsniSnapshotDate(usniTrackerSnapshots[usniTrackerSnapshots.length - 1]?.date || "");
+    }
+  }, [selectedUsniSnapshotDate, usniTrackerSnapshots]);
+
   const selectedAttack = vesselAttackItems[selectedAttackIndex] || vesselAttackItems[vesselAttackItems.length - 1] || null;
   const vesselAttacksSummary = attacksFeed?.vesselAttacks24hSummary || null;
   const candidateDailyHigh = useMemo(
@@ -1747,31 +1983,6 @@ export default function Page() {
     [highConfidenceCandidateEventsForCharts],
   );
   const candidateChartTicks = useMemo(() => candidateDailyHigh.map((x) => x.hour), [candidateDailyHigh]);
-  const latestCandidateEventTs = useMemo(
-    () => tankerCandidateEventsData.length ? Math.max(...tankerCandidateEventsData.map((c) => +new Date(c.lastSeenAt))) : null,
-    [tankerCandidateEventsData],
-  );
-  const candidateReferenceTs = latestCandidateSnapshotTs || latestCandidateEventTs;
-  const candidate24hCutoffTs = useMemo(
-    () => candidateReferenceTs == null ? null : candidateReferenceTs - 24 * 60 * 60 * 1000,
-    [candidateReferenceTs],
-  );
-  const candidateLast24hHighCount = useMemo(
-    () => candidate24hCutoffTs == null || candidateReferenceTs == null ? 0 : highConfidenceCandidateEventsForCharts.filter((c) => {
-      const ts = +new Date(c.lastSeenAt);
-      return ts >= candidate24hCutoffTs && ts <= candidateReferenceTs;
-    }).length,
-    [highConfidenceCandidateEventsForCharts, candidate24hCutoffTs, candidateReferenceTs],
-  );
-  const candidateLast24hLowCount = useMemo(
-    () => candidate24hCutoffTs == null || candidateReferenceTs == null ? 0 : tankerCandidateEventsData.filter((c) => {
-      if (c.confidenceBand !== "low") return false;
-      if (discardSuspectedSpoofing && suspectedCandidateSpoofingKeys.has(`${c.shipId}|${c.lastSeenAt}|${c.inferredDirection}`)) return false;
-      const ts = +new Date(c.lastSeenAt);
-      return ts >= candidate24hCutoffTs && ts <= candidateReferenceTs;
-    }).length,
-    [tankerCandidateEventsData, discardSuspectedSpoofing, suspectedCandidateSpoofingKeys, candidate24hCutoffTs, candidateReferenceTs],
-  );
   const selectedCrossingShipIdSet = useMemo(() => new Set(selectedCrossingShipIds), [selectedCrossingShipIds]);
   const selectedCandidateShipIdSet = useMemo(() => new Set(selectedCandidateShipIds), [selectedCandidateShipIds]);
   const redSeaCrossingEvents = useMemo(
@@ -2621,17 +2832,28 @@ export default function Page() {
                 Jump to crossing tankers map
               </button>
             </div>
-            <div className="rounded-xl border border-amber-300/60 bg-amber-500/10 p-3">
-              <div className="text-xs text-amber-200">Dark-transit candidates — High confidence (&gt;50, last 24h)</div>
-              <div className="text-lg font-semibold text-amber-100">{candidateLast24hHighCount}</div>
-              <div className="mt-1 text-[10px] leading-relaxed text-amber-100/80">
-                Window anchored to latest dashboard snapshot, not the latest candidate event.
+            <div className="rounded-xl border border-cyan-300/60 bg-cyan-500/10 p-3">
+              <div className="text-xs text-cyan-200">US Navy positions — movements last 7d</div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-lg font-semibold text-cyan-100">{usniTowardLast7dCount}</div>
+                  <div className="text-[10px] text-cyan-100/80">Toward / entered combat zone</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg font-semibold text-cyan-100">{usniAwayLast7dCount}</div>
+                  <div className="text-[10px] text-cyan-100/80">Away / exited combat zone</div>
+                </div>
+              </div>
+              <div className="mt-2 text-[10px] leading-relaxed text-cyan-100/80">
+                {latestUsniRelevantMovement
+                  ? `Latest flagged movement: ${latestUsniRelevantMovement.vesselName} on ${formatCalendarDate(latestUsniRelevantMovement.date)}.`
+                  : "No USNI fleet movement rows loaded yet."}
               </div>
               <button
-                onClick={() => document.getElementById("candidate-dark-crossers")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="mt-2 rounded-md border border-amber-300/60 px-2 py-1 text-[11px] text-amber-100"
+                onClick={() => document.getElementById("usni-fleet")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="mt-2 rounded-md border border-cyan-300/60 px-2 py-1 text-[11px] text-cyan-100"
               >
-                Jump to candidate section
+                Click here to see full analysis
               </button>
             </div>
             {RED_SEA_TOPLINE_GROUPS.map((group) => (
@@ -3896,6 +4118,299 @@ export default function Page() {
               </div>
             </div>
           </div>
+        </section>
+
+        <section id="usni-fleet" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">US Navy positions</div>
+              <h2 className="mt-1 text-xl font-semibold text-slate-100">Fleet movement analysis toward and away from the combat zone</h2>
+              <p className="mt-2 max-w-3xl text-sm text-slate-400">
+                Weekly USNI Fleet Tracker maps plus related USNI movement reporting, normalized into rough coordinates so we can review direction of travel toward or away from the Arabian Sea combat theater.
+              </p>
+            </div>
+            <div className="text-xs text-slate-400 md:text-right">
+              <div>Relevant movements: {usniFleetFeed?.metadata?.relevantMovementCount ?? 0}</div>
+              <div>Tracker snapshots: {usniFleetFeed?.metadata?.trackerSnapshotCount ?? 0}</div>
+              <div>Last tracker date: {formatCalendarDate(usniFleetFeed?.metadata?.latestPublishedAt || null)}</div>
+              <div>Last run: {usniFleetFeed?.metadata?.lastRunAt ? new Date(usniFleetFeed.metadata.lastRunAt).toUTCString() : "Not available yet"}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 p-3">
+              <div className="text-xs text-emerald-200">Last 7d toward / entered</div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-100">{usniTowardLast7dCount}</div>
+              <div className="mt-1 text-[11px] text-emerald-100/80">Movements drawing closer to the Arabian Sea or into the combat zone.</div>
+            </div>
+            <div className="rounded-xl border border-rose-300/40 bg-rose-500/10 p-3">
+              <div className="text-xs text-rose-200">Last 7d away / exited</div>
+              <div className="mt-1 text-2xl font-semibold text-rose-100">{usniAwayLast7dCount}</div>
+              <div className="mt-1 text-[11px] text-rose-100/80">Movements pulling away from the theater or explicitly exiting the zone.</div>
+            </div>
+            <div className="rounded-xl border border-sky-300/40 bg-sky-500/10 p-3">
+              <div className="text-xs text-sky-200">Selected tracker snapshot</div>
+              <div className="mt-1 text-sm font-semibold leading-snug text-sky-100">{selectedUsniSnapshot?.title || "No snapshot selected"}</div>
+              <div className="mt-1 text-[11px] text-sky-100/80">
+                {selectedUsniSnapshot ? `${selectedUsniSnapshot.vessels.length} vessels with rough positions` : "No tracker snapshots loaded"}
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-950/40 p-3">
+              <div className="text-xs text-slate-300">Current analysis window</div>
+              <div className="mt-1 text-sm font-semibold text-slate-100">
+                {usniMovementWindow === "all" ? "All history loaded" : usniMovementWindow === "30d" ? "Rolling 30 days" : "Rolling 7 days"}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                {usniMovementRowsForDisplay.length} movement row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} currently shown.
+              </div>
+            </div>
+          </div>
+
+          {usniFleetFeed ? (
+            <>
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4 xl:col-span-2">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Movement map</div>
+                      <div className="mt-1 text-lg font-semibold text-slate-100">Recent repositioning with arrows</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-[11px]">
+                      {(["7d", "30d", "all"] as const).map((window) => (
+                        <button
+                          key={`usni-window-${window}`}
+                          onClick={() => setUsniMovementWindow(window)}
+                          className={`rounded-md border px-3 py-1.5 ${usniMovementWindow === window ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"}`}
+                        >
+                          {window === "all" ? "All" : window.toUpperCase()}
+                        </button>
+                      ))}
+                      {(["all", "toward", "away"] as const).map((filter) => (
+                        <button
+                          key={`usni-filter-${filter}`}
+                          onClick={() => setUsniMovementFilter(filter)}
+                          className={`rounded-md border px-3 py-1.5 ${usniMovementFilter === filter ? "border-cyan-300 text-cyan-100 bg-cyan-500/10" : "border-slate-700 text-slate-400"}`}
+                        >
+                          {filter === "all" ? "All directions" : filter === "toward" ? "Toward / entered" : "Away / exited"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-emerald-200">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                      Toward Arabian Sea
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-cyan-200">
+                      <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+                      Entered combat zone
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-rose-400/30 bg-rose-400/10 px-2.5 py-1 text-rose-200">
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
+                      Away / exited
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-600 px-2.5 py-1">
+                      <span className="h-2.5 w-2.5 rounded-full border border-slate-300 bg-slate-950" />
+                      Selected weekly snapshot positions
+                    </span>
+                  </div>
+                  <div className="mt-4 h-[480px] overflow-hidden rounded-2xl border border-slate-800">
+                    <UsniFleetMap
+                      movements={usniMapMovementRows}
+                      snapshotVessels={selectedUsniSnapshotVessels}
+                    />
+                  </div>
+                  <div className="mt-3 text-xs leading-relaxed text-slate-500">
+                    Movement lines use text-derived rough coordinates. Grey dots show vessels from the selected weekly Fleet Tracker snapshot so you can compare the current map image with the normalized positions.
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Weekly tracker map</div>
+                        <div className="mt-1 text-lg font-semibold text-slate-100">Snapshot browser</div>
+                      </div>
+                      {selectedUsniSnapshot?.url ? (
+                        <a href={selectedUsniSnapshot.url} target="_blank" rel="noreferrer" className="text-[11px] text-cyan-300 underline underline-offset-2">
+                          Source post
+                        </a>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (selectedUsniSnapshotIndex <= 0) return;
+                          startTransition(() => setSelectedUsniSnapshotDate(usniTrackerSnapshots[selectedUsniSnapshotIndex - 1]?.date || ""));
+                        }}
+                        disabled={selectedUsniSnapshotIndex <= 0}
+                        className="rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <select
+                        value={selectedUsniSnapshot?.date || ""}
+                        onChange={(event) => setSelectedUsniSnapshotDate(event.target.value)}
+                        className="min-w-0 flex-1 rounded-md border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm text-slate-100"
+                      >
+                        {usniTrackerSnapshots.map((snapshot) => (
+                          <option key={snapshot.id} value={snapshot.date}>
+                            {formatCalendarDate(snapshot.date)} — {snapshot.vessels.length} vessels
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          if (selectedUsniSnapshotIndex < 0 || selectedUsniSnapshotIndex >= usniTrackerSnapshots.length - 1) return;
+                          startTransition(() => setSelectedUsniSnapshotDate(usniTrackerSnapshots[selectedUsniSnapshotIndex + 1]?.date || ""));
+                        }}
+                        disabled={selectedUsniSnapshotIndex < 0 || selectedUsniSnapshotIndex >= usniTrackerSnapshots.length - 1}
+                        className="rounded-md border border-slate-700 px-2 py-1 text-[11px] text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                    {selectedUsniSnapshotImageUrl ? (
+                      <a href={selectedUsniSnapshotImageUrl} target="_blank" rel="noreferrer" className="mt-3 block overflow-hidden rounded-xl border border-slate-800">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={selectedUsniSnapshotImageUrl}
+                          alt={selectedUsniSnapshot?.title || "USNI Fleet Tracker map"}
+                          className="h-auto w-full object-cover"
+                          onError={(event) => {
+                            if (selectedUsniSnapshotLocalImageUrl && event.currentTarget.src !== selectedUsniSnapshotLocalImageUrl) {
+                              event.currentTarget.src = selectedUsniSnapshotLocalImageUrl;
+                            }
+                          }}
+                        />
+                      </a>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                        No saved weekly map image for this snapshot yet.
+                      </div>
+                    )}
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-400">
+                      <div>
+                        <div className="text-slate-500">Snapshot date</div>
+                        <div className="mt-1 text-slate-200">{formatCalendarDate(selectedUsniSnapshot?.date || null)}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Vessels tagged</div>
+                        <div className="mt-1 text-slate-200">{selectedUsniSnapshotVessels.length}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Snapshot vessel list</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-100">Who is where on the selected weekly map</div>
+                    {selectedUsniSnapshotVessels.length ? (
+                      <div className="mt-3 max-h-[320px] overflow-auto rounded-xl border border-slate-800">
+                        <table className="w-full text-left text-sm">
+                          <thead className="sticky top-0 bg-slate-950/95 text-slate-300">
+                            <tr>
+                              <th className="p-2">Vessel</th>
+                              <th className="p-2">Type</th>
+                              <th className="p-2">Rough position</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedUsniSnapshotVessels.map((vessel) => (
+                              <tr key={`usni-snapshot-vessel-${vessel.vesselKey}`} className="border-t border-slate-800 align-top">
+                                <td className="p-2">
+                                  <div className="font-medium text-slate-100">{vessel.vesselName}</div>
+                                  {vessel.hullNumber ? <div className="text-[11px] text-slate-500">{vessel.hullNumber}</div> : null}
+                                </td>
+                                <td className="p-2 text-slate-300">{vessel.vesselType}</td>
+                                <td className="p-2">
+                                  <div className="text-slate-200">{vessel.positionLabel}</div>
+                                  <div className="text-[11px] text-slate-500">{formatLatLon(vessel.positionLat, vessel.positionLon)}</div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                        No snapshot vessels are loaded for this date yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Movement table</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-100">Relevant vessel movements</div>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Showing {usniMovementRowsForDisplay.length} row{usniMovementRowsForDisplay.length === 1 ? "" : "s"} from {usniMovementWindow === "all" ? "all loaded history" : usniMovementWindow === "30d" ? "the last 30 days" : "the last 7 days"}.
+                  </div>
+                </div>
+                {usniMovementRowsForDisplay.length ? (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="text-slate-300">
+                        <tr className="border-b border-slate-800">
+                          <th className="p-2">Vessel</th>
+                          <th className="p-2">Type</th>
+                          <th className="p-2">Date</th>
+                          <th className="p-2">Previous position</th>
+                          <th className="p-2">Current position</th>
+                          <th className="p-2">Direction</th>
+                          <th className="p-2">Comments</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usniMovementRowsForDisplay.map((row, idx) => (
+                          <tr key={`usni-move-${row.vesselKey}-${row.date}-${idx}`} className="border-t border-slate-800 align-top">
+                            <td className="p-2">
+                              <div className="font-medium text-slate-100">{row.vesselName}</div>
+                            </td>
+                            <td className="p-2 text-slate-300">{row.vesselType}</td>
+                            <td className="p-2 text-slate-300">{formatCalendarDate(row.date)}</td>
+                            <td className="p-2">
+                              <div className="text-slate-200">{row.previousPosition}</div>
+                              <div className="text-[11px] text-slate-500">{formatLatLon(row.previousCoordinates.lat, row.previousCoordinates.lon)}</div>
+                            </td>
+                            <td className="p-2">
+                              <div className="text-slate-200">{row.currentPosition}</div>
+                              <div className="text-[11px] text-slate-500">{formatLatLon(row.currentCoordinates.lat, row.currentCoordinates.lon)}</div>
+                            </td>
+                            <td className="p-2">
+                              <span className={`inline-flex rounded-full border px-2 py-1 text-[11px] font-medium ${getUsniMovementBadgeClass(row.direction)}`}>
+                                {getUsniMovementDirectionLabel(row.direction)}
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              <div className="max-w-xl text-slate-300">{row.comments}</div>
+                              {row.currentSourceUrl ? (
+                                <a href={row.currentSourceUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex text-[11px] text-cyan-300 underline underline-offset-2">
+                                  Source
+                                </a>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="mt-3 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+                    No relevant USNI movement rows match the current filter yet.
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/30 p-4 text-sm text-slate-400">
+              USNI Fleet Tracker artifacts are not loaded yet, so this section cannot show positions or movements.
+            </div>
+          )}
         </section>
 
         <section id="iran-updates" className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">

@@ -1552,6 +1552,12 @@ export default function Page() {
     return base.slice(0, 60);
   }, [playbackShipOptions, playbackShipSearch, selectedPlaybackShipIds]);
 
+  useEffect(() => {
+    if (!playbackSelectionMode) return;
+    if (playbackShipPickerValue && playbackShipMatches.some((option) => option.shipId === playbackShipPickerValue)) return;
+    setPlaybackShipPickerValue(playbackShipMatches[0]?.shipId || "");
+  }, [playbackSelectionMode, playbackShipMatches, playbackShipPickerValue]);
+
   const selectedPlaybackShipOptions = useMemo(
     () => selectedPlaybackShipIds
       .map((shipId) => {

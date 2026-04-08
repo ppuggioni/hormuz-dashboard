@@ -107,6 +107,10 @@ function reportDateLabel(date?: string | null) {
   return date || "Unknown";
 }
 
+function popupGridTemplateRows(itemCount: number) {
+  return `repeat(${Math.max(1, Math.min(itemCount, 3))}, minmax(0, auto))`;
+}
+
 export default memo(function UsniFleetMap({
   movements,
   locationGroups,
@@ -226,7 +230,18 @@ export default memo(function UsniFleetMap({
                   <div style={{ marginTop: 6, fontSize: 11, opacity: 0.75 }}>
                     {selectedVessel ? "Selected vessel" : `${count} vessel${count === 1 ? "" : "s"} at this location`}
                   </div>
-                  <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "grid",
+                      gap: 6,
+                      gridTemplateRows: popupGridTemplateRows(visibleVessels.length),
+                      gridAutoFlow: "column",
+                      gridAutoColumns: "minmax(148px, 1fr)",
+                      alignItems: "stretch",
+                      minWidth: selectedVessel ? 180 : Math.min(640, Math.max(220, Math.ceil(visibleVessels.length / 3) * 156)),
+                    }}
+                  >
                     {visibleVessels.map((vessel) => {
                       const isSelected = vessel.vesselKey === selectedVesselKey;
                       return (
@@ -237,19 +252,21 @@ export default memo(function UsniFleetMap({
                           style={{
                             width: "100%",
                             textAlign: "left",
-                            borderRadius: 10,
+                            borderRadius: 9,
                             border: isSelected ? "1px solid rgba(103,232,249,0.7)" : "1px solid rgba(148,163,184,0.35)",
                             background: isSelected ? "rgba(6,182,212,0.12)" : "rgba(15,23,42,0.92)",
                             color: "#e2e8f0",
-                            padding: "8px 10px",
+                            padding: "6px 8px",
                             cursor: "pointer",
                           }}
                         >
-                          <div style={{ fontWeight: 600 }}>{vessel.vesselName}</div>
-                          <div style={{ marginTop: 2, fontSize: 12, opacity: 0.85 }}>{vessel.vesselType}</div>
-                          <div style={{ marginTop: 4, fontSize: 11, opacity: 0.75 }}>
-                            Updated {reportDateLabel(vessel.reportDate)}
+                          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.2 }}>{vessel.vesselName}</div>
+                            <div style={{ fontSize: 10, opacity: 0.72, whiteSpace: "nowrap" }}>
+                              {reportDateLabel(vessel.reportDate)}
+                            </div>
                           </div>
+                          <div style={{ marginTop: 2, fontSize: 10.5, opacity: 0.78, lineHeight: 1.2 }}>{vessel.vesselType}</div>
                         </button>
                       );
                     })}

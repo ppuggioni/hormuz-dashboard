@@ -136,6 +136,8 @@ News pipeline note:
   - the builder now carries tracker heading context across nested `Carrier Strike Group` / `ARG` sections and uses OCR from the saved weekly map images to recover vessel placements and explicit stops like `Split, Croatia` or `Diego Garcia`
   - ingest prefers the USNI WordPress API over raw HTML page fetches because the site’s normal pages can sit behind anti-bot checks
   - the first-pass artifact stores rough region coordinates and movement rows toward or away from an Arabian Sea reference point; map-image vision extraction can be layered on later
+  - the uploader now uses a lock directory so recurring runs cannot overlap with manual publishes
+  - the launchd job for recurring publish is `com.ppbot.hormuz.usnifleet.publish`, scheduled every `6 hours`
 
 ## Data model guidance
 
@@ -155,11 +157,13 @@ Avoid deleting or renaming stable fields unless the frontend and pipeline are up
 If someone asks whether production is healthy, verify:
 1. `launchd` job `com.ppbot.hormuz.dashboard.refresh` is loaded and exiting cleanly
 2. `launchd` job `com.ppbot.hormuz.iranupdates.publish` is loaded and exiting cleanly
-3. region capture/sync jobs for the region in question are loaded and running cleanly (for Red Sea: `com.ppbot.redsea15m` and `com.ppbot.redsea.supabase.sync`)
-4. `refresh_and_upload_processed.sh` logs show recent successful uploads
-5. `upload_iran_updates_to_supabase.sh` logs show recent successful polls or no-op checks
-6. frontend still loads split artifacts first
-7. Supabase Storage contains fresh `multi_region/*` files
+3. `launchd` job `com.ppbot.hormuz.usnifleet.publish` is loaded and exiting cleanly
+4. region capture/sync jobs for the region in question are loaded and running cleanly (for Red Sea: `com.ppbot.redsea15m` and `com.ppbot.redsea.supabase.sync`)
+5. `refresh_and_upload_processed.sh` logs show recent successful uploads
+6. `upload_iran_updates_to_supabase.sh` logs show recent successful polls or no-op checks
+7. `upload_usni_fleet_to_supabase.sh` logs show recent successful polls/uploads
+8. frontend still loads split artifacts first
+9. Supabase Storage contains fresh `multi_region/*` files
 
 ## Documentation hygiene
 

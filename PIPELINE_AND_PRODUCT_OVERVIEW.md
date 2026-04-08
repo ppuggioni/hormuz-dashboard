@@ -397,6 +397,9 @@ This is the staging area for the **current run only**.
 If this file is missing, the news scripts now create an empty staging file automatically.
 
 Operational note:
+- recurring publish is handled by launchd job `com.ppbot.hormuz.usnifleet.publish`
+- the current production poll cadence is every `6 hours`
+- the uploader now uses a lock directory so recurring runs cannot overlap with manual publishes
 - `data/news-history.json`, `data/news-latest-run.json`, and `data/news-inbox.json` are now treated as local runtime state
 - `public/data/news_feed.json` and `public/data/vessel_attacks_latest.json` are generated publish artifacts
 - these JSON files are intended to remain local/runtime and not be committed to Git

@@ -10,6 +10,29 @@ BUCKET="x-scrapes-public"
 FLEET_OBJECT_PATH="hormuz/usni_fleet_tracker.json"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+LOCKDIR="$WORKROOT/.locks/hormuz_usni_fleet_publish.lock"
+PIDFILE="$LOCKDIR/pid"
+mkdir -p "$WORKROOT/.locks"
+
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+  if [[ -f "$PIDFILE" ]]; then
+    existing_pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+    if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] another upload_usni_fleet_to_supabase.sh run is already active; skipping" >> "$LOG"
+      exit 0
+    fi
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] stale USNI publish lock detected for pid=${existing_pid:-unknown}; clearing" >> "$LOG"
+  else
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] stale USNI publish lock detected without pid; clearing" >> "$LOG"
+  fi
+  rm -rf "$LOCKDIR"
+  mkdir "$LOCKDIR"
+fi
+printf '%s\n' "$$" > "$PIDFILE"
+cleanup_lock() {
+  rm -rf "$LOCKDIR" >/dev/null 2>&1 || true
+}
+trap cleanup_lock EXIT INT TERM HUP
 
 if [[ -f "$WORKROOT/.env" ]]; then
   set -a

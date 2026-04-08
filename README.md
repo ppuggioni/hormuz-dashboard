@@ -201,6 +201,9 @@ USNI Fleet Tracker notes:
 - OCR extractions of those weekly maps are cached into `data/usni-fleet-map-extractions.json`
 - the builder now combines tracker text with weekly map-label OCR so vague prose like `CENTCOM area of responsibility` can still inherit the correct tracker-map placement
 - the first-pass artifact includes per-vessel rough position history and movement rows relative to an Arabian Sea reference point
+- the uploader is safe to run on a recurring timer because it now uses a publish lock to avoid overlapping runs
+- the launchd job for this is `com.ppbot.hormuz.usnifleet.publish`
+- the current production schedule is every `6 hours`
 
 ## Windowed rebuild workflow
 

@@ -94,4 +94,14 @@ upload_file() {
       echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] uploaded ${object_path} raw=$(wc -c < "$file_path")"
     done < <(find "$MAP_DIR" -type f | sort)
   fi
+
+  if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    if node "$ROOT/scripts/dispatch-telegram-usni-fleet.mjs"; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] usni-fleet telegram alerts dispatch done"
+    else
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] usni-fleet telegram alerts dispatch failed (non-fatal)"
+    fi
+  else
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] usni-fleet telegram alerts dispatch skipped (TELEGRAM_BOT_TOKEN missing)"
+  fi
 } >> "$LOG" 2>&1

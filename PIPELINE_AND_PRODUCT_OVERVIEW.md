@@ -529,6 +529,7 @@ Scripts:
 - `scripts/ingest-usni-fleet.mjs`
 - `scripts/extract-usni-fleet-maps.mjs`
 - `scripts/build-usni-fleet.mjs`
+- `scripts/dispatch-telegram-usni-fleet.mjs`
 - `scripts/usni-fleet-source.mjs`
 - `scripts/usni-fleet-artifacts.mjs`
 - `scripts/usni-fleet-map-ocr.swift`
@@ -538,6 +539,7 @@ Runtime state:
 - `data/usni-fleet-history.json`
 - `data/usni-fleet-latest-run.json`
 - `data/usni-fleet-map-extractions.json`
+- `data/usni-fleet-telegram-state.json`
 
 Generated artifacts:
 - `public/data/usni_fleet_tracker.json`
@@ -554,10 +556,13 @@ Behavior:
 - artifact generation now combines section-aware text extraction with OCR labels from the weekly tracker maps so image-only placement changes are retained in the vessel history and movement rows
 - the build step extracts ship mentions from tracker sections and relevant USNI news text, assigns rough coordinates from known region references, and emits a compact vessel-history and movement artifact
 - movement rows are classified relative to an Arabian Sea reference point so the frontend can highlight ships moving toward or away from the combat theater
+- after a successful upload, a Telegram dispatcher compares the rebuilt movement rows against a local baseline state and sends one summary alert only for genuinely new movement changes
 
 Operational note:
 - this is intentionally a rough-position stream, not AIS-grade geolocation
 - image-aware map extraction is a later layer; the foundation stage stores the weekly maps and text-derived positions together so the visual comparison step can be added without changing the runtime model
+- recurring publish is handled by launchd job `com.ppbot.hormuz.usnifleet.publish`, currently every `6 hours`
+- the uploader uses a lock directory to prevent overlapping recurring/manual runs, and the Telegram dispatcher seeds a baseline on first run to avoid a historical alert flood
 
 ---
 

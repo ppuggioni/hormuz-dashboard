@@ -166,6 +166,11 @@ npm run build:usni-fleet
 ./upload_usni_fleet_to_supabase.sh
 ```
 
+- Dispatch Telegram alerts for new USNI movement changes:
+```bash
+npm run dispatch:telegram-usni-fleet
+```
+
 Operational note:
 - the Iran Update uploader is now safe to run hourly
 - it polls the ISW listing page every run, but after the current latest report has already been published it exits as a no-op instead of rebuilding and re-uploading everything
@@ -194,6 +199,7 @@ USNI Fleet Tracker runtime state:
 - `data/usni-fleet-history.json`
 - `data/usni-fleet-latest-run.json`
 - `data/usni-fleet-map-extractions.json`
+- `data/usni-fleet-telegram-state.json`
 
 USNI Fleet Tracker notes:
 - the ingest uses the USNI WordPress API rather than raw page scraping because the API is more reliable for unattended polling
@@ -204,6 +210,8 @@ USNI Fleet Tracker notes:
 - the uploader is safe to run on a recurring timer because it now uses a publish lock to avoid overlapping runs
 - the launchd job for this is `com.ppbot.hormuz.usnifleet.publish`
 - the current production schedule is every `6 hours`
+- after a successful USNI publish, the pipeline now checks for genuinely new movement rows and sends one Telegram summary per run when there are fresh changes
+- the Telegram dispatcher seeds a local baseline on first run so subscribers do not receive the full historical USNI backlog as an initial alert burst
 
 ## Windowed rebuild workflow
 

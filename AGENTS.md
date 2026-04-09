@@ -127,10 +127,11 @@ News pipeline note:
   - map OCR extraction: `scripts/extract-usni-fleet-maps.mjs`
   - build: `scripts/build-usni-fleet.mjs`
   - upload: `upload_usni_fleet_to_supabase.sh`
+  - Telegram dispatcher: `scripts/dispatch-telegram-usni-fleet.mjs`
   - source helpers: `scripts/usni-fleet-source.mjs`
   - artifact builder: `scripts/usni-fleet-artifacts.mjs`
   - OCR helper: `scripts/usni-fleet-map-ocr.swift`
-  - runtime state: `data/usni-fleet-history.json`, `data/usni-fleet-latest-run.json`, `data/usni-fleet-map-extractions.json`
+  - runtime state: `data/usni-fleet-history.json`, `data/usni-fleet-latest-run.json`, `data/usni-fleet-map-extractions.json`, `data/usni-fleet-telegram-state.json`
   - generated artifacts: `public/data/usni_fleet_tracker.json`, `public/data/usni_fleet_maps/*`
   - remote publish paths: `x-scrapes-public/hormuz/usni_fleet_tracker.json`, `x-scrapes-public/hormuz/usni_fleet_maps/*`
   - the builder now carries tracker heading context across nested `Carrier Strike Group` / `ARG` sections and uses OCR from the saved weekly map images to recover vessel placements and explicit stops like `Split, Croatia` or `Diego Garcia`
@@ -138,6 +139,7 @@ News pipeline note:
   - the first-pass artifact stores rough region coordinates and movement rows toward or away from an Arabian Sea reference point; map-image vision extraction can be layered on later
   - the uploader now uses a lock directory so recurring runs cannot overlap with manual publishes
   - the launchd job for recurring publish is `com.ppbot.hormuz.usnifleet.publish`, scheduled every `6 hours`
+  - after a successful USNI publish, the uploader triggers a Telegram movement-summary dispatcher; the first run seeds a baseline and suppresses any historical catch-up burst
 
 ## Data model guidance
 

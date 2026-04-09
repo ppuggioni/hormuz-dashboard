@@ -65,6 +65,7 @@ next-env.d.ts
 /data/usni-fleet-history.json
 /data/usni-fleet-latest-run.json
 /data/usni-fleet-map-extractions.json
+/data/usni-fleet-telegram-state.json
 
 # incremental pipeline runtime state
 /state/*.json

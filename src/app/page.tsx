@@ -1704,35 +1704,31 @@ export default function Page() {
     };
   }, []);
 
-  useEffect(() => {
+  const checkForFreshData = useMemo(() => async (options?: { autoRefreshWhenIdle?: boolean }) => {
     const isIdle = () => Date.now() - interactionAtRef.current > 120000;
-
-    const checkForFreshData = async () => {
-      const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
-      try {
-        const r = await fetch(`${root}/processed_core.json`, { cache: "no-store" });
-        if (r.ok) {
-          const j = await r.json();
-          const remoteGen = j?.metadata?.generatedAt as string | undefined;
-          const localGen = latestGeneratedAtRef.current;
-          if (remoteGen && localGen && +new Date(remoteGen) > +new Date(localGen)) {
-            setNewDataAvailable(true);
-            if (isIdle()) void loadDashboardData("bust");
-          }
-        }
-      } catch {
-        // ignore polling errors
+    const shouldAutoRefreshWhenIdle = options?.autoRefreshWhenIdle ?? true;
+    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
+    try {
+      const r = await fetch(`${root}/processed_core.json`, { cache: "no-store" });
+      if (!r.ok) return;
+      const j = await r.json();
+      const remoteGen = j?.metadata?.generatedAt as string | undefined;
+      const localGen = latestGeneratedAtRef.current;
+      if (remoteGen && localGen && +new Date(remoteGen) > +new Date(localGen)) {
+        setNewDataAvailable(true);
+        if (shouldAutoRefreshWhenIdle && isIdle()) void loadDashboardData("bust");
       }
-
-      const elapsed = Date.now() - mountedAtRef.current;
-      if (elapsed > 45 * 60 * 1000 && isIdle()) {
-        void loadDashboardData("bust");
-      }
-    };
-
-    const id = setInterval(checkForFreshData, 5 * 60 * 1000);
-    return () => clearInterval(id);
+    } catch {
+      // ignore polling errors
+    }
   }, [loadDashboardData]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      void checkForFreshData({ autoRefreshWhenIdle: true });
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [checkForFreshData]);
 
   useEffect(() => {
     if (!newDataAvailable) return;
@@ -1749,7 +1745,8 @@ export default function Page() {
       if (document.visibilityState !== "visible") return;
       const now = Date.now();
       if (now - lastLiveRevalidateAtRef.current < 60000) return;
-      void loadDashboardData("revalidate");
+      lastLiveRevalidateAtRef.current = now;
+      void checkForFreshData({ autoRefreshWhenIdle: false });
     };
 
     const onPageShow = () => {
@@ -1762,7 +1759,7 @@ export default function Page() {
       document.removeEventListener("visibilitychange", maybeRevalidateVisibleData);
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, [loadDashboardData]);
+  }, [checkForFreshData]);
 
   useEffect(() => {
     if (!playing || !data?.snapshots?.length) return;
@@ -4682,6 +4679,7 @@ export default function Page() {
                         <img
                           src={selectedUsniSnapshotImageUrl}
                           alt={selectedUsniSnapshot?.title || "USNI Fleet Tracker map"}
+                          loading="lazy"
                           className="h-auto w-full object-cover"
                           onError={(event) => {
                             if (selectedUsniSnapshotLocalImageUrl && event.currentTarget.src !== selectedUsniSnapshotLocalImageUrl) {

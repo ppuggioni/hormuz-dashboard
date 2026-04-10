@@ -46,6 +46,11 @@ Operational intent:
 Preferred artifacts:
 - `processed_core.json`
 - `processed_paths.json`
+- `processed_paths_tanker_7d.json`
+- `processed_paths_cargo_7d.json`
+- `processed_paths_tanker_all.json`
+- `processed_paths_cargo_all.json`
+- `processed_red_sea_routes.json`
 - `processed_candidates.json`
 - `processed_playback_latest.json`
 - `processed_shipmeta_latest.json`
@@ -96,6 +101,8 @@ Operational notes:
 - a `72h` cooldown per `shipId + crossingType` acts as a secondary dedupe guardrail
 - the daily series is continuous by UTC day, including zero-count days between event days
 - saved route points use a bounded display window rather than the full 30-day history
+- the default frontend load does not pull Red Sea route geometry; it is fetched on demand from `processed_red_sea_routes.json`
+- the default frontend load starts from the lighter tanker path bundle and expands cargo / full-history paths on demand
 - Red Sea transponder review now prefers fixed choke-point gate logic over learned event thresholds: Bab el-Mandeb for south crossings and the Suez entrance for north crossings
 - when a valid gate-bracketing point pair exists, Red Sea `transponderStatus` is driven by gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain as fallback diagnostics
 - processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files

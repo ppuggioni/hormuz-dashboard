@@ -535,6 +535,9 @@ type DataShape = {
   confirmedCrossingExclusions?: ConfirmedCrossingExclusion[];
 };
 
+type CrossingPathBundleKey = "tanker_7d" | "cargo_7d" | "tanker_all" | "cargo_all" | "legacy";
+type CrossingPathBundleStatus = Record<CrossingPathBundleKey, "idle" | "loading" | "loaded" | "error">;
+
 const PlaybackMap = dynamic(() => import("@/components/PlaybackMap"), { ssr: false });
 const CrossingPathsMap = dynamic(() => import("@/components/CrossingPathsMap"), { ssr: false });
 const CandidatePathsMap = dynamic(() => import("@/components/CandidatePathsMap"), { ssr: false });
@@ -608,6 +611,19 @@ const USNI_PRIMARY_POSITION_LABELS = new Set([
   "Eastern Mediterranean Sea",
   "Diego Garcia",
 ]);
+const CROSSING_PATH_BUNDLE_FILES: Record<Exclude<CrossingPathBundleKey, "legacy">, string> = {
+  tanker_7d: "processed_paths_tanker_7d.json",
+  cargo_7d: "processed_paths_cargo_7d.json",
+  tanker_all: "processed_paths_tanker_all.json",
+  cargo_all: "processed_paths_cargo_all.json",
+};
+const EMPTY_CROSSING_PATH_BUNDLE_STATUS: CrossingPathBundleStatus = {
+  tanker_7d: "idle",
+  cargo_7d: "idle",
+  tanker_all: "idle",
+  cargo_all: "idle",
+  legacy: "idle",
+};
 const FAQ_SECTIONS = [
   {
     id: "crossings",
@@ -1134,6 +1150,23 @@ async function copyText(text: string) {
   return false;
 }
 
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function mergeCrossingPathsByShip(existing: CrossingPath[], incoming: CrossingPath[]) {
+  const merged = new Map<string, CrossingPath>();
+  for (const path of existing || []) {
+    if (!path?.shipId) continue;
+    merged.set(path.shipId, path);
+  }
+  for (const path of incoming || []) {
+    if (!path?.shipId) continue;
+    merged.set(path.shipId, path);
+  }
+  return [...merged.values()].sort((a, b) => a.shipName.localeCompare(b.shipName) || a.shipId.localeCompare(b.shipId));
+}
+
 function aggregateCandidatesToDailyBins(rows: Array<CandidateCrosser & { inferredDirection?: "east_to_west" | "west_to_east" }>) {
   const out = new Map<string, { hour: string; east_to_west: number; west_to_east: number; count: number }>();
   for (const r of rows) {
@@ -1451,6 +1484,8 @@ export default function Page() {
   const [playbackShipSearch, setPlaybackShipSearch] = useState("");
   const [playbackShipPickerValue, setPlaybackShipPickerValue] = useState("");
   const [splitMode, setSplitMode] = useState(false);
+  const [crossingPathBundleStatus, setCrossingPathBundleStatus] = useState<CrossingPathBundleStatus>(EMPTY_CROSSING_PATH_BUNDLE_STATUS);
+  const [redSeaRoutesLoadState, setRedSeaRoutesLoadState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   const [externalPoints, setExternalPoints] = useState<ExternalPresencePoint[]>([]);
   const [tankerCandidatesData, setTankerCandidatesData] = useState<CandidateCrosser[]>([]);
   const [cargoCandidatesData, setCargoCandidatesData] = useState<CandidateCrosser[]>([]);
@@ -1505,6 +1540,9 @@ export default function Page() {
   const localIranUpdatesUrl = "/data/iran_updates.json";
   const localIranUpdateFiguresUrl = "/data/iran_update_figures.json";
   const localUsniFleetUrl = "/data/usni_fleet_tracker.json";
+  const localDataRoot = "/data";
+  const crossingPathBundlePromisesRef = useRef(new Map<CrossingPathBundleKey, Promise<CrossingPath[]>>());
+  const redSeaRoutePromiseRef = useRef<Promise<RedSeaCrossingRoute[]> | null>(null);
 
   const fetchJson = useMemo(() => async (url: string, options?: { freshness?: FetchFreshness }) => {
     const freshness = options?.freshness || "revalidate";
@@ -1530,6 +1568,26 @@ export default function Page() {
     }
     return JSON.parse(text);
   }, []);
+
+  const buildDataFileCandidates = useMemo(() => (fileName: string) => {
+    return uniqueStrings([
+      `${root}/${fileName}`,
+      `${localDataRoot}/${fileName}`,
+    ]);
+  }, [localDataRoot, root]);
+
+  const fetchFirstAvailableJson = useMemo(() => async (fileName: string, freshness: FetchFreshness = "revalidate") => {
+    let lastError: unknown = null;
+    for (const url of buildDataFileCandidates(fileName)) {
+      try {
+        return await fetchJson(url, { freshness });
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (lastError instanceof Error) throw lastError;
+    throw new Error(`Failed to load ${fileName}`);
+  }, [buildDataFileCandidates, fetchJson]);
 
   const loadNews = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
     try {
@@ -1611,16 +1669,109 @@ export default function Page() {
     }
   }, [fetchJson, localUsniFleetUrl, remoteUsniFleetUrl]);
 
+  const loadCrossingPathBundle = useMemo(() => async (bundleKey: CrossingPathBundleKey, freshness: FetchFreshness = "revalidate") => {
+    const inFlight = crossingPathBundlePromisesRef.current.get(bundleKey);
+    if (inFlight) return inFlight;
+
+    const promise = (async () => {
+      setCrossingPathBundleStatus((prev) => ({ ...prev, [bundleKey]: "loading" }));
+      try {
+        const fileName = bundleKey === "legacy" ? "processed_paths.json" : CROSSING_PATH_BUNDLE_FILES[bundleKey];
+        const payload = await fetchFirstAvailableJson(fileName, freshness);
+        const incomingPaths = Array.isArray(payload?.data?.crossingPaths) ? payload.data.crossingPaths as CrossingPath[] : [];
+
+        setData((prev) => (prev ? {
+          ...prev,
+          crossingPaths: mergeCrossingPathsByShip(prev.crossingPaths || [], incomingPaths),
+        } : prev));
+
+        setCrossingPathBundleStatus((prev) => {
+          if (bundleKey === "legacy") {
+            return {
+              ...prev,
+              legacy: "loaded",
+              tanker_7d: "loaded",
+              cargo_7d: "loaded",
+              tanker_all: "loaded",
+              cargo_all: "loaded",
+            };
+          }
+          return { ...prev, [bundleKey]: "loaded" };
+        });
+        return incomingPaths;
+      } catch (error) {
+        setCrossingPathBundleStatus((prev) => ({ ...prev, [bundleKey]: "error" }));
+        throw error;
+      } finally {
+        crossingPathBundlePromisesRef.current.delete(bundleKey);
+      }
+    })();
+
+    crossingPathBundlePromisesRef.current.set(bundleKey, promise);
+    return promise;
+  }, [fetchFirstAvailableJson]);
+
+  const loadRedSeaRoutes = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+    if (redSeaRoutePromiseRef.current) return redSeaRoutePromiseRef.current;
+
+    const promise = (async () => {
+      setRedSeaRoutesLoadState("loading");
+      try {
+        let payload: unknown;
+        try {
+          payload = await fetchFirstAvailableJson("processed_red_sea_routes.json", freshness);
+        } catch {
+          payload = await fetchFirstAvailableJson("processed_paths.json", freshness);
+        }
+
+        const routes = Array.isArray((payload as { data?: { redSeaCrossingRoutes?: RedSeaCrossingRoute[] } })?.data?.redSeaCrossingRoutes)
+          ? (payload as { data?: { redSeaCrossingRoutes?: RedSeaCrossingRoute[] } }).data!.redSeaCrossingRoutes!
+          : [];
+
+        setData((prev) => (prev ? { ...prev, redSeaCrossingRoutes: routes } : prev));
+        setRedSeaRoutesLoadState("loaded");
+        return routes;
+      } catch (error) {
+        setRedSeaRoutesLoadState("error");
+        throw error;
+      } finally {
+        redSeaRoutePromiseRef.current = null;
+      }
+    })();
+
+    redSeaRoutePromiseRef.current = promise;
+    return promise;
+  }, [fetchFirstAvailableJson]);
+
   const loadDashboardData = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
     const isLiveRevalidate = freshness !== "cache";
     if (isLiveRevalidate) lastLiveRevalidateAtRef.current = Date.now();
     await Promise.all([loadNews(freshness), loadAttacks(freshness), loadIranUpdates(freshness), loadIranUpdateFigures(freshness), loadUsniFleet(freshness)]);
     try {
-      const core = await fetchJson(`${root}/processed_core.json`, { freshness });
-      const paths = await fetchJson(`${root}/processed_paths.json`, { freshness });
-      const candidates = await fetchJson(`${root}/processed_candidates.json`, { freshness });
-      const latestPlayback = await fetchJson(`${root}/processed_playback_latest.json`, { freshness });
-      const latestShipmeta = await fetchJson(`${root}/processed_shipmeta_latest.json`, { freshness });
+      const [core, candidates, latestPlayback, latestShipmeta] = await Promise.all([
+        fetchFirstAvailableJson("processed_core.json", freshness),
+        fetchFirstAvailableJson("processed_candidates.json", freshness),
+        fetchFirstAvailableJson("processed_playback_latest.json", freshness),
+        fetchFirstAvailableJson("processed_shipmeta_latest.json", freshness),
+      ]);
+
+      let crossingPaths: CrossingPath[] = [];
+      let nextBundleStatus: CrossingPathBundleStatus = { ...EMPTY_CROSSING_PATH_BUNDLE_STATUS };
+      try {
+        const tanker7dPaths = await fetchFirstAvailableJson(CROSSING_PATH_BUNDLE_FILES.tanker_7d, freshness);
+        crossingPaths = Array.isArray(tanker7dPaths?.data?.crossingPaths) ? tanker7dPaths.data.crossingPaths : [];
+        nextBundleStatus.tanker_7d = "loaded";
+      } catch {
+        const legacyPaths = await fetchFirstAvailableJson("processed_paths.json", freshness);
+        crossingPaths = Array.isArray(legacyPaths?.data?.crossingPaths) ? legacyPaths.data.crossingPaths : [];
+        nextBundleStatus = {
+          tanker_7d: "loaded",
+          cargo_7d: "loaded",
+          tanker_all: "loaded",
+          cargo_all: "loaded",
+          legacy: "loaded",
+        };
+      }
 
       const normalized: DataShape = {
         metadata: core?.metadata || {
@@ -1638,10 +1789,10 @@ export default function Page() {
         snapshots: Array.isArray(latestPlayback?.data?.snapshots) ? latestPlayback.data.snapshots : [],
         crossingsByHour: Array.isArray(core?.data?.crossingsByHour) ? core.data.crossingsByHour : [],
         crossingEvents: Array.isArray(core?.data?.crossingEvents) ? core.data.crossingEvents : [],
-        crossingPaths: Array.isArray(paths?.data?.crossingPaths) ? paths.data.crossingPaths : [],
+        crossingPaths,
         redSeaCrossingsByDay: Array.isArray(core?.data?.redSeaCrossingsByDay) ? core.data.redSeaCrossingsByDay : [],
         redSeaCrossingEvents: Array.isArray(core?.data?.redSeaCrossingEvents) ? core.data.redSeaCrossingEvents : [],
-        redSeaCrossingRoutes: Array.isArray(paths?.data?.redSeaCrossingRoutes) ? paths.data.redSeaCrossingRoutes : [],
+        redSeaCrossingRoutes: [],
         linkageEvents: Array.isArray(core?.data?.linkageEvents) ? core.data.linkageEvents : [],
         externalPresencePoints: Array.isArray(core?.data?.externalPresencePoints) ? core.data.externalPresencePoints : [],
         confirmedCrossingExclusions: Array.isArray(core?.data?.confirmedCrossingExclusions) ? core.data.confirmedCrossingExclusions : [],
@@ -1649,6 +1800,8 @@ export default function Page() {
       const latestRelevantExternal = Array.isArray(candidates?.data?.relevantExternalPoints) ? candidates.data.relevantExternalPoints : [];
 
       setSplitMode(true);
+      setCrossingPathBundleStatus(nextBundleStatus);
+      setRedSeaRoutesLoadState("idle");
       setData(normalized);
       setLatestPlaybackSnapshots(normalized.snapshots);
       setLatestPlaybackShipMeta(normalized.shipMeta);
@@ -1668,7 +1821,7 @@ export default function Page() {
     } catch (err) {
       console.error("Failed to load split dashboard artifacts", err);
     }
-  }, [fetchJson, loadAttacks, loadIranUpdateFigures, loadIranUpdates, loadNews, loadUsniFleet, root]);
+  }, [fetchFirstAvailableJson, loadAttacks, loadIranUpdateFigures, loadIranUpdates, loadNews, loadUsniFleet]);
 
   useEffect(() => {
     void loadDashboardData("revalidate");
@@ -1978,12 +2131,48 @@ export default function Page() {
     return [...pointMap.values()];
   }, [currentSnapshot, data?.shipMeta, filteredCurrentPoints, playbackSelectionMode, selectedPlaybackShipIds.length, selectedPlaybackShipIdsSet]);
 
-  const filteredCrossingPaths = useMemo(() => {
-    if (!data) return [];
-    return (data.crossingPaths || []).filter((p) => selectedTypes.includes(p.vesselType));
-  }, [data, selectedTypes]);
+  const crossingShipIds = useMemo(() => new Set((data?.crossingEvents || []).map((event) => event.shipId)), [data?.crossingEvents]);
+  const loadedCrossingPathShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((path) => path.shipId)), [data?.crossingPaths]);
+  const crossingEventVesselTypeByShipId = useMemo(() => {
+    const next = new Map<string, string>();
+    for (const event of data?.crossingEvents || []) {
+      if (!event?.shipId || next.has(event.shipId)) continue;
+      next.set(event.shipId, event.vesselType);
+    }
+    return next;
+  }, [data?.crossingEvents]);
 
-  const crossingShipIds = useMemo(() => new Set((data?.crossingPaths || []).map((p) => p.shipId)), [data]);
+  useEffect(() => {
+    if (!data || crossingPathBundleStatus.legacy === "loaded") return;
+    if (!crossingMapTypes.includes("cargo")) return;
+    if (crossingPathBundleStatus.cargo_7d === "loaded" || crossingPathBundleStatus.cargo_7d === "loading") return;
+    void loadCrossingPathBundle("cargo_7d");
+  }, [crossingMapTypes, crossingPathBundleStatus.cargo_7d, crossingPathBundleStatus.legacy, data, loadCrossingPathBundle]);
+
+  useEffect(() => {
+    if (!data || crossingPathBundleStatus.legacy === "loaded") return;
+    const bundlesToLoad = new Set<"tanker_all" | "cargo_all">();
+
+    for (const shipId of selectedCrossingShipIds) {
+      if (loadedCrossingPathShipIds.has(shipId)) continue;
+      const vesselType = crossingEventVesselTypeByShipId.get(shipId);
+      if (vesselType === "tanker" && crossingPathBundleStatus.tanker_all === "idle") bundlesToLoad.add("tanker_all");
+      if (vesselType === "cargo" && crossingPathBundleStatus.cargo_all === "idle") bundlesToLoad.add("cargo_all");
+    }
+
+    for (const bundleKey of bundlesToLoad) {
+      void loadCrossingPathBundle(bundleKey);
+    }
+  }, [
+    crossingEventVesselTypeByShipId,
+    crossingPathBundleStatus.cargo_all,
+    crossingPathBundleStatus.legacy,
+    crossingPathBundleStatus.tanker_all,
+    data,
+    loadCrossingPathBundle,
+    loadedCrossingPathShipIds,
+    selectedCrossingShipIds,
+  ]);
 
   const candidateCrossers = useMemo(() => tankerCandidatesData || [], [tankerCandidatesData]);
 
@@ -2337,6 +2526,10 @@ export default function Page() {
       ships: uniqueShipIds.size,
     };
   }, [filteredRedSeaCrossingEvents]);
+  const redSeaVisibleRouteCount = useMemo(() => {
+    if (redSeaRoutesLoadState !== "loaded") return 0;
+    return filteredRedSeaCrossingRoutes.length;
+  }, [filteredRedSeaCrossingRoutes.length, redSeaRoutesLoadState]);
   const redSeaWindowLabel = redSeaWindow === "all" ? "All visible" : `Last ${redSeaWindow}`;
   const redSeaMatrixVesselLabel = useMemo(() => {
     const hasTanker = selectedRedSeaVesselTypeSet.has("tanker");
@@ -2664,6 +2857,20 @@ export default function Page() {
     }
     return `Crossing Paths Map — ${crossingMapTypes.length ? crossingMapTypes.join(" + ") : "None selected"}`;
   }, [crossingMapTypes]);
+  const crossingPathBundleSummary = useMemo(() => {
+    if (crossingPathBundleStatus.legacy === "loaded") return "legacy full paths loaded";
+    const labels: string[] = [];
+    if (crossingPathBundleStatus.tanker_7d === "loaded") labels.push("tanker 7d");
+    if (crossingPathBundleStatus.cargo_7d === "loaded") labels.push("cargo 7d");
+    if (crossingPathBundleStatus.tanker_all === "loaded") labels.push("tanker all");
+    if (crossingPathBundleStatus.cargo_all === "loaded") labels.push("cargo all");
+    if (!labels.length) return "no path bundles loaded";
+    return labels.join(" + ");
+  }, [crossingPathBundleStatus]);
+  const crossingSelectedShipsMissingPathCount = useMemo(
+    () => selectedCrossingShipIds.filter((shipId) => !loadedCrossingPathShipIds.has(shipId)).length,
+    [loadedCrossingPathShipIds, selectedCrossingShipIds],
+  );
 
   const linkageRows = useMemo(() => {
     if (!data?.linkageEvents?.length) return [] as LinkageEvent[];
@@ -3871,7 +4078,7 @@ export default function Page() {
         <section id="crossing-paths" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <h2 className="text-lg font-medium">
-              {mapMode === "confirmed" ? "Crossings Map — Confirmed Tanker Crossings" : "Crossings Map — Likely Dark-Crossing Candidates"}
+              {mapMode === "confirmed" ? crossingMapTitle : "Crossings Map — Likely Dark-Crossing Candidates"}
             </h2>
             <div className="flex items-center gap-1 text-xs">
               <button
@@ -3917,8 +4124,14 @@ export default function Page() {
                 <span className="text-slate-400">Selected: {selectedCrossingShipIds.length}</span>
                 {selectedCrossingShipIds.length ? <button onClick={resetSelectedCrossingShips} className="px-2 py-1 rounded border border-slate-600 text-slate-300">reset selection</button> : null}
               </div>
-              <div className="text-xs text-slate-300">
-                Showing {crossingSummary.crossings} crossings across {crossingSummary.ships} ships under the current filters.
+              <div className="space-y-1 text-xs text-slate-300">
+                <div>
+                  Showing {crossingSummary.crossings} crossings across {crossingSummary.ships} ships under the current filters.
+                </div>
+                <div className="text-slate-400">
+                  Path geometry loads by bundle: {crossingPathBundleSummary}. Default load is recent tanker paths only; cargo and older selected ships expand on demand.
+                  {crossingSelectedShipsMissingPathCount ? ` Loading older path history for ${crossingSelectedShipsMissingPathCount} selected ship${crossingSelectedShipsMissingPathCount === 1 ? "" : "s"}.` : ""}
+                </div>
               </div>
               <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
                 <CrossingPathsMap
@@ -4140,7 +4353,8 @@ export default function Page() {
             </div>
             <div className="text-xs text-slate-400 lg:text-right">
               <div>Events loaded: {redSeaCrossingEvents.length}</div>
-              <div>Routes loaded: {redSeaCrossingRoutes.length}</div>
+              <div>Routes loaded: {redSeaRoutesLoadState === "loaded" ? redSeaCrossingRoutes.length : 0}</div>
+              <div>Route geometry: {redSeaRoutesLoadState === "loaded" ? "loaded on demand" : redSeaRoutesLoadState}</div>
               <div>Latest crossing: {redSeaLatestTs ? new Date(redSeaLatestTs).toUTCString() : "Not available yet"}</div>
             </div>
           </div>
@@ -4284,22 +4498,55 @@ export default function Page() {
 
           <div className="space-y-4">
             <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
-              <h3 className="mb-3 text-lg font-medium text-slate-100">Crossing routes map</h3>
-              <div className="h-[420px] rounded-lg border border-slate-800 overflow-hidden">
-                <RedSeaCrossingMap
-                  routes={filteredRedSeaCrossingRoutes}
-                  selectedEventIds={selectedRedSeaEventIds}
-                  onToggleEvent={toggleSelectedRedSeaEvent}
-                  onResetSelection={resetSelectedRedSeaEvents}
-                />
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-medium text-slate-100">Crossing routes map</h3>
+                  <p className="text-xs text-slate-400">Red Sea route geometry stays out of the default page load. Fetch it only when you want to inspect paths.</p>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  {redSeaRoutesLoadState !== "loaded" ? (
+                    <button
+                      type="button"
+                      onClick={() => { void loadRedSeaRoutes(); }}
+                      disabled={redSeaRoutesLoadState === "loading"}
+                      className="rounded border border-cyan-300/60 px-3 py-1.5 text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {redSeaRoutesLoadState === "loading" ? "Loading route geometry..." : "Load route geometry"}
+                    </button>
+                  ) : (
+                    <span className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1.5 text-emerald-100">
+                      {redSeaVisibleRouteCount} visible routes loaded
+                    </span>
+                  )}
+                </div>
               </div>
+              {redSeaRoutesLoadState === "loaded" ? (
+                <div className="h-[420px] rounded-lg border border-slate-800 overflow-hidden">
+                  <RedSeaCrossingMap
+                    routes={filteredRedSeaCrossingRoutes}
+                    selectedEventIds={selectedRedSeaEventIds}
+                    onToggleEvent={toggleSelectedRedSeaEvent}
+                    onResetSelection={resetSelectedRedSeaEvents}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-[420px] items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/30 px-6 text-center text-sm text-slate-400">
+                  <div className="max-w-lg space-y-3">
+                    <p>Route geometry is not loaded yet.</p>
+                    <p>Select rows below as usual, then click <span className="text-slate-200">Load route geometry</span> when you want to inspect the paths on the map.</p>
+                    {redSeaRoutesLoadState === "error" ? (
+                      <p className="text-rose-300">The last route fetch failed. Click the button again to retry.</p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-medium text-slate-100">Crossing events</h3>
-                  <p className="text-xs text-slate-400">Select rows to show route geometry on the map.</p>
+                  <p className="text-xs text-slate-400">Select rows to filter the route geometry after you load the map payload.</p>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-slate-400">
                   <span>Selected: {selectedRedSeaEventIds.length}</span>

@@ -11,6 +11,11 @@ BUCKET="x-scrapes-public"
 OBJECTS=(
   "processed_core.json"
   "processed_paths.json"
+  "processed_paths_tanker_7d.json"
+  "processed_paths_cargo_7d.json"
+  "processed_paths_tanker_all.json"
+  "processed_paths_cargo_all.json"
+  "processed_red_sea_routes.json"
   "processed_candidates.json"
   "confirmed_crossing_exclusions.json"
   "processed_playback_latest.json"
@@ -69,7 +74,7 @@ HEAVY_CACHE_CONTROL="public, max-age=1800, s-maxage=1800, stale-while-revalidate
 
 cache_control_for_object() {
   case "$1" in
-    processed_playback_24h.json|processed_playback_48h.json|processed_external_24h.json|processed_external_48h.json|processed_shipmeta_24h.json|processed_shipmeta_48h.json)
+    processed_paths.json|processed_paths_tanker_all.json|processed_paths_cargo_all.json|processed_red_sea_routes.json|processed_playback_24h.json|processed_playback_48h.json|processed_external_24h.json|processed_external_48h.json|processed_shipmeta_24h.json|processed_shipmeta_48h.json)
       echo "$HEAVY_CACHE_CONTROL"
       ;;
     *)

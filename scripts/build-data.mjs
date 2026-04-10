@@ -9,6 +9,11 @@ import {
   RED_SEA_CROSSING_ZONES,
   RED_SEA_TRANSPONDER_GATE_BY_CROSSING_TYPE,
 } from '../src/lib/redSeaCrossingZones.mjs';
+import {
+  buildCrossingPathBundleMetadata,
+  buildRedSeaRoutesBundleMetadata,
+  selectCrossingPathsForBundle,
+} from './path-bundle-utils.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -1946,6 +1951,48 @@ async function main() {
         pathCount: mergedCrossingPaths.length,
         redSeaRouteCount: redSeaCrossingRoutes.length,
       },
+    ),
+  );
+
+  for (const bundle of [
+    { fileName: 'processed_paths_tanker_7d.json', vesselType: 'tanker', windowDays: 7, windowLabel: '7d' },
+    { fileName: 'processed_paths_cargo_7d.json', vesselType: 'cargo', windowDays: 7, windowLabel: '7d' },
+    { fileName: 'processed_paths_tanker_all.json', vesselType: 'tanker', windowDays: null, windowLabel: 'all' },
+    { fileName: 'processed_paths_cargo_all.json', vesselType: 'cargo', windowDays: null, windowLabel: 'all' },
+  ]) {
+    const subset = selectCrossingPathsForBundle(mergedCrossingPaths, enrichedMergedCrossingEvents, {
+      vesselType: bundle.vesselType,
+      windowDays: bundle.windowDays,
+      referenceTime: generatedAt,
+    });
+    await writeJson(
+      bundle.fileName,
+      wrap(
+        'paths',
+        {
+          crossingPaths: subset.crossingPaths,
+        },
+        bundle.windowLabel,
+        buildCrossingPathBundleMetadata({
+          vesselType: bundle.vesselType,
+          windowDays: bundle.windowDays,
+          referenceTime: subset.referenceTime,
+          shipCount: subset.shipCount,
+          pathCount: subset.pathCount,
+        }),
+      ),
+    );
+  }
+
+  await writeJson(
+    'processed_red_sea_routes.json',
+    wrap(
+      'red_sea_routes',
+      {
+        redSeaCrossingRoutes,
+      },
+      'all',
+      buildRedSeaRoutesBundleMetadata(redSeaCrossingRoutes),
     ),
   );
 

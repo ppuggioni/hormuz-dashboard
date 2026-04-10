@@ -2,11 +2,21 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { buildContinuousRedSeaCrossingsByDay } from '../build-data.mjs';
+import {
+  buildCrossingPathBundleMetadata,
+  buildRedSeaRoutesBundleMetadata,
+  selectCrossingPathsForBundle,
+} from '../path-bundle-utils.mjs';
 
 export const WINDOWED_OBJECTS = Object.freeze([
   'confirmed_crossing_exclusions.json',
   'processed_core.json',
   'processed_paths.json',
+  'processed_paths_tanker_7d.json',
+  'processed_paths_cargo_7d.json',
+  'processed_paths_tanker_all.json',
+  'processed_paths_cargo_all.json',
+  'processed_red_sea_routes.json',
   'processed_candidates.json',
   'processed_playback_latest.json',
   'processed_shipmeta_latest.json',
@@ -485,10 +495,68 @@ export async function mergeArtifactDirectories({
   const mergedCore = mergeCorePayload(previousCore, recentCore, { replaceStartUtc, replaceEndUtc });
   const mergedPaths = mergePathsPayload(previousPaths, recentPaths, mergedCore, { replaceStartUtc, replaceEndUtc });
   const mergedCandidates = mergeCandidatesPayload(previousCandidates, recentCandidates, { replaceStartUtc, replaceEndUtc });
+  const mergedCoreData = dataOf(mergedCore);
+  const mergedPathsData = dataOf(mergedPaths);
+  const mergedGeneratedAt = generatedAtOf(mergedPaths);
+  const mergedSourceRun = sourceRunOf(mergedPaths);
 
   await fs.mkdir(path.resolve(outputDir), { recursive: true });
   await writeJsonAtomic(path.join(outputDir, 'processed_core.json'), mergedCore);
   await writeJsonAtomic(path.join(outputDir, 'processed_paths.json'), mergedPaths);
+  for (const bundle of [
+    { fileName: 'processed_paths_tanker_7d.json', vesselType: 'tanker', windowDays: 7, windowLabel: '7d' },
+    { fileName: 'processed_paths_cargo_7d.json', vesselType: 'cargo', windowDays: 7, windowLabel: '7d' },
+    { fileName: 'processed_paths_tanker_all.json', vesselType: 'tanker', windowDays: null, windowLabel: 'all' },
+    { fileName: 'processed_paths_cargo_all.json', vesselType: 'cargo', windowDays: null, windowLabel: 'all' },
+  ]) {
+    const subset = selectCrossingPathsForBundle(
+      mergedPathsData.crossingPaths || [],
+      mergedCoreData.crossingEvents || [],
+      {
+        vesselType: bundle.vesselType,
+        windowDays: bundle.windowDays,
+        referenceTime: mergedGeneratedAt,
+      },
+    );
+    await writeJsonAtomic(
+      path.join(outputDir, bundle.fileName),
+      wrapFromTemplate(
+        mergedPaths,
+        'paths',
+        {
+          crossingPaths: subset.crossingPaths,
+        },
+        buildCrossingPathBundleMetadata({
+          vesselType: bundle.vesselType,
+          windowDays: bundle.windowDays,
+          referenceTime: subset.referenceTime,
+          shipCount: subset.shipCount,
+          pathCount: subset.pathCount,
+        }),
+        {
+          window: bundle.windowLabel,
+          generatedAt: mergedGeneratedAt,
+          sourceRun: mergedSourceRun,
+        },
+      ),
+    );
+  }
+  await writeJsonAtomic(
+    path.join(outputDir, 'processed_red_sea_routes.json'),
+    wrapFromTemplate(
+      mergedPaths,
+      'red_sea_routes',
+      {
+        redSeaCrossingRoutes: mergedPathsData.redSeaCrossingRoutes || [],
+      },
+      buildRedSeaRoutesBundleMetadata(mergedPathsData.redSeaCrossingRoutes || []),
+      {
+        window: 'all',
+        generatedAt: mergedGeneratedAt,
+        sourceRun: mergedSourceRun,
+      },
+    ),
+  );
   await writeJsonAtomic(path.join(outputDir, 'processed_candidates.json'), mergedCandidates);
 
   for (const fileName of [

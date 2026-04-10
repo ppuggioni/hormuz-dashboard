@@ -9,6 +9,11 @@ The deployed Vercel app is designed to load **split processed JSON artifacts** f
 Primary runtime artifacts:
 - `processed_core.json`
 - `processed_paths.json`
+- `processed_paths_tanker_7d.json`
+- `processed_paths_cargo_7d.json`
+- `processed_paths_tanker_all.json`
+- `processed_paths_cargo_all.json`
+- `processed_red_sea_routes.json`
 - `processed_candidates.json`
 - `processed_playback_latest.json`
 - `processed_shipmeta_latest.json`
@@ -57,7 +62,9 @@ Current behavior:
 - saved route geometry is bounded for display performance rather than storing full 30-day histories
 - Red Sea transponder review now prefers fixed choke-point gate logic: Bab el-Mandeb for south crossings and the Suez entrance for north crossings
 - when a valid gate-bracketing pair exists, Red Sea `transponderStatus` is derived from gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain available as fallback diagnostics
-- outputs are written to `processed_core.json` and `processed_paths.json` as Red Sea-specific fields
+- outputs are written to `processed_core.json`, legacy `processed_paths.json`, and the split `processed_red_sea_routes.json`
+- the frontend now keeps Red Sea route geometry out of the default page load and fetches `processed_red_sea_routes.json` only when the user explicitly loads the route map
+- Hormuz crossing path geometry is now split by vessel type and scope so the default map can start from the lighter `processed_paths_tanker_7d.json` bundle and expand on demand
 
 Processed artifact caching:
 - smaller live artifacts publish with `5 minute` cache headers

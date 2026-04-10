@@ -256,6 +256,11 @@ Current intended split:
 ## Current split artifacts
 - `processed_core.json`
 - `processed_paths.json`
+- `processed_paths_tanker_7d.json`
+- `processed_paths_cargo_7d.json`
+- `processed_paths_tanker_all.json`
+- `processed_paths_cargo_all.json`
+- `processed_red_sea_routes.json`
 - `processed_candidates.json`
 - `processed_playback_24h.json`
 - `processed_playback_48h.json`
@@ -271,6 +276,8 @@ Current intended split:
 - smaller default payloads
 - better perceived performance
 - lazy loading of heavy windows/components
+- path geometry can now expand by vessel type and scope instead of forcing the whole `processed_paths.json` blob into the default page load
+- Red Sea route geometry can now stay completely out of the default load until a user explicitly requests it
 - more scalable long-term than the monolith
 
 ## Windowed rebuild validation path

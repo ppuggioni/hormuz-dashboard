@@ -1717,7 +1717,10 @@ export default function Page() {
     return promise;
   }, [fetchFirstAvailableJson]);
 
-  const loadRedSeaRoutes = useMemo(() => async (freshness: FetchFreshness = "revalidate") => {
+  const loadRedSeaRoutes = useMemo(() => async (
+    freshness: FetchFreshness = "revalidate",
+    options?: { allowLegacyFallback?: boolean },
+  ) => {
     if (redSeaRoutePromiseRef.current) return redSeaRoutePromiseRef.current;
 
     const promise = (async () => {
@@ -1726,7 +1729,8 @@ export default function Page() {
         let payload: unknown;
         try {
           payload = await fetchFirstAvailableJson("processed_red_sea_routes.json", freshness);
-        } catch {
+        } catch (error) {
+          if (!options?.allowLegacyFallback) throw error;
           payload = await fetchFirstAvailableJson("processed_paths.json", freshness);
         }
 
@@ -1767,16 +1771,9 @@ export default function Page() {
         const tanker7dPaths = await fetchFirstAvailableJson(CROSSING_PATH_BUNDLE_FILES.tanker_7d, freshness);
         crossingPaths = Array.isArray(tanker7dPaths?.data?.crossingPaths) ? tanker7dPaths.data.crossingPaths : [];
         nextBundleStatus.tanker_7d = "loaded";
-      } catch {
-        const legacyPaths = await fetchFirstAvailableJson("processed_paths.json", freshness);
-        crossingPaths = Array.isArray(legacyPaths?.data?.crossingPaths) ? legacyPaths.data.crossingPaths : [];
-        nextBundleStatus = {
-          tanker_7d: "loaded",
-          cargo_7d: "loaded",
-          tanker_all: "loaded",
-          cargo_all: "loaded",
-          legacy: "loaded",
-        };
+      } catch (error) {
+        nextBundleStatus.tanker_7d = "error";
+        console.error("Failed to load processed_paths_tanker_7d.json", error);
       }
 
       const normalized: DataShape = {
@@ -2869,9 +2866,13 @@ export default function Page() {
     if (crossingPathBundleStatus.legacy === "loaded") return "legacy full paths loaded";
     const labels: string[] = [];
     if (crossingPathBundleStatus.tanker_7d === "loaded") labels.push("tanker 7d");
+    if (crossingPathBundleStatus.tanker_7d === "error") labels.push("tanker 7d failed");
     if (crossingPathBundleStatus.cargo_7d === "loaded") labels.push("cargo 7d");
+    if (crossingPathBundleStatus.cargo_7d === "error") labels.push("cargo 7d failed");
     if (crossingPathBundleStatus.tanker_all === "loaded") labels.push("tanker all");
+    if (crossingPathBundleStatus.tanker_all === "error") labels.push("tanker all failed");
     if (crossingPathBundleStatus.cargo_all === "loaded") labels.push("cargo all");
+    if (crossingPathBundleStatus.cargo_all === "error") labels.push("cargo all failed");
     if (!labels.length) return "no path bundles loaded";
     return labels.join(" + ");
   }, [crossingPathBundleStatus]);
@@ -4140,6 +4141,27 @@ export default function Page() {
                   Path geometry loads by bundle: {crossingPathBundleSummary}. Default load is recent tanker paths only; cargo and older selected ships expand on demand.
                   {crossingSelectedShipsMissingPathCount ? ` Loading older path history for ${crossingSelectedShipsMissingPathCount} selected ship${crossingSelectedShipsMissingPathCount === 1 ? "" : "s"}.` : ""}
                 </div>
+                {crossingPathBundleStatus.tanker_7d === "error" ? (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-rose-300">Recent tanker path bundle failed to load, so the app did not auto-fetch the legacy full path blob.</span>
+                    <button
+                      type="button"
+                      onClick={() => { void loadCrossingPathBundle("tanker_7d", "bust"); }}
+                      className="rounded border border-cyan-300/60 px-2 py-1 text-cyan-100"
+                    >
+                      Retry recent tanker paths
+                    </button>
+                    {crossingPathBundleStatus.legacy !== "loaded" ? (
+                      <button
+                        type="button"
+                        onClick={() => { void loadCrossingPathBundle("legacy", "bust"); }}
+                        className="rounded border border-amber-300/60 px-2 py-1 text-amber-100"
+                      >
+                        Load legacy full paths
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <div className="h-[560px] rounded-xl overflow-hidden border border-slate-800">
                 <CrossingPathsMap
@@ -4513,14 +4535,25 @@ export default function Page() {
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   {redSeaRoutesLoadState !== "loaded" ? (
-                    <button
-                      type="button"
-                      onClick={() => { void loadRedSeaRoutes(); }}
-                      disabled={redSeaRoutesLoadState === "loading"}
-                      className="rounded border border-cyan-300/60 px-3 py-1.5 text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {redSeaRoutesLoadState === "loading" ? "Loading route geometry..." : "Load route geometry"}
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { void loadRedSeaRoutes(); }}
+                        disabled={redSeaRoutesLoadState === "loading"}
+                        className="rounded border border-cyan-300/60 px-3 py-1.5 text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {redSeaRoutesLoadState === "loading" ? "Loading route geometry..." : "Load route geometry"}
+                      </button>
+                      {redSeaRoutesLoadState === "error" ? (
+                        <button
+                          type="button"
+                          onClick={() => { void loadRedSeaRoutes("bust", { allowLegacyFallback: true }); }}
+                          className="rounded border border-amber-300/60 px-3 py-1.5 text-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Load legacy route fallback
+                        </button>
+                      ) : null}
+                    </>
                   ) : (
                     <span className="rounded border border-emerald-300/40 bg-emerald-500/10 px-3 py-1.5 text-emerald-100">
                       {redSeaVisibleRouteCount} visible routes loaded

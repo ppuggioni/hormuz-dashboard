@@ -1939,6 +1939,24 @@ async function main() {
   );
 
   await writeJson(
+    'processed_meta.json',
+    {
+      schemaVersion: 'v1',
+      fileKind: 'meta',
+      generatedAt,
+      metadata: {
+        generatedAt,
+        sourceEndUtc: SOURCE_END_UTC,
+        fileCount: baseMetadata.fileCount,
+        regionFileCounts: baseMetadata.regionFileCounts,
+        latestByRegion: baseMetadata.latestByRegion,
+        crossingEventCount: baseMetadata.crossingEventCount,
+        redSeaCrossingEventCount: baseMetadata.redSeaCrossingEventCount,
+      },
+    },
+  );
+
+  await writeJson(
     'processed_paths.json',
     wrap(
       'paths',

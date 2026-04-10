@@ -45,6 +45,7 @@ Operational intent:
 
 Preferred artifacts:
 - `processed_core.json`
+- `processed_meta.json`
 - `processed_paths.json`
 - `processed_paths_tanker_7d.json`
 - `processed_paths_cargo_7d.json`
@@ -106,6 +107,7 @@ Operational notes:
 - Red Sea transponder review now prefers fixed choke-point gate logic over learned event thresholds: Bab el-Mandeb for south crossings and the Suez entrance for north crossings
 - when a valid gate-bracketing point pair exists, Red Sea `transponderStatus` is driven by gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain as fallback diagnostics
 - processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files
+- the dashboard freshness poll should hit `processed_meta.json` first because it is a small manifest intended for polling/revalidation checks
 
 ## Git rules
 

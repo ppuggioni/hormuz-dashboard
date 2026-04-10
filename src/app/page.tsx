@@ -1167,6 +1167,12 @@ function mergeCrossingPathsByShip(existing: CrossingPath[], incoming: CrossingPa
   return [...merged.values()].sort((a, b) => a.shipName.localeCompare(b.shipName) || a.shipId.localeCompare(b.shipId));
 }
 
+function extractGeneratedAt(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as { generatedAt?: string; metadata?: { generatedAt?: string } };
+  return record.metadata?.generatedAt || record.generatedAt || null;
+}
+
 function aggregateCandidatesToDailyBins(rows: Array<CandidateCrosser & { inferredDirection?: "east_to_west" | "west_to_east" }>) {
   const out = new Map<string, { hour: string; east_to_west: number; west_to_east: number; count: number }>();
   for (const r of rows) {
@@ -1860,12 +1866,14 @@ export default function Page() {
   const checkForFreshData = useMemo(() => async (options?: { autoRefreshWhenIdle?: boolean }) => {
     const isIdle = () => Date.now() - interactionAtRef.current > 120000;
     const shouldAutoRefreshWhenIdle = options?.autoRefreshWhenIdle ?? true;
-    const root = process.env.NEXT_PUBLIC_HORMUZ_DATA_ROOT || "https://hzxiwdylvefcsuaafnhj.supabase.co/storage/v1/object/public/x-scrapes-public/multi_region";
     try {
-      const r = await fetch(`${root}/processed_core.json`, { cache: "no-store" });
-      if (!r.ok) return;
-      const j = await r.json();
-      const remoteGen = j?.metadata?.generatedAt as string | undefined;
+      let manifest: unknown;
+      try {
+        manifest = await fetchFirstAvailableJson("processed_meta.json", "bust");
+      } catch {
+        manifest = await fetchFirstAvailableJson("processed_core.json", "bust");
+      }
+      const remoteGen = extractGeneratedAt(manifest);
       const localGen = latestGeneratedAtRef.current;
       if (remoteGen && localGen && +new Date(remoteGen) > +new Date(localGen)) {
         setNewDataAvailable(true);
@@ -1874,7 +1882,7 @@ export default function Page() {
     } catch {
       // ignore polling errors
     }
-  }, [loadDashboardData]);
+  }, [fetchFirstAvailableJson, loadDashboardData]);
 
   useEffect(() => {
     const id = setInterval(() => {

@@ -8,6 +8,7 @@ The deployed Vercel app is designed to load **split processed JSON artifacts** f
 
 Primary runtime artifacts:
 - `processed_core.json`
+- `processed_meta.json`
 - `processed_paths.json`
 - `processed_paths_tanker_7d.json`
 - `processed_paths_cargo_7d.json`
@@ -69,6 +70,7 @@ Current behavior:
 Processed artifact caching:
 - smaller live artifacts publish with `5 minute` cache headers
 - heavier playback/external/shipmeta window artifacts publish with `30 minute` cache headers
+- the dashboard freshness poll now prefers `processed_meta.json`, a tiny manifest carrying only freshness metadata, instead of polling `processed_core.json`
 
 ## Scheduler / refresh cadence
 

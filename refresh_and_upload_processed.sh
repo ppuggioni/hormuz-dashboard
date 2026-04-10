@@ -10,6 +10,7 @@ WINDOWED_CURRENT_DIR="$WINDOWED_OUTPUT_ROOT/current"
 BUCKET="x-scrapes-public"
 OBJECTS=(
   "processed_core.json"
+  "processed_meta.json"
   "processed_paths.json"
   "processed_paths_tanker_7d.json"
   "processed_paths_cargo_7d.json"

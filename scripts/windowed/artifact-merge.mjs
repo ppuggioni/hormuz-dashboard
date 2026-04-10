@@ -11,6 +11,7 @@ import {
 export const WINDOWED_OBJECTS = Object.freeze([
   'confirmed_crossing_exclusions.json',
   'processed_core.json',
+  'processed_meta.json',
   'processed_paths.json',
   'processed_paths_tanker_7d.json',
   'processed_paths_cargo_7d.json',
@@ -502,6 +503,24 @@ export async function mergeArtifactDirectories({
 
   await fs.mkdir(path.resolve(outputDir), { recursive: true });
   await writeJsonAtomic(path.join(outputDir, 'processed_core.json'), mergedCore);
+  await writeJsonAtomic(
+    path.join(outputDir, 'processed_meta.json'),
+    {
+      schemaVersion: 'v1',
+      fileKind: 'meta',
+      generatedAt: mergedGeneratedAt,
+      metadata: {
+        generatedAt: mergedGeneratedAt,
+        sourceEndUtc: metadataOf(mergedCore).sourceEndUtc || null,
+        fileCount: metadataOf(mergedCore).fileCount || 0,
+        regionFileCounts: metadataOf(mergedCore).regionFileCounts || {},
+        latestByRegion: metadataOf(mergedCore).latestByRegion || {},
+        crossingEventCount: metadataOf(mergedCore).crossingEventCount || 0,
+        redSeaCrossingEventCount: metadataOf(mergedCore).redSeaCrossingEventCount || 0,
+      },
+      sourceRun: mergedSourceRun,
+    },
+  );
   await writeJsonAtomic(path.join(outputDir, 'processed_paths.json'), mergedPaths);
   for (const bundle of [
     { fileName: 'processed_paths_tanker_7d.json', vesselType: 'tanker', windowDays: 7, windowLabel: '7d' },
@@ -583,6 +602,7 @@ export async function mergeArtifactDirectories({
 
   return {
     processedCorePath: path.join(outputDir, 'processed_core.json'),
+    processedMetaPath: path.join(outputDir, 'processed_meta.json'),
     processedPathsPath: path.join(outputDir, 'processed_paths.json'),
     processedCandidatesPath: path.join(outputDir, 'processed_candidates.json'),
     replaceStartUtc,

@@ -71,6 +71,414 @@
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for PIONEER GAS latest crossing",
       "excludedAt": "2026-04-02T07:29:00Z"
+    },
+    {
+      "eventId": "10272921|2026-05-17T19:26:17.568812Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ALBA crossing",
+      "excludedAt": "2026-05-21T12:29:20Z"
+    },
+    {
+      "eventId": "8921958|2026-05-17T19:26:17.568812Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PIND crossing",
+      "excludedAt": "2026-05-21T12:29:20Z"
+    },
+    {
+      "eventId": "8921958|2026-05-15T12:34:49.089819Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PIND crossing",
+      "excludedAt": "2026-05-21T12:29:20Z"
+    },
+    {
+      "eventId": "566917|2026-05-14T07:52:58.870965Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MATURITY TWO crossing",
+      "excludedAt": "2026-05-21T12:29:20Z"
+    },
+    {
+      "eventId": "206343|2026-05-13T17:12:45.886056Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MONJASA SHAKER crossing",
+      "excludedAt": "2026-05-21T12:29:20Z"
+    },
+    {
+      "eventId": "214057|2026-05-31T18:51:30.805623Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ADEBOLA ADELINE crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "730145|2026-05-31T18:35:11.393580Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AVIDEEP crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "753081|2026-05-31T17:45:41.088493Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for QUANTUM STAR crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "407113|2026-05-31T17:29:22.659236Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for C.PRIMACY crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "687713|2026-05-31T17:29:22.659236Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SIONA crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "10067642|2026-05-31T16:57:14.045744Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ASTRA crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "4155917|2026-05-31T16:57:14.045744Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MOZAMBIQUE B crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "184295|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KANHA crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "214863|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BERBERA STAR 7 crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "283170|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SHRIA crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "347925|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SERENITY IX crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "557202|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for CARA crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "707604|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AZURE SKY crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "754035|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NUSHEN crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "714260|2026-05-31T16:24:50.083924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for LADY YASSO crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "716159|2026-05-31T16:24:50.083924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AVATAR crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "9035741|2026-05-31T14:28:22.311074Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for YOUSHAT crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "419320|2026-05-31T11:59:43.620483Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EPIK crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "713810|2026-05-31T11:59:43.620483Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GULF LOYALTY crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "417917|2026-05-31T08:08:47.412960Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for LUMINA POLARIS crossing",
+      "excludedAt": "2026-05-31T20:04:34Z"
+    },
+    {
+      "eventId": "150143|2026-05-31T19:25:42.055307Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for DESIMI crossing",
+      "excludedAt": "2026-05-31T20:11:49Z"
+    },
+    {
+      "eventId": "1297372|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HAI NAM 85 in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "167205|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for JULIET in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "203460|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PURDUE STELLAR in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "370558|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SHALAMAR in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "673244|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for OCEAN BREEZE 1 in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "712959|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KSL RUNYANG in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "10157776|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ALIZA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "10410978|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ZEBRA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "159158|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NEW SUCCESS in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "3153|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for TSS AMBER in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "465221|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MELODIE V in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "5893325|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NISSOS DESPOTIKO in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "6564779|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for CARLYNA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "670649|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for VALENTINO in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "7236411|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AN YANG in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "9393878|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MOHAMMAD in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "9754397|2026-06-03T17:04:18.159924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for WELL DREAM in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "124003|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KMAX EVDOKIA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "208357|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ALA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "306103|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KING GALLOP in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "3223568|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BAHA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "372084|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PROPEL CONFIDENCE in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "374922|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AL MARROUNA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "6049794|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for DCS AUSTRAL in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "712384|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ELA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "756343|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PANGEO in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "7768539|2026-06-03T17:20:54.922545Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MONJASA SHIPPER in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "375520|2026-06-03T17:37:34.381341Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BRAVO in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "6089441|2026-06-03T17:37:34.381341Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EL MAR in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "713570|2026-06-03T17:37:34.381341Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EXPLOR in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "730245|2026-06-03T17:37:34.381341Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ASHA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "753191|2026-06-03T17:37:34.381341Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SEA ADORE in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "754303|2026-06-03T17:37:34.381341Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NORTHERN STAR in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "410553|2026-06-03T17:54:11.612632Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MARIAM in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "7101090|2026-06-03T17:54:11.612632Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NISSOS NIKOURIA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "9253946|2026-06-03T17:54:11.612632Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for TINA in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "459538|2026-06-03T18:10:38.684896Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for LILA FUJI in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "5983111|2026-06-03T18:26:45.399311Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NISSOS KYTHNOS in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "279005|2026-06-03T18:42:33.501144Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for RYNEM in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "711876|2026-06-03T18:59:15.391171Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SAKAI in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "753458|2026-06-03T19:14:55.981042Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KATE in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "8811689|2026-06-03T19:32:18.806180Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for RISEN in 2026-06-03 24.271N 53.875E hotspot cluster",
+      "excludedAt": "2026-06-03T20:04:33Z"
     }
   ]
 }

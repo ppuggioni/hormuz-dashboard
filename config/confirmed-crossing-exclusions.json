@@ -479,6 +479,444 @@
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for RISEN in 2026-06-03 24.271N 53.875E hotspot cluster",
       "excludedAt": "2026-06-03T20:04:33Z"
+    },
+    {
+      "eventId": "1297372|2026-06-04T00:49:18.714047Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HAI NAM 85 bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "372084|2026-06-04T00:49:18.714047Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PROPEL CONFIDENCE bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "756343|2026-06-04T00:49:18.714047Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PANGEO bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "459538|2026-06-04T01:21:32.966214Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for LILA FUJI bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "712384|2026-06-04T01:54:24.545262Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ELA bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "306103|2026-06-04T02:11:06.700022Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KING GALLOP bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "753191|2026-06-04T02:44:52.391167Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SEA ADORE bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "410553|2026-06-04T03:34:17.740498Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MARIAM bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "712959|2026-06-04T03:34:17.740498Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KSL RUNYANG bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "9253946|2026-06-04T03:50:27.083412Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for TINA bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "10157776|2026-06-04T04:06:14.295982Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ALIZA bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "713570|2026-06-04T04:39:16.979522Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EXPLOR bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "5893325|2026-06-04T06:19:34.940978Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NISSOS DESPOTIKO bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "753458|2026-06-04T11:04:18.606433Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KATE bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "124003|2026-06-04T19:53:58.184123Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KMAX EVDOKIA bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "279005|2026-06-04T22:22:10.637200Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for RYNEM bounce-back from 2026-06-03 24.271N 53.875E spoofing hotspot",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "728609|2026-06-04T21:00:51.837791Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ANDIAMO in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "8994504|2026-06-04T21:17:53.026694Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MSVAL FAIZANE SULTAN in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "6235185|2026-06-04T21:17:53.026694Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HUI FA in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "144576|2026-06-04T21:17:53.026694Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KSS EDMOND in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "5449002|2026-06-04T21:50:41.775827Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for XARON in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "360950|2026-06-04T21:50:41.775827Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SERRANO in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "7865209|2026-06-04T22:06:27.957234Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GAS CONCEPT in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "10410978|2026-06-04T22:06:27.957234Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ZEBRA in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "7236411|2026-06-04T22:22:10.637200Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AN YANG in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "687713|2026-06-04T22:22:10.637200Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SIONA in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "4800090|2026-06-04T22:22:10.637200Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HERCULES I in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "408002|2026-06-04T22:22:10.637200Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HAPPY FOUNDER in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "327287|2026-06-04T22:38:22.658852Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for OLGA in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "755131|2026-06-04T22:54:57.186903Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for STELLA in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "674525|2026-06-04T22:54:57.186903Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MAYA GAS 1 in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "9656711|2026-06-04T23:11:34.439987Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ATOKOS in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "5262589|2026-06-04T23:11:34.439987Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for FRONT POLARIS in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "8874570|2026-06-04T23:27:18.323327Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for LIBRA DREAM in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "7126005|2026-06-04T23:27:18.323327Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for G.DREAM in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "684976|2026-06-04T23:27:18.323327Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GRAND T in 2026-06-04 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "410740|2026-06-05T01:58:02.883235Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SEPEHR PAYAM in 2026-06-04/05 24.234N 54.406E hotspot cluster",
+      "excludedAt": "2026-06-05T05:34:52Z"
+    },
+    {
+      "eventId": "150508|2026-05-29T14:52:41.826166Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MDL KAMRAN; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "755952|2026-05-31T16:24:50.083924Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AKSON ADAM; weekly spoofing audit 20260605T065629Z high-confidence spatial_burst",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "411671|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PORTLAND; weekly spoofing audit 20260605T065629Z high-confidence spatial_burst",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "3515389|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GISELA OLDENDORFF; weekly spoofing audit 20260605T065629Z high-confidence spatial_burst",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "388585|2026-05-31T18:35:11.393580Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SIMBA V; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "6013297|2026-05-31T20:16:17.971578Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for DCS AQUILA; weekly spoofing audit 20260605T065629Z high-confidence same_hotspot_continuation",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "283170|2026-05-31T21:23:56.114198Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SHRIA; weekly spoofing audit 20260605T065629Z high-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "419320|2026-06-01T00:43:43.424895Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EPIK; weekly spoofing audit 20260605T065629Z high-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "713810|2026-06-01T03:11:24.160026Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GULF LOYALTY; weekly spoofing audit 20260605T065629Z high-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "666639|2026-06-01T09:01:24.394723Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GEMMA; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "407113|2026-06-01T14:12:40.590490Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for C.PRIMACY; weekly spoofing audit 20260605T065629Z high-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "7236299|2026-06-01T17:12:58.960150Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for 12789; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "9528790|2026-06-01T18:18:39.120121Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KASHANI MARINE; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "T1RjNE16UTNPVGM0TXpRM09UYzRNdz09LXRycDUvQWFWeVRxbWJyWUl2aVJSd2c9PQ==|2026-06-03T03:21:03.919984Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for [SAT-AIS]; weekly spoofing audit 20260605T065629Z high-confidence placeholder",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "212948|2026-06-03T05:17:34.779970Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MUSIK; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "8083001|2026-06-03T09:41:19.247322Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SAFINA AL SHIRAZI; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "419320|2026-06-04T00:49:18.714047Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EPIK; weekly spoofing audit 20260605T065629Z high-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "367586|2026-06-04T10:13:12.553072Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MARYA; weekly spoofing audit 20260605T065629Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "167205|2026-06-05T05:16:44.554154Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for JULIET; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "184295|2026-06-02T12:51:46.416252Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for KANHA; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "347925|2026-06-02T13:25:33.067189Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SERENITY IX; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "10410978|2026-06-03T22:03:25.093813Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ZEBRA; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "557202|2026-06-01T01:00:04.494541Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for CARA; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "6564779|2026-06-05T02:15:14.771973Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for CARLYNA; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "754035|2026-06-01T05:24:19.704122Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NUSHEN; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "716159|2026-06-01T15:16:56.346983Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AVATAR; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "214863|2026-06-02T12:51:46.416252Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BERBERA STAR 7; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "150143|2026-06-02T15:02:31.209706Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for DESIMI; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "10067642|2026-06-02T12:17:14.584651Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ASTRA; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "730145|2026-06-02T15:35:04.608179Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AVIDEEP; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "4155917|2026-06-02T12:00:12.749498Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MOZAMBIQUE B; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "687713|2026-06-01T03:11:24.160026Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SIONA; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "5262589|2026-06-05T06:21:29.280284Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for FRONT POLARIS; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "214057|2026-06-01T16:55:57.088514Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ADEBOLA ADELINE; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "7236411|2026-06-04T13:53:19.659405Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AN YANG; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "9035741|2026-06-02T05:53:53.705199Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for YOUSHAT; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-05T07:09:12Z"
     }
   ]
 }

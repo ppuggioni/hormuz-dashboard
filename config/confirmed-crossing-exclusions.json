@@ -917,6 +917,990 @@
       "reason": "suspected spoofing",
       "note": "manual analyst exclusion for YOUSHAT; weekly spoofing audit 20260605T065629Z medium-confidence bounce_back",
       "excludedAt": "2026-06-05T07:09:12Z"
+    },
+    {
+      "eventId": "555761|2026-06-05T06:38:44.186615Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for XIN HAI KOU; spoofing audit 20260606T072003Z high-confidence same_hotspot_continuation",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "714276|2026-06-05T10:12:41.276448Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NEW FUTURE; spoofing audit 20260606T072003Z high-confidence same_hotspot_continuation",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "555761|2026-06-05T06:55:32.211215Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for XIN HAI KOU; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "410740|2026-06-05T07:11:31.213095Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SEPEHR PAYAM; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "670649|2026-06-05T07:44:35.253221Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for VALENTINO; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "7236411|2026-06-05T09:55:46.356013Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AN YANG; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "3153|2026-06-05T10:12:41.276448Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for TSS AMBER; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "714276|2026-06-05T10:29:08.785391Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NEW FUTURE; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "684976|2026-06-05T16:13:53.369494Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GRAND T; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "408002|2026-06-05T16:29:37.355428Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HAPPY FOUNDER; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "4800090|2026-06-05T16:29:37.355428Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for HERCULES I; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "9393878|2026-06-05T17:37:26.572183Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MOHAMMAD; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "360950|2026-06-05T23:09:25.521194Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SERRANO; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "374922|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for AL MARROUNA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "208357|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ALA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "728609|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ANDIAMO; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "730245|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ASHA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "9656711|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ATOKOS; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "3223568|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BAHA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "7865209|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for GAS CONCEPT; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "8874570|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for LIBRA DREAM; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "674525|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MAYA GAS 1; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "465221|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MELODIE V; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "159158|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NEW SUCCESS; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "5983111|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NISSOS KYTHNOS; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "673244|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for OCEAN BREEZE 1; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "327287|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for OLGA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "203460|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for PURDUE STELLAR; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "8811689|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for RISEN; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "711876|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SAKAI; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "687713|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for SIONA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "5449002|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for XARON; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "10410978|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for ZEBRA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "755131|2026-06-06T00:31:29.457846Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for STELLA; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "6089441|2026-06-06T01:37:05.628497Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for EL MAR; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "375520|2026-06-06T01:53:05.935585Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for BRAVO; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "754303|2026-06-06T06:21:19.363240Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for NORTHERN STAR; spoofing audit 20260606T072003Z medium-confidence bounce_back",
+      "excludedAt": "2026-06-06T07:20:03Z"
+    },
+    {
+      "eventId": "4242316|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for MOMBASA B; spoofing audit 20260606T131948Z high-confidence same_hotspot_continuation",
+      "excludedAt": "2026-06-06T13:19:48Z"
+    },
+    {
+      "eventId": "674601|2026-06-05T23:42:21.837837Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for VEMAGRACE; spoofing audit 20260606T131948Z high-confidence same_hotspot_continuation",
+      "excludedAt": "2026-06-06T13:19:48Z"
+    },
+    {
+      "eventId": "3369|2026-06-06T12:41:24.997930Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "manual analyst exclusion for STAR PIERA; spoofing audit 20260606T131948Z high-confidence impossible_jump",
+      "excludedAt": "2026-06-06T13:19:48Z"
+    },
+    {
+      "eventId": "275222|2026-06-04T19:04:22.940043Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260606T193738Z high-confidence impossible_jump: MURLIKISHAN/REALWARGAMES source-artifact jump 141.71 km in 0.28h into exact 25.50000N 56.50000E",
+      "excludedAt": "2026-06-06T19:37:38Z"
+    },
+    {
+      "eventId": "5823842|2026-06-05T00:50:10.356943Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260606T193738Z high-confidence impossible_jump: EMIRATES 5 source-artifact jump 110.35 km in 0.28h from 26.31707N 56.19776E to 25.64742N 55.38299E",
+      "excludedAt": "2026-06-06T19:37:38Z"
+    },
+    {
+      "eventId": "407436|2026-06-06T18:45:42.347439Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260606T193738Z high-confidence impossible_jump: VAFAA M source-artifact jump 505.13 km in 0.27h from 26.05038N 55.95008E to 24.49471N 60.67038E",
+      "excludedAt": "2026-06-06T19:37:38Z"
+    },
+    {
+      "eventId": "757867|2026-06-06T18:45:42.347439Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260606T193738Z high-confidence impossible_jump: LIWA source-artifact jump 505.87 km in 0.27h from 26.07071N 55.95243E to 24.50214N 60.67594E",
+      "excludedAt": "2026-06-06T19:37:38Z"
+    },
+    {
+      "eventId": "9364822|2026-06-06T18:45:42.347439Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260606T193738Z high-confidence same_hotspot_continuation: STOIC WARRIOR landed in 24.495N 60.670E seven-vessel raw hotspot with VAFAA M and LIWA impossible jumps",
+      "excludedAt": "2026-06-06T19:37:38Z"
+    },
+    {
+      "eventId": "7126005|2026-06-06T19:17:16.965222Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260606T193738Z medium-confidence bounce_back: G.DREAM returned from prior excluded 2026-06-04 24.234N 54.406E fake hotspot event",
+      "excludedAt": "2026-06-06T19:37:38Z"
+    },
+    {
+      "eventId": "727849|2026-06-05T16:29:37.355428Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T015732Z high-confidence same_hotspot_continuation: STARWAY crossing was driven by prior point in known 24.234N 54.406E fake hotspot; raw prior scrape had 18 distinct vessels within 3 km",
+      "excludedAt": "2026-06-07T01:57:32Z"
+    },
+    {
+      "eventId": "9658789|2026-06-06T20:08:23.070417Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T015732Z high-confidence impossible_jump: JIN YUAN MEN source-artifact jump 329.30 km in 0.29h from 26.77000N 56.65833E to 26.30000N 53.39004E with raw identity/name discontinuity",
+      "excludedAt": "2026-06-07T01:57:32Z"
+    },
+    {
+      "eventId": "6128325|2026-06-06T20:57:29.540853Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T015732Z high-confidence impossible_jump: LUCERNE source-artifact jump 232.90 km in 0.28h from 26.92281N 56.36895E to 25.75902N 54.42569E; raw anchor scrape had 8 distinct vessels within 3 km",
+      "excludedAt": "2026-06-07T01:57:32Z"
+    },
+    {
+      "eventId": "730537|2026-06-06T23:58:46.434293Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T015732Z high-confidence impossible_jump: MIRAAN source-artifact jump 159.77 km in 0.26h from 26.52217N 55.82815E to 25.39856N 56.82425E with raw identity/name discontinuity",
+      "excludedAt": "2026-06-07T01:57:32Z"
+    },
+    {
+      "eventId": "9754397|2026-06-07T01:40:27.057003Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T081104Z high-confidence same_hotspot_continuation/bounce_back: WELL DREAM returned from prior excluded fake hotspot at 24.271N 53.875E into the 25.611N 56.440E anchor cluster shared with previously excluded NEW SUCCESS and LIBRA DREAM",
+      "excludedAt": "2026-06-07T08:11:04Z"
+    },
+    {
+      "eventId": "657958|2026-06-07T09:50:39.454408Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T142228Z high-confidence impossible_jump: GOLAFRUZ; jumped 390.3 km in 0.272h from 26.99877N 56.36787E to 23.75742N 57.85889E; raw anchor scrape had 5 distinct ships within 3 km",
+      "excludedAt": "2026-06-07T14:22:28Z"
+    },
+    {
+      "eventId": "686911|2026-06-07T10:07:24.365326Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T203302Z high-confidence impossible_jump: TARA GAS source-artifact jump; 232.81 km in 0.279h; from 25.33058N 55.11222E to 24.40358N 57.18140E",
+      "excludedAt": "2026-06-07T20:33:02Z"
+    },
+    {
+      "eventId": "9217770|2026-06-07T13:24:27.895848Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T203302Z high-confidence impossible_jump: ARAD 10 source-artifact jump; 288.84 km in 0.264h; from 25.85123N 57.06557E to 26.66043N 54.31322E",
+      "excludedAt": "2026-06-07T20:33:02Z"
+    },
+    {
+      "eventId": "757867|2026-06-07T14:29:33.091288Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T203302Z high-confidence bounce_back: LIWA returned from prior excluded fake anchor; 492.61 km in 0.288h; from 24.50214N 60.67594E to 25.97862N 56.05779E; raw anchor scrape had 5 distinct ships within 3 km",
+      "excludedAt": "2026-06-07T20:33:02Z"
+    },
+    {
+      "eventId": "9364822|2026-06-07T15:18:19.425478Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "auto spoofing audit 20260607T203302Z high-confidence bounce_back: STOIC WARRIOR returned from prior excluded fake anchor; 638.47 km in 0.268h; from 24.49487N 60.67050E to 25.91297N 54.52027E; raw anchor scrape had 17 distinct ships within 3 km",
+      "excludedAt": "2026-06-07T20:33:02Z"
+    },
+    {
+      "eventId": "327030|2026-03-16T01:38:53.278935Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: same-hotspot continuation in Mar 16 raw scrape cluster near 26.1788,56.1033",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "338816|2026-03-16T01:38:53.278935Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: same-hotspot continuation in Mar 16 raw scrape cluster near 26.1788,56.1033",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "419348|2026-03-18T21:24:57.882070Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: raw stacked hotspot near 25.7248,55.4041 with 15+ distinct rows within 50m",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "714786|2026-03-18T22:16:11.304726Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: raw stacked hotspot near 25.7248,55.4041 with 24 distinct rows within 50m",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "698601|2026-03-19T18:40:42.314290Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: raw stacked hotspot near 25.5518,55.3813 with 23 distinct rows within 200m",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "1059924|2026-03-19T22:16:36.969726Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: raw stacked hotspot near 25.5516,55.3814 with 21 distinct rows within 50m",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "566835|2026-03-19T22:16:36.969726Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: raw stacked hotspot near 25.5516,55.3814 with 21 distinct rows within 50m",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "5809739|2026-03-20T01:17:22.282517Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: raw stacked hotspot near 25.5516,55.3814 with 17 distinct rows within 50m",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "418637|2026-03-16T23:04:38.106494Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: medium-confidence bounce_back after existing fake MADHURI crossing, off-status 122.53 km bridge",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "8921958|2026-03-16T23:37:48.938657Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T205449Z: medium-confidence bounce_back after existing fake PIND crossing, off-status 135.67 km bridge",
+      "excludedAt": "2026-06-07T20:54:49Z"
+    },
+    {
+      "eventId": "413434|2026-03-21T08:14:38.528910Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: high-confidence same_hotspot_continuation/raw_spatial_burst at 25.5516N 55.3814E; raw scrape had 7 rows within 50m and 18 distinct ships within 3km",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "TnpRMk16UTROelEyTXpRNE56UTJNdz09LWhUNXdJMTA5MFJBVi9ZTTFtaC84cUE9PQ==|2026-03-24T13:17:46.798603Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: high-confidence placeholder leakage; [SAT-AIS] encoded ID became a Hormuz crossing event",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "TXpFd016UXpNekV3TXpRek16RXdNdz09LTQ2ZnpuSFpqa1FOYXc0dWt3N1FwQlE9PQ==|2026-03-26T10:35:37.103841Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: high-confidence placeholder leakage; [SAT-AIS] encoded ID became a Hormuz crossing event",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "TnpZNE5ESXdOelk0TkRJd056WTROQT09LUNNdjFaek1aTTZ0ampFaytKcXNNMHc9PQ==|2026-03-27T15:13:47.211179Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: high-confidence placeholder leakage; [SAT-AIS] encoded ID became a Hormuz crossing event",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "TVRVeE9UVTVNVFV4T1RVNU1UVXhPUT09LVo0dVE4T3lKTmhBaUt2eG8wY05vNGc9PQ==|2026-03-30T10:39:00.053455Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: high-confidence placeholder leakage; [SAT-AIS] encoded ID became a Hormuz crossing event",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "5809739|2026-03-21T06:50:08.989573Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: medium-confidence bounce_back from prior excluded 2026-03-20 fake anchor at 25.5516N 55.3814E; off-status 129.46 km bridge",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "327287|2026-03-27T03:41:47.170601Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: medium-confidence bounce_back from prior excluded OLGA fake anchor; current prior point was within 2.31 km of that anchor and bridge was 171.04 km off-status",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "5190255|2026-04-01T12:51:10.368294Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: medium-confidence bounce_back from prior excluded BD 51 fake anchor; current prior point reused the fake anchor and bridge was 111.00 km off-status",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "6564779|2026-04-01T12:51:10.368294Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: medium-confidence bounce_back from prior excluded CARLYNA fake anchor; current prior point reused the fake anchor and bridge was 112.77 km off-status",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "9537112|2026-04-02T10:31:04.837832Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T210710Z: medium-confidence bounce_back from prior excluded PIONEER GAS fake anchor; current prior point reused the fake anchor and bridge was 78.52 km off-status",
+      "excludedAt": "2026-06-07T21:07:10Z"
+    },
+    {
+      "eventId": "378525|2026-04-17T09:01:29.470919Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; JANKI source-artifact jump 852.67 km in 0.27h from 23.59996N 63.78336E to 26.60254N 55.98899E; prior raw row stale 1055 min, anchor raw row 7 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "714645|2026-04-07T05:26:32.571340Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; NJ EARTH source-artifact jump 420.03 km in 0.288h from 25.68783N 57.20550E to 26.76550N 53.16934E; prior raw row stale 531 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "713629|2026-04-13T00:35:48.116142Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; PVT SUNRISE source-artifact jump 321.51 km in 0.276h from 26.76580N 56.31925E to 24.39477N 58.15413E; prior raw row stale 928 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9553357|2026-04-10T14:18:57.761800Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; ATLANTIS I source-artifact jump 288.19 km in 0.275h from 27.65290N 55.14962E to 25.39291N 56.56773E; prior raw row stale 857 min, anchor raw row 16 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "369638|2026-04-06T09:33:31.239671Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; GAFUS source-artifact jump 227.99 km in 0.26h from 24.61148N 56.72707E to 26.47455N 55.77813E; prior raw row stale 904 min, anchor raw row 11 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "858001|2026-04-12T05:04:20.684970Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; GENEVE source-artifact jump 229.15 km in 0.267h from 26.19667N 54.64167E to 26.72142N 56.86777E; prior raw row stale 804 min, anchor raw row 10 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "369638|2026-04-06T15:22:34.130649Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; GAFUS source-artifact jump 227.76 km in 0.276h from 26.47455N 55.77813E to 24.61432N 56.72835E; prior raw row stale 340 min, anchor raw row 2 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "462699|2026-04-12T00:56:37.706885Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; TULIP source-artifact jump 205.5 km in 0.26h from 26.91217N 56.36794E to 25.65354N 54.85854E; prior raw row stale 1026 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "202653|2026-04-10T21:25:19.790465Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; NORITA source-artifact jump 217.49 km in 0.282h from 26.92185N 56.36685E to 25.38914N 57.72058E; prior raw row stale 900 min, anchor raw row 16 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9085631|2026-04-06T10:40:10.803558Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; AL ABDUL REHMAN source-artifact jump 208.16 km in 0.276h from 24.76576N 57.41692E to 26.16190N 56.03554E; prior raw row stale 1236 min, anchor raw row 8 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "664005|2026-04-15T06:47:11.218995Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; OCEANPEARL source-artifact jump 169.64 km in 0.27h from 26.57828N 55.96119E to 25.52047N 57.18479E; prior raw row stale 991 min, anchor raw row 8 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9210620|2026-04-14T02:24:18.447441Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; TAHA source-artifact jump 155.56 km in 0.264h from 26.90469N 56.33685E to 25.68236N 57.09595E; prior raw row stale 667 min, anchor raw row 15 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "346469|2026-04-08T00:07:34.741746Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; VAUGHAN source-artifact jump 151.01 km in 0.269h from 25.94049N 56.69521E to 25.44699N 55.29114E; prior raw row stale 228 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "712740|2026-04-16T01:45:23.046723Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; KSL MINGYANG source-artifact jump 150.47 km in 0.27h from 25.60686N 55.12638E to 25.66191N 56.62613E; prior raw row stale 948 min, anchor raw row 17 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "712740|2026-04-15T09:49:30.416241Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; KSL MINGYANG source-artifact jump 150.42 km in 0.271h from 25.65916N 56.62569E to 25.60686N 55.12638E; prior raw row stale 237 min, anchor raw row 8 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "359950|2026-04-12T00:41:00.843251Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; HORIZON1 source-artifact jump 151.3 km in 0.283h from 26.92454N 56.64803E to 25.95759N 55.57883E; prior raw row stale 649 min, anchor raw row 2 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "5764115|2026-04-14T02:40:39.245377Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; ARZOO source-artifact jump 145.73 km in 0.272h from 26.33499N 56.25761E to 25.37008N 55.27202E; prior raw row stale 866 min, anchor raw row 8 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "346469|2026-04-07T20:17:40.108138Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; VAUGHAN source-artifact jump 151.04 km in 0.285h from 25.44720N 55.29072E to 25.94049N 56.69521E; prior raw row stale 228 min, anchor raw row 14 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9395245|2026-04-10T22:32:00.608006Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; MSV NOORE HAJARA source-artifact jump 144.77 km in 0.278h from 25.51718N 55.28090E to 26.01788N 56.61544E; prior raw row stale 1031 min, anchor raw row 11 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "5892443|2026-04-16T01:11:53.093795Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; QUAR source-artifact jump 136.45 km in 0.269h from 25.17993N 56.79547E to 26.01986N 55.80345E; prior raw row stale 548 min, anchor raw row 7 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "727849|2026-04-08T07:53:10.526760Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; STARWAY source-artifact jump 109.45 km in 0.281h from 26.23562N 55.83727E to 25.65172N 56.71856E; prior raw row stale 892 min, anchor raw row 21 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9253946|2026-04-06T15:22:34.130649Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; TINA source-artifact jump 109.37 km in 0.276h from 26.21833N 55.92500E to 26.49500N 56.97833E; prior raw row stale 505 min, anchor raw row 18 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "758359|2026-04-05T16:53:20.037265Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; NJ CALLISTO source-artifact jump 213.84 km in 0.551h from 25.43351N 55.10714E to 26.93526N 56.44587E; prior raw row stale 548 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9229873|2026-04-05T00:57:55.344071Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; MSV ALHAMDULILLAH source-artifact jump 215.87 km in 0.675h from 26.39352N 56.33918E to 24.63740N 57.25632E; prior raw row stale 1334 min, anchor raw row 12 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "735436|2026-04-11T09:15:45.635731Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; P K A source-artifact jump 258.31 km in 0.815h from 26.10271N 54.18593E to 26.87735N 56.63300E; prior raw row stale 1425 min, anchor raw row 2 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "753601|2026-04-05T22:26:39.810253Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; NERO source-artifact jump 159.01 km in 0.643h from 26.92002N 56.34990E to 26.30372N 54.90663E; prior raw row stale 595 min, anchor raw row 26 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "3968522|2026-04-06T07:35:51.340652Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; SOM GOAL 164 source-artifact jump 175.71 km in 0.782h from 26.36431N 56.24397E to 24.87268N 56.82260E; prior raw row stale 1130 min, anchor raw row 38 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "686538|2026-04-16T06:07:18.185025Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; AVA 6 source-artifact jump 113.39 km in 0.533h from 25.99394N 55.79335E to 25.30438N 56.62673E; prior raw row stale 520 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "5077040|2026-04-05T12:39:42.601916Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T211611Z: high-confidence impossible_jump; SAFINA AL NOOREELAHI source-artifact jump 106.4 km in 0.702h from 26.33178N 56.23858E to 25.42408N 56.57516E; prior raw row stale 673 min, anchor raw row 28 min",
+      "excludedAt": "2026-06-07T21:16:11Z"
+    },
+    {
+      "eventId": "9855479|2026-04-18T06:56:36.350393Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; SALEH 1 99 source-artifact jump 942.95 km in 0.266h from 24.90742N 60.06765E to 27.84407N 51.18438E; prior raw row stale 1184 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "4701233|2026-04-18T08:20:41.595953Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; DANAE source-artifact jump 181.48 km in 0.289h from 25.64766N 54.74719E to 25.23052N 56.49449E; prior raw row stale 1058 min, anchor raw row 6 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "409358|2026-04-18T08:54:15.575281Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; AL MANHAL source-artifact jump 160.57 km in 0.28h from 25.20622N 56.56645E to 25.43038N 54.98834E; prior raw row stale 1187 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "3597423|2026-04-18T10:00:32.630637Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; RUBY source-artifact jump 124.84 km in 0.279h from 25.54867N 55.3067E to 25.22405N 56.49632E; prior raw row stale 1014 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "1044169|2026-04-18T10:58:10.931887Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence placeholder leakage; 00000000000000000000 became a Hormuz crossing event at 2.20062N 102.16574E",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "2632|2026-04-18T20:44:09.761888Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; LEADER M source-artifact jump 117.66 km in 0.259h from 26.27552N 56.2322E to 25.2869N 56.65104E; prior raw row stale 487 min, anchor raw row 2 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "384610|2026-04-18T20:44:09.761888Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MERRY M source-artifact jump 104.74 km in 0.259h from 26.25968N 56.18829E to 25.42133N 56.66557E; prior raw row stale 486 min, anchor raw row 5 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "156119|2026-04-20T20:01:43.210838Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; ANDIA source-artifact jump 905.94 km in 0.263h from 29.62526N 48.90507E to 25.67386N 56.95291E; prior raw row stale 633 min, anchor raw row 1 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "9100046|2026-04-22T13:24:48.974618Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MORLANA source-artifact jump 264.66 km in 0.289h from 24.27167N 57.335E to 25.78114N 55.30392E; prior raw row stale 167 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "9217770|2026-04-23T02:50:21.909089Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; ARAD 10 source-artifact jump 127.95 km in 0.263h from 26.41428N 55.4686E to 26.6902N 56.71746E; prior raw row stale 840 min, anchor raw row 10 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "5130138|2026-04-23T09:26:31.544970Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; AL JIMI source-artifact jump 140.35 km in 0.27h from 25.27767N 56.47493E to 25.67817N 55.149E; prior raw row stale 1240 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "7095345|2026-04-24T03:23:29.544316Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; FAIZENOORESULEMANI1 source-artifact jump 101.42 km in 0.276h from 25.40371N 56.60945E to 26.14079N 56.01292E; prior raw row stale 557 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "10540216|2026-04-24T08:37:34.169298Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MOMADSHA BABA source-artifact jump 154.78 km in 0.282h from 25.57383N 55.03803E to 25.88741N 56.54352E; prior raw row stale 1186 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "566918|2026-04-25T09:25:18.964239Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MATURITY ONE source-artifact jump 200.09 km in 0.273h from 25.14624N 56.52397E to 25.06702N 54.53867E; prior raw row stale 509 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "566918|2026-04-26T05:10:50.837910Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MATURITY ONE source-artifact jump 200.34 km in 0.278h from 25.06702N 54.53867E to 25.14485N 56.52654E; prior raw row stale 1172 min, anchor raw row 19 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "712782|2026-04-27T00:53:18.192425Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; KAISER source-artifact jump 107.27 km in 0.277h from 26.60557N 56.01391E to 26.16861N 56.97407E; prior raw row stale 384 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "5804104|2026-04-27T03:20:02.564360Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; AL FALASI 6418 source-artifact jump 102.29 km in 0.265h from 26.15853N 56.02031E to 25.44165N 56.66057E; prior raw row stale 849 min, anchor raw row 13 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "10197802|2026-04-27T17:23:09.728354Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; SALAKH 21 source-artifact jump 146.58 km in 0.277h from 27.09608N 56.0973E to 25.9578N 56.84036E; prior raw row stale 689 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "10029464|2026-04-27T17:39:46.919609Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; AMEEN 1 1302254 source-artifact jump 100.31 km in 0.277h from 26.25121N 56.16085E to 25.42916N 56.57366E; prior raw row stale 889 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "156119|2026-04-27T22:22:42.692448Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; ANDIA source-artifact jump 897.9 km in 0.277h from 25.80503N 56.94524E to 29.6253N 48.90492E; prior raw row stale 602 min, anchor raw row 17 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "206343|2026-04-27T23:12:18.949425Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MONJASA SHAKER source-artifact jump 159.25 km in 0.273h from 25.36373N 56.52262E to 25.52309N 54.94647E; prior raw row stale 287 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "419404|2026-04-28T04:57:58.653737Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; GAS RGA source-artifact jump 175.25 km in 0.265h from 26.17358N 55.4029E to 25.66442N 57.06129E; prior raw row stale 1335 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "329729|2026-04-29T14:44:55.839018Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; BITU source-artifact jump 256.05 km in 0.269h from 26.02149N 56.85932E to 26.21744N 54.30393E; prior raw row stale 1105 min, anchor raw row 3 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "4658454|2026-05-01T01:47:45.499382Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; MSV AL HAYAT MNV2118 source-artifact jump 102.76 km in 0.282h from 26.23762N 56.13536E to 25.48693N 56.7343E; prior raw row stale 1005 min, anchor raw row 4 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "9967154|2026-05-01T03:39:44.304551Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; EASTERN VOYAGER source-artifact jump 117.04 km in 0.263h from 25.99507N 55.83405E to 25.26967N 56.67999E; prior raw row stale 727 min, anchor raw row 1 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "756168|2026-05-02T02:31:17.461626Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: high-confidence impossible_jump; RICHSING LOTUS source-artifact jump 100.68 km in 0.281h from 26.2852N 56.06126E to 25.64647N 56.77506E; prior raw row stale 632 min, anchor raw row 2 min",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "5892443|2026-04-18T21:00:27.148977Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T212334Z: medium-confidence bounce_back from prior excluded fake anchor at 26.01986N 55.80345E; off-status 105.77 km bridge",
+      "excludedAt": "2026-06-07T21:23:34Z"
+    },
+    {
+      "eventId": "T0RrNU1UUTRPRGs1TVRRNE9EazVNUT09LVhkVFlTQ21KWGphdW1SeTFvWXc3Y0E9PQ==|2026-05-02T21:45:09.970628Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high placeholder: placeholder/non-vessel [SAT-AIS]",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "TXpNMU1UZ3pNek0xTVRnek16TTFNUT09LVhveWZHaDluOVAyNGZnbEM3K0hoaWc9PQ==|2026-05-04T05:37:35.653006Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high placeholder: placeholder/non-vessel [SAT-AIS]",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "5964478|2026-05-07T13:14:33.383004Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high same_hotspot_continuation: near excluded hotspot 327030|2026-03-16T01:38:53.278935Z|east_to_west at 2.326 km",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "TlRFd01qY3hOVEV3TWpjeE5URXdNZz09LS9sT2taWFR5MkhhZjVlN0xjYVhseUE9PQ==|2026-05-09T21:24:49.310745Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high placeholder: placeholder/non-vessel [SAT-AIS]",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "10576210|2026-05-10T10:53:40.860612Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high same_hotspot_continuation: near excluded hotspot 327030|2026-03-16T01:38:53.278935Z|east_to_west at 1.396 km",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "555761|2026-05-14T07:36:32.647444Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high spatial_burst: cluster 11 events/10 off near 24.8714,55.7523",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "420615|2026-05-14T07:52:58.870965Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high spatial_burst: cluster 11 events/10 off near 24.8714,55.7523",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "6530894|2026-05-14T07:52:58.870965Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high spatial_burst: cluster 11 events/10 off near 24.8714,55.7523",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "675994|2026-05-14T07:52:58.870965Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high spatial_burst: cluster 11 events/10 off near 24.8714,55.7523",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "754035|2026-05-14T08:08:41.433306Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected high spatial_burst: cluster 11 events/10 off near 24.8714,55.7523",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "206343|2026-05-15T04:23:12.324446Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213206Z corrected medium bounce_back: medium-confidence bounce_back from an excluded fake anchor",
+      "excludedAt": "2026-06-07T21:38:42Z"
+    },
+    {
+      "eventId": "9667740|2026-05-20T18:36:04.200990Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence same_hotspot_continuation: near excluded hotspot 26.1814N 56.1016E at 2.778 km",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "146411|2026-05-25T09:26:33.407226Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "9047548|2026-05-25T10:00:58.941772Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "657819|2026-05-25T11:57:38.873516Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "3037|2026-05-25T13:03:42.410762Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "8851369|2026-05-25T14:09:16.309450Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "3232|2026-05-25T15:48:08.816593Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "5327359|2026-05-25T20:10:42.434979Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: high-confidence spatial_burst: cluster 7 events/7 off near 26.0843N 55.5431E; raw hotspot 26 rows",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "566917|2026-05-23T18:05:12.194802Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T213920Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.8879N 55.7076E; off-status 95.53 km bridge",
+      "excludedAt": "2026-06-07T21:39:20Z"
+    },
+    {
+      "eventId": "707462|2026-05-31T16:41:27.205507Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: high-confidence same_hotspot_continuation: near known excluded hotspot 25.54275N 55.36842E; 5 prior exclusions",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "755952|2026-06-02T15:35:04.608179Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: high-confidence same_hotspot_continuation: near known excluded hotspot 25.609N 56.4395E; 6 prior exclusions",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "10523435|2026-06-03T11:35:20.758588Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: high-confidence same_hotspot_continuation: near known excluded hotspot 25.43595N 56.58859E; 5 prior exclusions",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "411671|2026-06-01T03:27:40.303584Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.18505N 54.3287E; off-status 273.88 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "3515389|2026-06-02T05:21:47.178043Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.18498N 54.32874E; off-status 340.99 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "6013297|2026-06-02T13:08:42.236157Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.18483N 54.32909E; off-status 244.25 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "419320|2026-06-03T16:47:09.644020Z|east_to_west",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.92232N 56.67625E; off-status 293.03 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "5327359|2026-06-05T20:22:13.936949Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 26.08371N 55.5431E; off-status 1905.44 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "10576210|2026-06-07T04:55:17.262331Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 26.19039N 56.10326E; off-status 104.87 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "6235185|2026-06-07T19:29:24.960395Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260607T214805Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.2344N 54.40588E; off-status 272.25 km bridge",
+      "excludedAt": "2026-06-07T21:48:05Z"
+    },
+    {
+      "eventId": "370558|2026-06-07T23:21:14.639615Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260608T035925Z: medium-confidence bounce_back: from prior excluded fake anchor at 24.271N 53.8746E; off-status 416.61 km bridge",
+      "excludedAt": "2026-06-08T03:59:25Z"
+    },
+    {
+      "eventId": "156119|2026-06-08T00:59:58.356233Z|west_to_east",
+      "reason": "suspected spoofing",
+      "note": "codex spoofing audit 20260608T035925Z: medium-confidence bounce_back: from prior excluded fake anchor at 29.6253N 48.90492E; off-status 814.46 km bridge; current west-side raw point repeats prior fake anchor within 0.01 km",
+      "excludedAt": "2026-06-08T03:59:25Z"
     }
   ]
 }

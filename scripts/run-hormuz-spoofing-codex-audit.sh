@@ -46,6 +46,11 @@ AUTO_APPLY="${HORMUZ_SPOOFING_AUDIT_AUTO_APPLY:-0}"
 PUBLISH="${HORMUZ_SPOOFING_AUDIT_PUBLISH:-0}"
 TELEGRAM="${HORMUZ_SPOOFING_AUDIT_TELEGRAM:-0}"
 LOOKBACK_HOURS="${HORMUZ_SPOOFING_AUDIT_LOOKBACK_HOURS:-48}"
+WINDOW_START_UTC="${HORMUZ_SPOOFING_AUDIT_WINDOW_START_UTC:-}"
+WINDOW_END_UTC="${HORMUZ_SPOOFING_AUDIT_WINDOW_END_UTC:-}"
+BACKFILL_ID="${HORMUZ_SPOOFING_AUDIT_BACKFILL_ID:-}"
+BACKFILL_CHUNK_INDEX="${HORMUZ_SPOOFING_AUDIT_BACKFILL_CHUNK_INDEX:-}"
+BACKFILL_CHUNK_COUNT="${HORMUZ_SPOOFING_AUDIT_BACKFILL_CHUNK_COUNT:-}"
 MODEL="${HORMUZ_SPOOFING_AUDIT_MODEL:-gpt-5.5}"
 EFFORT="${HORMUZ_SPOOFING_AUDIT_REASONING_EFFORT:-xhigh}"
 TIMEOUT_SECONDS="${HORMUZ_SPOOFING_AUDIT_TIMEOUT_SECONDS:-7200}"
@@ -64,7 +69,7 @@ LATEST_FINAL="$ROOT/data/spoofing-audit/latest-codex-final.md"
 mkdir -p "$RUN_DIR"
 
 {
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] spoofing audit start run_id=${RUN_ID} dry_run=${DRY_RUN} auto_apply=${AUTO_APPLY} publish=${PUBLISH} telegram=${TELEGRAM} lookback_hours=${LOOKBACK_HOURS} model=${MODEL} effort=${EFFORT}"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] spoofing audit start run_id=${RUN_ID} dry_run=${DRY_RUN} auto_apply=${AUTO_APPLY} publish=${PUBLISH} telegram=${TELEGRAM} lookback_hours=${LOOKBACK_HOURS} window_start=${WINDOW_START_UTC:-none} window_end=${WINDOW_END_UTC:-none} backfill_id=${BACKFILL_ID:-none} chunk=${BACKFILL_CHUNK_INDEX:-none}/${BACKFILL_CHUNK_COUNT:-none} model=${MODEL} effort=${EFFORT}"
 } >> "$LOG"
 
 {
@@ -77,6 +82,11 @@ mkdir -p "$RUN_DIR"
 - FINAL_REPORT_PATH: ${FINAL_REPORT}
 - NOW_UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 - LOOKBACK_HOURS: ${LOOKBACK_HOURS}
+- WINDOW_START_UTC: ${WINDOW_START_UTC}
+- WINDOW_END_UTC: ${WINDOW_END_UTC}
+- BACKFILL_ID: ${BACKFILL_ID}
+- BACKFILL_CHUNK_INDEX: ${BACKFILL_CHUNK_INDEX}
+- BACKFILL_CHUNK_COUNT: ${BACKFILL_CHUNK_COUNT}
 - DRY_RUN: ${DRY_RUN}
 - AUTO_APPLY: ${AUTO_APPLY}
 - PUBLISH: ${PUBLISH}
@@ -126,6 +136,11 @@ cat > "$STATUS_FILE" <<EOF
   "autoApply": "${AUTO_APPLY}",
   "publish": "${PUBLISH}",
   "telegram": "${TELEGRAM}",
+  "windowStartUtc": "${WINDOW_START_UTC}",
+  "windowEndUtc": "${WINDOW_END_UTC}",
+  "backfillId": "${BACKFILL_ID}",
+  "backfillChunkIndex": "${BACKFILL_CHUNK_INDEX}",
+  "backfillChunkCount": "${BACKFILL_CHUNK_COUNT}",
   "jsonReport": "${JSON_REPORT}",
   "finalReport": "${FINAL_REPORT}",
   "eventLog": "${EVENT_LOG}",
@@ -149,26 +164,58 @@ send_telegram_summary() {
     return 0
   fi
   local chat_ids="${HORMUZ_SPOOFING_AUDIT_TELEGRAM_CHAT_IDS:-${TELEGRAM_ALLOWED_CHATS:-}}"
-  if [[ -z "$chat_ids" ]]; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] spoofing audit telegram skipped: no HORMUZ_SPOOFING_AUDIT_TELEGRAM_CHAT_IDS or TELEGRAM_ALLOWED_CHATS" >> "$LOG"
-    return 0
-  fi
-
   node --input-type=module - "$FINAL_REPORT" "$JSON_REPORT" "$RUN_ID" "$DRY_RUN" "$AUTO_APPLY" "$PUBLISH" "$chat_ids" <<'NODE'
 const [finalPath, jsonPath, runId, dryRun, autoApply, publish, chatIdsRaw] = process.argv.slice(2);
 const fs = await import('node:fs/promises');
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const chatIds = String(chatIdsRaw || '').split(',').map((x) => x.trim()).filter(Boolean);
+let chatIds = String(chatIdsRaw || '').split(',').map((x) => x.trim()).filter(Boolean);
+
+async function loadSubscriberChatIds() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return [];
+  const response = await fetch(`${url}/rest/v1/marinetraffic_telegram_subscribers?is_active=eq.true&select=chat_id`, {
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+    },
+  });
+  if (!response.ok) throw new Error(`Supabase subscriber lookup failed ${response.status}: ${await response.text()}`);
+  const rows = await response.json();
+  return rows.map((row) => String(row.chat_id || '').trim()).filter(Boolean);
+}
+
 let summary = '';
 try {
   const report = JSON.parse(await fs.readFile(jsonPath, 'utf8'));
   const high = report.highConfidenceCandidates?.length ?? 0;
+  const mediumBounce = (report.mediumConfidenceCandidates || []).filter((candidate) => candidate.reason === 'bounce_back').length;
   const applied = report.appliedEventIds?.length ?? 0;
+  const errors = report.errors || [];
+  const notable = high > 0 || mediumBounce > 0 || applied > 0 || errors.length > 0 || Boolean(report.published);
+  if (!notable) {
+    console.log(`Hormuz spoofing audit ${runId}: no notable findings; Telegram skipped`);
+    process.exit(0);
+  }
+  const candidates = [
+    ...(report.highConfidenceCandidates || []),
+    ...(report.mediumConfidenceCandidates || []).filter((candidate) => candidate.reason === 'bounce_back'),
+  ].slice(0, 16);
+  const candidateLines = candidates.map((candidate) => {
+    const vessel = candidate.shipName || candidate.shipId || 'unknown vessel';
+    const reason = candidate.reason || candidate.confidence || 'candidate';
+    const direction = candidate.direction || '';
+    const timestamp = candidate.timestamp || '';
+    return `- ${vessel} | ${direction} | ${timestamp} | ${reason}`;
+  });
   summary = [
     `Hormuz spoofing audit ${runId}`,
     `dryRun=${dryRun} autoApply=${autoApply} publish=${publish}`,
-    `ok=${report.ok} high=${high} applied=${applied} published=${Boolean(report.published)}`,
-    report.errors?.length ? `errors=${report.errors.join('; ')}` : '',
+    `ok=${report.ok} high=${high} mediumBounce=${mediumBounce} applied=${applied} published=${Boolean(report.published)}`,
+    report.latestHormuz ? `latestHormuz=${report.latestHormuz}` : '',
+    report.artifactGeneratedAt ? `artifactGeneratedAt=${report.artifactGeneratedAt}` : '',
+    candidateLines.length ? `\nTop candidates:\n${candidateLines.join('\n')}` : '',
+    errors.length ? `errors=${errors.join('; ')}` : '',
   ].filter(Boolean).join('\n');
 } catch {
   try {
@@ -178,6 +225,11 @@ try {
   }
 }
 summary = summary.slice(0, 3500);
+if (!chatIds.length) chatIds = await loadSubscriberChatIds();
+if (!chatIds.length) {
+  console.log(`Hormuz spoofing audit ${runId}: no Telegram chat IDs or active subscribers; Telegram skipped`);
+  process.exit(0);
+}
 for (const chat_id of chatIds) {
   const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',

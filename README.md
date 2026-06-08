@@ -30,10 +30,11 @@ The frontend loads split files first and only falls back to legacy `processed.js
 
 ## Production data flow
 
-1. Regional capture jobs write fresh CSV snapshots.
-2. Regional sync jobs upload source CSVs to Supabase Storage.
+1. Regional capture jobs write fresh CSV snapshots under `../data/regions/<region>/captures`.
+2. Regional sync jobs upload source CSVs to Supabase Storage from the same per-region capture folders.
 3. `refresh_and_upload_processed.sh` runs `npm run windowed:refresh`, then promotes the merged current artifact set into `public/data/` for upload.
-   The rolling refresh reads local CSV snapshots from the workspace root by default and only falls back to remote Supabase indexes if local source files are unavailable.
+   The rolling refresh now reads the per-region raw-data layout under `../data/regions/<region>/captures` by default. It only falls back to remote Supabase indexes if local source files are unavailable.
+   Windowed refresh still stages a temporary flat source window internally, but `scripts/build-data.mjs` now recognizes that staged layout without re-enabling legacy flat-root workspace fallback.
 4. Processed artifacts are uploaded to Supabase Storage under:
    - `x-scrapes-public/multi_region/*`
 5. Vercel fetches those artifacts at runtime.
@@ -66,6 +67,7 @@ Current behavior:
 - outputs are written to `processed_core.json`, legacy `processed_paths.json`, and the split `processed_red_sea_routes.json`
 - the frontend now keeps Red Sea route geometry out of the default page load and fetches `processed_red_sea_routes.json` only when the user explicitly loads the route map
 - Hormuz crossing path geometry is now split by vessel type and scope so the default map can start from the lighter `processed_paths_tanker_7d.json` bundle and expand on demand
+- Hormuz crossing paths are bounded to a default `72 hour` pre-crossing and `5 day` post-crossing display window around each committed event, including pre-crossing context that may sit just before a windowed refresh boundary
 
 Processed artifact caching:
 - smaller live artifacts publish with `5 minute` cache headers
@@ -147,6 +149,17 @@ Optional source controls:
 ./refresh_and_upload_processed.sh
 ```
 
+- Run a Codex-backed Hormuz spoofing audit backfill in chunked windows:
+```bash
+HORMUZ_SPOOFING_BACKFILL_DRY_RUN=1 scripts/run-hormuz-spoofing-backfill.sh
+```
+
+Hormuz spoofing audit notes:
+- the live launchd job is `com.ppbot.hormuz.spoofing-audit`
+- active backfills should normally use `HORMUZ_SPOOFING_BACKFILL_PUBLISH_EACH=0` and `HORMUZ_SPOOFING_BACKFILL_FINAL_PUBLISH=1`
+- use `HORMUZ_SPOOFING_BACKFILL_RESUME_FROM_CHUNK=<n>` to continue an interrupted backfill
+- stale prior raw AIS rows should not be auto-excluded as spoofing solely because capture timestamps make a jump look impossible; use raw `last_seen_estimated_utc` to distinguish plausible large dark gaps from real source artifacts
+
 - Ingest + build ISW Iran Update artifacts locally:
 ```bash
 npm run ingest:iran-updates
@@ -212,6 +225,7 @@ USNI Fleet Tracker runtime state:
 
 USNI Fleet Tracker notes:
 - the ingest uses the USNI WordPress API rather than raw page scraping because the API is more reliable for unattended polling
+- transient DNS/API failures are nonfatal when cached history exists, so recurring USNI publishes can keep serving the last good history instead of failing hard
 - weekly Fleet Tracker map images are downloaded into `public/data/usni_fleet_maps/`
 - OCR extractions of those weekly maps are cached into `data/usni-fleet-map-extractions.json`
 - the builder now combines tracker text with weekly map-label OCR so vague prose like `CENTCOM area of responsibility` can still inherit the correct tracker-map placement
@@ -221,6 +235,7 @@ USNI Fleet Tracker notes:
 - the current production schedule is every `6 hours`
 - after a successful USNI publish, the pipeline now checks for genuinely new movement rows and sends one Telegram summary per run when there are fresh changes
 - the Telegram dispatcher seeds a local baseline on first run so subscribers do not receive the full historical USNI backlog as an initial alert burst
+- USNI and news uploads use content-hash skipping; volatile build timestamps are ignored for skip decisions so unchanged artifacts are not re-uploaded
 
 ## Windowed rebuild workflow
 
@@ -229,12 +244,14 @@ The repo now also carries an experimental windowed rebuild wrapper around the tr
 Windowed scripts:
 - `npm run windowed:baseline`
 - `npm run windowed:refresh`
+- `npm run windowed:cleanup`
 - `npm run windowed:rerun-all`
 
 Current strategy:
 - `windowed:baseline` builds a frozen archive/current artifact set from a fixed source root
 - `windowed:refresh` rebuilds a `14 day` context window, then replaces only the most recent `4 day` slice in the prior full artifacts
 - `windowed:rerun-all` sweeps history with `14 day` context windows and `7 day` commit slices into a separate assembled output
+- path merges preserve only the bounded Hormuz crossing-context windows, so chunked rebuilds keep the needed lead-in and 5-day post-crossing tail without accumulating unrelated vessel history
 
 Operational defaults:
 - `windowed:refresh` first tries `public/data-windowed/current` as its archive source and then falls back to `public/data` if the validation archive has not been seeded yet
@@ -254,12 +271,22 @@ Useful env knobs:
 - `HORMUZ_WINDOWED_REWRITE_DAYS=4`
 - `HORMUZ_WINDOWED_COMMIT_DAYS=7`
 - `HORMUZ_WINDOWED_PREVIOUS_DIR=/abs/path`
+- `HORMUZ_WINDOWED_RUN_RETENTION_HOURS=48`
+- `HORMUZ_WINDOWED_RUN_RETENTION_MIN_KEEP=5`
+- `HORMUZ_CROSSING_PATH_PRE_CONTEXT_HOURS=72`
+- `HORMUZ_CROSSING_PATH_POST_CONTEXT_HOURS=120`
 - `HORMUZ_WINDOWED_ALLOW_LARGE_BASELINE=1` only if you intentionally want the risky full-history baseline replay
 
 Important:
 - the live production refresh path now runs `npm run windowed:refresh` via `refresh_and_upload_processed.sh`
+- `refresh_and_upload_processed.sh` runs guarded `windowed:cleanup` passes before refresh and after successful upload, keeping the newest run debug context while pruning old generated `refresh-*` run directories
+- `refresh_and_upload_processed.sh` also runs `npm run maintenance:runtime` to rotate oversized logs and prune old capture failure artifacts
 - the windowed workflow still stages its merged current artifacts under `public/data-windowed/current` before promoting them into `public/data`
 - `npm run build:data` remains the manual fallback if the windowed path needs to be rolled back
+
+## Operational health
+
+Use `npm run health:summary` for a compact local health snapshot. It reports the newest CSV age per region, CDP `/json/version` status, capture/browser launchd state, processed artifact freshness, disk space, stale locks, and watchdog-state age.
 
 ## Environment / runtime assumption
 

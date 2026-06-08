@@ -40,6 +40,14 @@ Operational intent:
 - capture jobs keep using the same wrapper scripts and same ports
 - browser lifecycle is owned by launchd per region
 - `region_watchdog_autoheal.sh` remains the fallback recovery path and now prefers restarting the dedicated browser jobs when present
+- `region_capture_via_cli.sh` performs a CDP `/json/version` preflight before Playwright connects; if Chrome is listening but CDP is wedged, it restarts the region browser with `launchctl kickstart -k`, waits for CDP, then retries
+- region Chrome keepalives use lightweight flags to disable sync/background services/component updates/Translate/MediaRouter and close extra tabs after successful captures
+- the region watchdog treats stale CSVs older than `45 minutes`, failed capture launchd exits, and unhealthy CDP ports as recoverable faults; it updates `watchdog-state/*.json` on each run
+- raw capture and sync state now write primarily under `../data/regions/<region>/{captures,logs,state,tmp,locks}`
+- launchd stdout/stderr for capture, sync, and browser jobs now also write into each region's `logs/` folder
+- legacy flat-root CSV copies for the active production regions have been removed; do not assume `../<region>_*.csv` still exists
+- the active production regions no longer keep flat-root compatibility symlinks for capture/sync/browser state or logs; remaining root-level clutter is legacy/inactive-region material or non-region jobs
+- raw local source discovery now prefers only the structured per-region layout unless `HORMUZ_ENABLE_LEGACY_ROOT_FALLBACK=1` is explicitly set
 
 ## Processed artifacts
 
@@ -83,7 +91,11 @@ Important:
 - `public/data-windowed/current` is the staged merged output and `public/data/` remains the promoted local publish directory
 - `scripts/build-data.mjs` is now the manual fallback path rather than the default production refresh
 - `windowed:refresh` can fall back to the existing `public/data` artifact tree as its historical archive when `public/data-windowed/current` has not been seeded
+- `windowed:refresh` still stages a temporary flat `source/` directory inside `data/windowed-pipeline/runs/*`, and `scripts/build-data.mjs` must continue to recognize that staged flat layout even though legacy workspace-root fallback is disabled by default
 - `windowed:baseline` is intentionally guarded on large archives because `scripts/build-data.mjs` still replays the full source corpus in memory; use `windowed:rerun-all` for safer full-history validation sweeps
+- `refresh_and_upload_processed.sh` now runs guarded `scripts/cleanup-windowed-runs.mjs` passes before refresh and after successful upload; default retention keeps runs from the last `48h` plus at least the newest `5` parseable `refresh-*` runs
+- raw local captures are intentionally not pruned by the windowed cleanup; future local raw retention must preserve remote-only CSVs in each Supabase regional `index.json`
+- Hormuz crossing path merges keep a default `72h` pre-crossing and `5d` post-crossing bounded display window around committed crossing events, including pre-event context that can fall just before the refresh/commit boundary
 
 ## Red Sea inferred crossings
 
@@ -108,6 +120,22 @@ Operational notes:
 - when a valid gate-bracketing point pair exists, Red Sea `transponderStatus` is driven by gate gap distance/time; legacy `transponderGapHours`, `transponderBridgeKm`, and `transponderOvershootKm` remain as fallback diagnostics
 - processed artifact publish cache headers are `5 minutes` for smaller live files and `30 minutes` for heavier window files
 - the dashboard freshness poll should hit `processed_meta.json` first because it is a small manifest intended for polling/revalidation checks
+- `refresh_and_upload_processed.sh` also runs `scripts/runtime-maintenance.mjs` to rotate oversized runtime logs and prune old capture failure artifacts
+- use `npm run health:summary` for a compact operator check covering latest CSV age, CDP status, launchd exits, processed upload freshness, disk free space, stale locks, and watchdog-state freshness
+
+## Hormuz spoofing audit
+
+The recurring Hormuz spoofing audit is owned by launchd job `com.ppbot.hormuz.spoofing-audit`.
+
+Operational notes:
+- `scripts/run-hormuz-spoofing-codex-audit.sh` runs the headless Codex audit using `prompts/hormuz-spoofing-audit.md`
+- the live job is intended to run with `DRY_RUN=0`, `AUTO_APPLY=1`, `PUBLISH=1`, `TELEGRAM=1`, `LOOKBACK_HOURS=48`, model `gpt-5.5`, and reasoning effort `xhigh`
+- the audit may append high-confidence spoofing/source-artifact exclusions and medium-confidence `bounce_back` exclusions to `config/confirmed-crossing-exclusions.json`
+- historical sweeps use `scripts/run-hormuz-spoofing-backfill.sh`, which chunks explicit UTC windows, supports `HORMUZ_SPOOFING_BACKFILL_RESUME_FROM_CHUNK`, and normally should publish only once at the end
+- backfill reports live under `data/spoofing-audit/backfill/<run-id>/`; per-window Codex run reports live under `data/spoofing-audit/runs/<run-id>/`
+- do not treat stale raw AIS rows as high-confidence `impossible_jump` exclusions merely because capture filenames are close together; when `rawPrevElapsedMinutes` is many hours old, judge speed from raw `last_seen_estimated_utc` values and keep plausible large dark gaps for manual review unless there is independent hotspot, placeholder, same-hotspot, or bounce-back evidence
+- for historical chunks, same-hotspot evidence should use only prior known fake hotspots, not future exclusions created after the chunk window
+- after any apply/publish run, verify `config/confirmed-crossing-exclusions.json` has no duplicate `eventId` values and that `public/data/processed_core.json` metadata reflects the same confirmed exclusion count
 
 ## Git rules
 
@@ -147,6 +175,8 @@ News pipeline note:
   - ingest prefers the USNI WordPress API over raw HTML page fetches because the site’s normal pages can sit behind anti-bot checks
   - the first-pass artifact stores rough region coordinates and movement rows toward or away from an Arabian Sea reference point; map-image vision extraction can be layered on later
   - the uploader now uses a lock directory so recurring runs cannot overlap with manual publishes
+  - transient USNI DNS/API failures are nonfatal when cached history exists; the build continues from cached fleet history rather than leaving launchd in last-exit `1`
+  - USNI maps and tracker artifacts use content-hash upload skipping, so unchanged files are not pushed again
   - the launchd job for recurring publish is `com.ppbot.hormuz.usnifleet.publish`, scheduled every `6 hours`
   - after a successful USNI publish, the uploader triggers a Telegram movement-summary dispatcher; the first run seeds a baseline and suppresses any historical catch-up burst
 
@@ -175,6 +205,7 @@ If someone asks whether production is healthy, verify:
 7. `upload_usni_fleet_to_supabase.sh` logs show recent successful polls/uploads
 8. frontend still loads split artifacts first
 9. Supabase Storage contains fresh `multi_region/*` files
+10. `npm run health:summary` shows no stale locks and no stale watchdog state
 
 ## Documentation hygiene
 

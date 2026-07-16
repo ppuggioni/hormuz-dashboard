@@ -1328,6 +1328,33 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
   URL.revokeObjectURL(url);
 }
 
+function downloadDailyCrossingsCsv(
+  vesselType: "tanker" | "cargo",
+  rows: CrossingHour[],
+  discardSuspectedSpoofing: boolean,
+) {
+  const generatedAtCompact = new Date().toISOString().replace(/[:.]/g, "-");
+  const filterLabel = discardSuspectedSpoofing ? "spoofing-excluded" : "all-detected";
+
+  downloadCsv(
+    `hormuz-${vesselType}-daily-crossings-${filterLabel}-${generatedAtCompact}.csv`,
+    rows.map((row) => ({
+      date_utc: row.hour.slice(0, 10),
+      vessel_type: vesselType,
+      west_to_east_total: row.west_to_east,
+      west_to_east_transponder_on: row.west_to_east_on,
+      west_to_east_transponder_off: row.west_to_east_off,
+      east_to_west_total: row.east_to_west,
+      east_to_west_transponder_on: row.east_to_west_on,
+      east_to_west_transponder_off: row.east_to_west_off,
+      total_crossings: row.west_to_east + row.east_to_west,
+      transponder_on_total: row.west_to_east_on + row.east_to_west_on,
+      transponder_off_total: row.west_to_east_off + row.east_to_west_off,
+      suspected_spoofing_excluded: discardSuspectedSpoofing,
+    })),
+  );
+}
+
 function computeLikelyDarkCrossers(
   candidateSnapshots: Snapshot[],
   data: DataShape | null,
@@ -3809,7 +3836,18 @@ export default function Page() {
             Daily bars are split by transponder status: lighter shade = on, darker shade = off.
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 className="text-lg font-medium mb-3">Crossings in daily bins — Tanker</h2>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-medium">Crossings in daily bins — Tanker</h2>
+              <button
+                type="button"
+                onClick={() => downloadDailyCrossingsCsv("tanker", tankerDaily, discardSuspectedSpoofing)}
+                disabled={!tankerDaily.length}
+                className="shrink-0 rounded-md border border-slate-700 bg-slate-950/40 px-2 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Download the tanker daily crossing time series as CSV"
+              >
+                Download CSV
+              </button>
+            </div>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
@@ -3901,7 +3939,18 @@ export default function Page() {
             </div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <h2 className="text-lg font-medium mb-3">Crossings in daily bins — Cargo</h2>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-medium">Crossings in daily bins — Cargo</h2>
+              <button
+                type="button"
+                onClick={() => downloadDailyCrossingsCsv("cargo", cargoDaily, discardSuspectedSpoofing)}
+                disabled={!cargoDaily.length}
+                className="shrink-0 rounded-md border border-slate-700 bg-slate-950/40 px-2 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                title="Download the cargo daily crossing time series as CSV"
+              >
+                Download CSV
+              </button>
+            </div>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart

@@ -135,6 +135,7 @@ Operational notes:
 - historical sweeps use `scripts/run-hormuz-spoofing-backfill.sh`, which chunks explicit UTC windows, supports `HORMUZ_SPOOFING_BACKFILL_RESUME_FROM_CHUNK`, and normally should publish only once at the end
 - backfill reports live under `data/spoofing-audit/backfill/<run-id>/`; per-window Codex run reports live under `data/spoofing-audit/runs/<run-id>/`
 - do not treat stale raw AIS rows as high-confidence `impossible_jump` exclusions merely because capture filenames are close together; when `rawPrevElapsedMinutes` is many hours old, judge speed from raw `last_seen_estimated_utc` values and keep plausible large dark gaps for manual review unless there is independent hotspot, placeholder, same-hotspot, or bounce-back evidence
+- detect raw Hormuz capture gaps of at least `6 hours` before evaluating clusters; events detected after collection resumes whose prior-side evidence predates the gap are `backward_attribution_data_loss`, and shared resume timestamps, long bridges, or apparent jump speeds must not trigger exclusion without independent hotspot, placeholder, or confirmed-fake bounce-back evidence
 - for historical chunks, same-hotspot evidence should use only prior known fake hotspots, not future exclusions created after the chunk window
 - after any apply/publish run, verify `config/confirmed-crossing-exclusions.json` has no duplicate `eventId` values and that `public/data/processed_core.json` metadata reflects the same confirmed exclusion count
 

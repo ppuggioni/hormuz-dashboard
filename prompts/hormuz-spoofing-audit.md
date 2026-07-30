@@ -58,19 +58,32 @@ Do not auto-exclude medium-confidence `large_dark_gap_isolated` records; keep th
 Do not auto-exclude an `impossible_jump` if the apparent jump is only impossible because the previous point was a stale raw AIS row carried forward into a later scrape. If `rawPrevElapsedMinutes` is many hours old, compute the movement gap from `rawPrevLastSeenEstimatedUtc` to `rawAnchorLastSeenEstimatedUtc`; when that true gap makes the movement plausible, classify it as `large_dark_gap_isolated` or manual review, not high-confidence spoofing.
 Only treat stale-row cases as high confidence when there is independent artifact evidence such as a tight multi-vessel raw hotspot, placeholder/non-vessel ID leakage, same-hotspot continuation, or a bounce-back from an already excluded fake anchor.
 
+## Collector Outages And Backward Attribution
+
+Before judging clusters or jump speeds, inspect the Hormuz capture filenames for collection gaps that overlap or immediately precede the audit window.
+
+- Treat a gap of `>= 6 hours` between consecutive captures as a collector outage.
+- If an event is first detected after collection resumes and its prior-side observation predates the outage, its event timestamp is a detection time, not a reliable crossing time. Classify it as `backward_attribution_data_loss`.
+- A large cohort sharing the first resumed capture timestamp, long transponder gaps, large bridges, or apparently impossible speeds is expected after an outage. Those properties alone are not spoofing evidence and must not trigger exclusion.
+- Include the delayed tail after resumption when its prior observation predates the outage; catch-up attribution can continue beyond the first resumed scrape.
+- Exclude an outage-affected event only when independent evidence remains compelling, such as placeholder/non-vessel leakage, a confirmed fake hotspot in the raw coordinates, a raw multi-vessel coordinate pile-up unrelated to the shared resume timestamp, or a bounce-back from an already confirmed fake anchor.
+- Report the exact capture gap and outage-affected event IDs so the operator can distinguish data-loss attribution from spoofing decisions.
+
 ## Required Procedure
 
 1. Load and summarize the latest artifact metadata.
-2. Collect crossing events in the explicit `WINDOW_START_UTC` / `WINDOW_END_UTC` window when provided; otherwise collect the rolling lookback window.
-3. Identify event-point clusters by joining events to the nearest path point at the event timestamp.
-4. Cross-check suspicious clusters against raw Hormuz CSV rows, including the rows' last-seen/elapsed fields when judging jump speed.
-5. Check bounce-back events from existing manual exclusions.
-6. Decide high-confidence, medium-confidence, and rejected candidates.
-7. If `DRY_RUN=0` and `AUTO_APPLY=1`, append high-confidence event IDs plus medium-confidence `bounce_back` event IDs to `config/confirmed-crossing-exclusions.json` without duplicates.
-8. Validate JSON after any edit.
-9. If `DRY_RUN=0`, `AUTO_APPLY=1`, and `PUBLISH=1`, run `./refresh_and_upload_processed.sh` and verify the remote/local artifact if practical.
-10. Write a machine-readable report to the JSON report path supplied in the runtime header.
-11. Write a concise human summary in your final response.
+2. Detect and report raw capture gaps that overlap or immediately precede the audit window.
+3. Collect crossing events in the explicit `WINDOW_START_UTC` / `WINDOW_END_UTC` window when provided; otherwise collect the rolling lookback window.
+4. Separate collector-outage backward-attribution events from ordinary crossing events before evaluating clusters.
+5. Identify event-point clusters by joining events to the nearest path point at the event timestamp.
+6. Cross-check suspicious clusters against raw Hormuz CSV rows, including the rows' last-seen/elapsed fields when judging jump speed.
+7. Check bounce-back events from existing manual exclusions.
+8. Decide high-confidence, medium-confidence, backward-attribution, and rejected candidates.
+9. If `DRY_RUN=0` and `AUTO_APPLY=1`, append high-confidence event IDs plus medium-confidence `bounce_back` event IDs to `config/confirmed-crossing-exclusions.json` without duplicates.
+10. Validate JSON after any edit.
+11. If `DRY_RUN=0`, `AUTO_APPLY=1`, and `PUBLISH=1`, run `./refresh_and_upload_processed.sh` and verify the remote/local artifact if practical.
+12. Write a machine-readable report to the JSON report path supplied in the runtime header.
+13. Write a concise human summary in your final response.
 
 ## Report JSON Schema
 
@@ -86,6 +99,14 @@ Write a JSON object like:
   "artifactGeneratedAt": "2026-06-05T00:00:00.000Z",
   "latestHormuz": "2026-06-05T00:00:00Z",
   "eventsScanned": 0,
+  "collectionGaps": [
+    {
+      "lastCaptureBeforeGap": "2026-06-01T00:00:00Z",
+      "firstCaptureAfterGap": "2026-06-02T00:00:00Z",
+      "gapHours": 24
+    }
+  ],
+  "backwardAttributionCandidates": [],
   "highConfidenceCandidates": [
     {
       "eventId": "shipId|timestamp|direction",

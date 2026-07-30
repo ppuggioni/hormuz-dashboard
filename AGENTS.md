@@ -130,7 +130,7 @@ The recurring Hormuz spoofing audit is owned by launchd job `com.ppbot.hormuz.sp
 Operational notes:
 - `scripts/run-hormuz-spoofing-codex-audit.sh` runs the headless Codex audit using `prompts/hormuz-spoofing-audit.md`
 - the wrapper validates the Codex CLI before each run and falls back to the ChatGPT-bundled binary when the global/Homebrew installation is present but unusable; `HORMUZ_SPOOFING_AUDIT_CODEX_BIN` can explicitly override the binary
-- the live job is intended to run with `DRY_RUN=0`, `AUTO_APPLY=1`, `PUBLISH=1`, `TELEGRAM=1`, `LOOKBACK_HOURS=48`, model `gpt-5.5`, and reasoning effort `xhigh`
+- the live job is intended to run with `DRY_RUN=0`, `AUTO_APPLY=1`, `PUBLISH=1`, `TELEGRAM=1`, `LOOKBACK_HOURS=48`, model `gpt-5.6-sol`, and reasoning effort `xhigh`
 - the audit may append high-confidence spoofing/source-artifact exclusions and medium-confidence `bounce_back` exclusions to `config/confirmed-crossing-exclusions.json`
 - historical sweeps use `scripts/run-hormuz-spoofing-backfill.sh`, which chunks explicit UTC windows, supports `HORMUZ_SPOOFING_BACKFILL_RESUME_FROM_CHUNK`, and normally should publish only once at the end
 - backfill reports live under `data/spoofing-audit/backfill/<run-id>/`; per-window Codex run reports live under `data/spoofing-audit/runs/<run-id>/`

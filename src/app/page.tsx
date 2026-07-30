@@ -151,7 +151,7 @@ type DailyCrossingBin = CrossingHour & {
 type CrossingDataLossWindow = {
   previousCaptureAt: string;
   resumedAt: string;
-  allocationDays: string[];
+  allocationStartDay: string;
   eventIds: string[];
 };
 
@@ -966,19 +966,24 @@ function aggregateToDailyBins(rows: CrossingHour[]) {
 const DATA_LOSS_MIN_GAP_HOURS = 72;
 const DATA_LOSS_MIN_CLUSTER_EVENTS = 8;
 const DATA_LOSS_PRIOR_CLUSTER_HOURS = 3;
+const DATA_LOSS_CATCHUP_HOURS = 48;
 
 function detectCrossingDataLossWindows(events: CrossingEvent[]) {
-  const candidatesByResumeDay = new Map<string, { event: CrossingEvent; eventMs: number; priorMs: number }[]>();
+  type DataLossCandidate = { event: CrossingEvent; eventMs: number; priorMs: number };
+  const allCandidates: DataLossCandidate[] = [];
+  const candidatesByResumeDay = new Map<string, DataLossCandidate[]>();
 
   for (const event of events) {
     const gapHours = Number(event.transponderGapHours);
     const eventMs = +new Date(event.t);
     if (!Number.isFinite(gapHours) || gapHours < DATA_LOSS_MIN_GAP_HOURS || !Number.isFinite(eventMs)) continue;
     const priorMs = eventMs - gapHours * 60 * 60 * 1000;
+    const candidate = { event, eventMs, priorMs };
     const resumeDay = toUtcDayIso(event.t);
     const candidates = candidatesByResumeDay.get(resumeDay) || [];
-    candidates.push({ event, eventMs, priorMs });
+    candidates.push(candidate);
     candidatesByResumeDay.set(resumeDay, candidates);
+    allCandidates.push(candidate);
   }
 
   const windows: CrossingDataLossWindow[] = [];
@@ -1010,24 +1015,22 @@ function detectCrossingDataLossWindows(events: CrossingEvent[]) {
     const previousCaptureMs = priorTimes[Math.floor(priorTimes.length / 2)];
     const resumedMs = Math.min(...candidates.map((item) => item.eventMs));
     const previousCaptureDayMs = +new Date(toUtcDayIso(new Date(previousCaptureMs).toISOString()));
-    const resumedDayMs = +new Date(toUtcDayIso(new Date(resumedMs).toISOString()));
-    const allocationDays: string[] = [];
-
-    for (
-      let dayMs = previousCaptureDayMs + 24 * 60 * 60 * 1000;
-      dayMs <= resumedDayMs;
-      dayMs += 24 * 60 * 60 * 1000
-    ) {
-      allocationDays.push(new Date(dayMs).toISOString());
-    }
-
-    if (allocationDays.length < 2) continue;
+    const allocationStartDay = new Date(previousCaptureDayMs + 24 * 60 * 60 * 1000).toISOString();
+    if (+new Date(allocationStartDay) >= resumedMs) continue;
+    const catchupEndMs = resumedMs + DATA_LOSS_CATCHUP_HOURS * 60 * 60 * 1000;
+    const eventIds = allCandidates
+      .filter((item) => (
+        item.eventMs >= resumedMs
+        && item.eventMs <= catchupEndMs
+        && item.priorMs <= resumedMs
+      ))
+      .map((item) => item.event.eventId);
 
     windows.push({
       previousCaptureAt: new Date(previousCaptureMs).toISOString(),
       resumedAt: new Date(resumedMs).toISOString(),
-      allocationDays,
-      eventIds: candidates.map((item) => item.event.eventId),
+      allocationStartDay,
+      eventIds,
     });
   }
 
@@ -1051,17 +1054,26 @@ function addDataLossAttributionToDailyBins(
     const attributedEvents = window.eventIds
       .map((eventId) => visibleEvents.get(eventId))
       .filter((event): event is CrossingEvent => Boolean(event));
-    if (!attributedEvents.length || !window.allocationDays.length) continue;
+    for (const event of attributedEvents) {
+      const eventDayMs = +new Date(toUtcDayIso(event.t));
+      const allocationStartMs = +new Date(window.allocationStartDay);
+      const allocationDays: string[] = [];
+      for (let dayMs = allocationStartMs; dayMs <= eventDayMs; dayMs += 24 * 60 * 60 * 1000) {
+        allocationDays.push(new Date(dayMs).toISOString());
+      }
+      if (!allocationDays.length) continue;
 
-    const eastToWest = attributedEvents.filter((event) => event.direction === "east_to_west").length;
-    const westToEast = attributedEvents.filter((event) => event.direction === "west_to_east").length;
-
-    for (const day of window.allocationDays) {
-      if (!bins.has(day)) bins.set(day, createEmptyDailyCrossingBin(day));
-      const bin = bins.get(day)!;
-      bin.backward_attribution_data_loss += attributedEvents.length / window.allocationDays.length;
-      bin.backward_attribution_east_to_west += eastToWest / window.allocationDays.length;
-      bin.backward_attribution_west_to_east += westToEast / window.allocationDays.length;
+      for (const day of allocationDays) {
+        if (!bins.has(day)) bins.set(day, createEmptyDailyCrossingBin(day));
+        const bin = bins.get(day)!;
+        const attributedShare = 1 / allocationDays.length;
+        bin.backward_attribution_data_loss += attributedShare;
+        if (event.direction === "east_to_west") {
+          bin.backward_attribution_east_to_west += attributedShare;
+        } else {
+          bin.backward_attribution_west_to_east += attributedShare;
+        }
+      }
     }
   }
 
@@ -1377,9 +1389,13 @@ function DailyCrossingsTooltip({
   const hasBackwardAttribution = Boolean(payload?.some(
     (item) => item.name === "Backward attribution (data loss)" && Number(item.value) > 0,
   ));
+  const total = payload?.reduce((sum, item) => sum + Number(item.value || 0), 0) || 0;
   return (
     <div className="max-w-[420px] rounded border border-slate-700 bg-slate-950/95 p-3 text-xs text-slate-100 shadow-xl">
       <div className="font-semibold">{new Date(label).toUTCString()}</div>
+      <div className="mt-1 font-semibold text-white">
+        Total: {hasBackwardAttribution ? `~${total.toFixed(1)}` : total}
+      </div>
       {!!payload?.length && (
         <div className="mt-2 space-y-1">
           {payload.map((item) => (

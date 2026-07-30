@@ -63,7 +63,8 @@ Only treat stale-row cases as high confidence when there is independent artifact
 Before judging clusters or jump speeds, inspect the Hormuz capture filenames for collection gaps that overlap or immediately precede the audit window.
 
 - Treat a gap of `>= 6 hours` between consecutive captures as a collector outage.
-- If an event is first detected after collection resumes and its prior-side observation predates the outage, its event timestamp is a detection time, not a reliable crossing time. Classify it as `backward_attribution_data_loss`.
+- If an event is first detected after collection resumes and the actual bridge/prior endpoint used for that crossing predates the outage, its event timestamp is a detection time, not a reliable crossing time. Classify it as `backward_attribution_data_loss`.
+- Do not use an arbitrary older historical source-side path point to label an otherwise fresh crossing as backward attribution. If the event's transponder gap is short and its raw prior and anchor last-seen timestamps are both after collection resumed, treat it as directly observed even when an older same-side point exists elsewhere in the bounded path history.
 - A large cohort sharing the first resumed capture timestamp, long transponder gaps, large bridges, or apparently impossible speeds is expected after an outage. Those properties alone are not spoofing evidence and must not trigger exclusion.
 - Include the delayed tail after resumption when its prior observation predates the outage; catch-up attribution can continue beyond the first resumed scrape.
 - Exclude an outage-affected event only when independent evidence remains compelling, such as placeholder/non-vessel leakage, a confirmed fake hotspot in the raw coordinates, a raw multi-vessel coordinate pile-up unrelated to the shared resume timestamp, or a bounce-back from an already confirmed fake anchor.

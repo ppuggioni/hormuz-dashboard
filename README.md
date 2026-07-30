@@ -161,7 +161,7 @@ Hormuz spoofing audit notes:
 - active backfills should normally use `HORMUZ_SPOOFING_BACKFILL_PUBLISH_EACH=0` and `HORMUZ_SPOOFING_BACKFILL_FINAL_PUBLISH=1`
 - use `HORMUZ_SPOOFING_BACKFILL_RESUME_FROM_CHUNK=<n>` to continue an interrupted backfill
 - stale prior raw AIS rows should not be auto-excluded as spoofing solely because capture timestamps make a jump look impossible; use raw `last_seen_estimated_utc` to distinguish plausible large dark gaps from real source artifacts
-- collector gaps of at least `6 hours` are detected before spoofing classification; post-resumption catch-up events are reported as backward attribution and require independent artifact evidence before exclusion
+- collector gaps of at least `6 hours` are detected before spoofing classification; post-resumption events are backward attribution only when their actual bridge predates the outage, while short-gap crossings with fresh post-resumption raw endpoints remain directly observed
 
 - Ingest + build ISW Iran Update artifacts locally:
 ```bash

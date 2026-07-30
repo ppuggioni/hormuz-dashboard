@@ -14,6 +14,31 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 mkdir -p "$WORKROOT/.locks" "$RUNS_DIR" "$LOGS_DIR"
 
+resolve_codex_bin() {
+  local candidate
+  local -a candidates=()
+  if [[ -n "${HORMUZ_SPOOFING_AUDIT_CODEX_BIN:-}" ]]; then
+    candidates+=("$HORMUZ_SPOOFING_AUDIT_CODEX_BIN")
+  fi
+  if command -v codex >/dev/null 2>&1; then
+    candidates+=("$(command -v codex)")
+  fi
+  candidates+=("/Applications/ChatGPT.app/Contents/Resources/codex")
+
+  for candidate in "${candidates[@]}"; do
+    if [[ -x "$candidate" ]] && "$candidate" --version >/dev/null 2>&1; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if ! CODEX_BIN="$(resolve_codex_bin)"; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] spoofing audit failed: no working Codex CLI found" >> "$LOG"
+  exit 127
+fi
+
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
   if [[ -f "$PIDFILE" ]]; then
     existing_pid="$(cat "$PIDFILE" 2>/dev/null || true)"
@@ -70,6 +95,7 @@ mkdir -p "$RUN_DIR"
 
 {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] spoofing audit start run_id=${RUN_ID} dry_run=${DRY_RUN} auto_apply=${AUTO_APPLY} publish=${PUBLISH} telegram=${TELEGRAM} lookback_hours=${LOOKBACK_HOURS} window_start=${WINDOW_START_UTC:-none} window_end=${WINDOW_END_UTC:-none} backfill_id=${BACKFILL_ID:-none} chunk=${BACKFILL_CHUNK_INDEX:-none}/${BACKFILL_CHUNK_COUNT:-none} model=${MODEL} effort=${EFFORT}"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] spoofing audit codex_bin=${CODEX_BIN}"
 } >> "$LOG"
 
 {
@@ -115,13 +141,13 @@ fi
 
 set +e
 if command -v gtimeout >/dev/null 2>&1; then
-  gtimeout "$TIMEOUT_SECONDS" codex "${codex_args[@]}" - < "$PROMPT_FILE" > "$EVENT_LOG" 2> "$STDERR_LOG"
+  gtimeout "$TIMEOUT_SECONDS" "$CODEX_BIN" "${codex_args[@]}" - < "$PROMPT_FILE" > "$EVENT_LOG" 2> "$STDERR_LOG"
   run_status=$?
 elif command -v timeout >/dev/null 2>&1; then
-  timeout "$TIMEOUT_SECONDS" codex "${codex_args[@]}" - < "$PROMPT_FILE" > "$EVENT_LOG" 2> "$STDERR_LOG"
+  timeout "$TIMEOUT_SECONDS" "$CODEX_BIN" "${codex_args[@]}" - < "$PROMPT_FILE" > "$EVENT_LOG" 2> "$STDERR_LOG"
   run_status=$?
 else
-  codex "${codex_args[@]}" - < "$PROMPT_FILE" > "$EVENT_LOG" 2> "$STDERR_LOG"
+  "$CODEX_BIN" "${codex_args[@]}" - < "$PROMPT_FILE" > "$EVENT_LOG" 2> "$STDERR_LOG"
   run_status=$?
 fi
 set -e

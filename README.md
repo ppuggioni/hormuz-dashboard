@@ -156,6 +156,7 @@ HORMUZ_SPOOFING_BACKFILL_DRY_RUN=1 scripts/run-hormuz-spoofing-backfill.sh
 
 Hormuz spoofing audit notes:
 - the live launchd job is `com.ppbot.hormuz.spoofing-audit`
+- the audit wrapper probes the Codex CLI and falls back to the ChatGPT-bundled binary if the global installation is broken; set `HORMUZ_SPOOFING_AUDIT_CODEX_BIN` to override it explicitly
 - active backfills should normally use `HORMUZ_SPOOFING_BACKFILL_PUBLISH_EACH=0` and `HORMUZ_SPOOFING_BACKFILL_FINAL_PUBLISH=1`
 - use `HORMUZ_SPOOFING_BACKFILL_RESUME_FROM_CHUNK=<n>` to continue an interrupted backfill
 - stale prior raw AIS rows should not be auto-excluded as spoofing solely because capture timestamps make a jump look impossible; use raw `last_seen_estimated_utc` to distinguish plausible large dark gaps from real source artifacts

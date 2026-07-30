@@ -142,6 +142,19 @@ type CrossingEvent = {
   transponderStatus?: TransponderStatus | null;
 };
 
+type DailyCrossingBin = CrossingHour & {
+  backward_attribution_data_loss: number;
+  backward_attribution_east_to_west: number;
+  backward_attribution_west_to_east: number;
+};
+
+type CrossingDataLossWindow = {
+  previousCaptureAt: string;
+  resumedAt: string;
+  allocationDays: string[];
+  eventIds: string[];
+};
+
 type ConfirmedCrossingExclusion = {
   eventId: string;
   reason: string;
@@ -769,6 +782,15 @@ function createEmptyCrossingHour(hour: string): CrossingHour {
   };
 }
 
+function createEmptyDailyCrossingBin(day: string): DailyCrossingBin {
+  return {
+    ...createEmptyCrossingHour(day),
+    backward_attribution_data_loss: 0,
+    backward_attribution_east_to_west: 0,
+    backward_attribution_west_to_east: 0,
+  };
+}
+
 function getCrossingStatusKey(direction: CrossingDirection, status: TransponderStatus) {
   return `${direction}_${status}` as const;
 }
@@ -924,12 +946,12 @@ function classForType(type: string) {
 }
 
 function aggregateToDailyBins(rows: CrossingHour[]) {
-  const out = new Map<string, CrossingHour>();
+  const out = new Map<string, DailyCrossingBin>();
   for (const r of rows) {
     const d = new Date(r.hour);
     d.setUTCHours(0, 0, 0, 0);
     const key = d.toISOString();
-    if (!out.has(key)) out.set(key, createEmptyCrossingHour(key));
+    if (!out.has(key)) out.set(key, createEmptyDailyCrossingBin(key));
     const bucket = out.get(key)!;
     bucket.east_to_west += r.east_to_west;
     bucket.west_to_east += r.west_to_east;
@@ -939,6 +961,111 @@ function aggregateToDailyBins(rows: CrossingHour[]) {
     bucket.west_to_east_off += r.west_to_east_off;
   }
   return [...out.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
+}
+
+const DATA_LOSS_MIN_GAP_HOURS = 72;
+const DATA_LOSS_MIN_CLUSTER_EVENTS = 8;
+const DATA_LOSS_PRIOR_CLUSTER_HOURS = 3;
+
+function detectCrossingDataLossWindows(events: CrossingEvent[]) {
+  const candidatesByResumeDay = new Map<string, { event: CrossingEvent; eventMs: number; priorMs: number }[]>();
+
+  for (const event of events) {
+    const gapHours = Number(event.transponderGapHours);
+    const eventMs = +new Date(event.t);
+    if (!Number.isFinite(gapHours) || gapHours < DATA_LOSS_MIN_GAP_HOURS || !Number.isFinite(eventMs)) continue;
+    const priorMs = eventMs - gapHours * 60 * 60 * 1000;
+    const resumeDay = toUtcDayIso(event.t);
+    const candidates = candidatesByResumeDay.get(resumeDay) || [];
+    candidates.push({ event, eventMs, priorMs });
+    candidatesByResumeDay.set(resumeDay, candidates);
+  }
+
+  const windows: CrossingDataLossWindow[] = [];
+  const clusterWidthMs = DATA_LOSS_PRIOR_CLUSTER_HOURS * 60 * 60 * 1000;
+
+  for (const candidates of candidatesByResumeDay.values()) {
+    const sorted = [...candidates].sort((a, b) => a.priorMs - b.priorMs);
+    let bestStart = 0;
+    let bestEnd = -1;
+    let left = 0;
+
+    for (let right = 0; right < sorted.length; right += 1) {
+      while (sorted[right].priorMs - sorted[left].priorMs > clusterWidthMs) left += 1;
+      if (right - left > bestEnd - bestStart) {
+        bestStart = left;
+        bestEnd = right;
+      }
+    }
+
+    const cluster = bestEnd >= bestStart ? sorted.slice(bestStart, bestEnd + 1) : [];
+    if (
+      cluster.length < DATA_LOSS_MIN_CLUSTER_EVENTS
+      || cluster.length < Math.ceil(candidates.length * 0.5)
+    ) {
+      continue;
+    }
+
+    const priorTimes = cluster.map((item) => item.priorMs).sort((a, b) => a - b);
+    const previousCaptureMs = priorTimes[Math.floor(priorTimes.length / 2)];
+    const resumedMs = Math.min(...candidates.map((item) => item.eventMs));
+    const previousCaptureDayMs = +new Date(toUtcDayIso(new Date(previousCaptureMs).toISOString()));
+    const resumedDayMs = +new Date(toUtcDayIso(new Date(resumedMs).toISOString()));
+    const allocationDays: string[] = [];
+
+    for (
+      let dayMs = previousCaptureDayMs + 24 * 60 * 60 * 1000;
+      dayMs <= resumedDayMs;
+      dayMs += 24 * 60 * 60 * 1000
+    ) {
+      allocationDays.push(new Date(dayMs).toISOString());
+    }
+
+    if (allocationDays.length < 2) continue;
+
+    windows.push({
+      previousCaptureAt: new Date(previousCaptureMs).toISOString(),
+      resumedAt: new Date(resumedMs).toISOString(),
+      allocationDays,
+      eventIds: candidates.map((item) => item.event.eventId),
+    });
+  }
+
+  return windows.sort((a, b) => +new Date(a.resumedAt) - +new Date(b.resumedAt));
+}
+
+function addDataLossAttributionToDailyBins(
+  rows: DailyCrossingBin[],
+  events: CrossingEvent[],
+  windows: CrossingDataLossWindow[],
+  vesselType: "tanker" | "cargo",
+) {
+  const bins = new Map(rows.map((row) => [row.hour, { ...row }]));
+  const visibleEvents = new Map(
+    events
+      .filter((event) => event.vesselType === vesselType)
+      .map((event) => [event.eventId, event]),
+  );
+
+  for (const window of windows) {
+    const attributedEvents = window.eventIds
+      .map((eventId) => visibleEvents.get(eventId))
+      .filter((event): event is CrossingEvent => Boolean(event));
+    if (!attributedEvents.length || !window.allocationDays.length) continue;
+
+    const eastToWest = attributedEvents.filter((event) => event.direction === "east_to_west").length;
+    const westToEast = attributedEvents.filter((event) => event.direction === "west_to_east").length;
+
+    for (const day of window.allocationDays) {
+      if (!bins.has(day)) bins.set(day, createEmptyDailyCrossingBin(day));
+      const bin = bins.get(day)!;
+      bin.backward_attribution_data_loss += attributedEvents.length / window.allocationDays.length;
+      bin.backward_attribution_east_to_west += eastToWest / window.allocationDays.length;
+      bin.backward_attribution_west_to_east += westToEast / window.allocationDays.length;
+    }
+  }
+
+  return [...bins.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
 }
 
 function toUtcDayIso(ts: string) {
@@ -1247,6 +1374,9 @@ function DailyCrossingsTooltip({
   shipMeta?: Record<string, ShipMeta>;
 }) {
   if (!active || !label) return null;
+  const hasBackwardAttribution = Boolean(payload?.some(
+    (item) => item.name === "Backward attribution (data loss)" && Number(item.value) > 0,
+  ));
   return (
     <div className="max-w-[420px] rounded border border-slate-700 bg-slate-950/95 p-3 text-xs text-slate-100 shadow-xl">
       <div className="font-semibold">{new Date(label).toUTCString()}</div>
@@ -1255,11 +1385,20 @@ function DailyCrossingsTooltip({
           {payload.map((item) => (
             <div key={item.name} className="flex items-center gap-2">
               <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.color || "#94a3b8" }} />
-              <span>{item.name}: {item.value ?? 0}</span>
+              <span>
+                {item.name}: {item.name === "Backward attribution (data loss)"
+                  ? `~${Number(item.value || 0).toFixed(1)}`
+                  : item.value ?? 0}
+              </span>
             </div>
           ))}
         </div>
       )}
+      {hasBackwardAttribution ? (
+        <div className="mt-2 rounded border border-slate-700 bg-slate-800/70 p-2 text-slate-300">
+          Estimated allocation of crossings detected after collection resumed. The exact crossing date is unknown.
+        </div>
+      ) : null}
       <div className="mt-3 border-t border-slate-800 pt-2">
         <div className="mb-1 font-medium text-slate-200">Crossings that day</div>
         {rows.length ? (
@@ -1330,7 +1469,7 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
 
 function downloadDailyCrossingsCsv(
   vesselType: "tanker" | "cargo",
-  rows: CrossingHour[],
+  rows: DailyCrossingBin[],
   discardSuspectedSpoofing: boolean,
 ) {
   const generatedAtCompact = new Date().toISOString().replace(/[:.]/g, "-");
@@ -1347,9 +1486,20 @@ function downloadDailyCrossingsCsv(
       east_to_west_total: row.east_to_west,
       east_to_west_transponder_on: row.east_to_west_on,
       east_to_west_transponder_off: row.east_to_west_off,
-      total_crossings: row.west_to_east + row.east_to_west,
+      observed_total_crossings: row.west_to_east + row.east_to_west,
       transponder_on_total: row.west_to_east_on + row.east_to_west_on,
       transponder_off_total: row.west_to_east_off + row.east_to_west_off,
+      backward_attribution_data_loss: Number(row.backward_attribution_data_loss.toFixed(2)),
+      backward_attribution_west_to_east: Number(row.backward_attribution_west_to_east.toFixed(2)),
+      backward_attribution_east_to_west: Number(row.backward_attribution_east_to_west.toFixed(2)),
+      displayed_total_crossings: Number((
+        row.west_to_east
+        + row.east_to_west
+        + row.backward_attribution_data_loss
+      ).toFixed(2)),
+      data_quality: row.backward_attribution_data_loss > 0
+        ? "backward attribution due to collector data loss; exact crossing date unknown"
+        : "observed",
       suspected_spoofing_excluded: discardSuspectedSpoofing,
     })),
   );
@@ -2675,10 +2825,25 @@ export default function Page() {
     [data?.crossingEvents, discardSuspectedSpoofing, suspectedSpoofingEventKeys],
   );
 
+  const crossingDataLossWindows = useMemo(
+    () => detectCrossingDataLossWindows(data?.crossingEvents || []),
+    [data?.crossingEvents],
+  );
+
+  const backwardAttributedEventIds = useMemo(
+    () => new Set(crossingDataLossWindows.flatMap((window) => window.eventIds)),
+    [crossingDataLossWindows],
+  );
+
+  const observedCrossingEventsForCharts = useMemo(
+    () => crossingEventsForCharts.filter((event) => !backwardAttributedEventIds.has(event.eventId)),
+    [backwardAttributedEventIds, crossingEventsForCharts],
+  );
+
   const hourlyFromEvents = (vesselType: string) => {
-    if (!crossingEventsForCharts.length) return [] as CrossingHour[];
+    if (!observedCrossingEventsForCharts.length) return [] as CrossingHour[];
     const byHour = new Map<string, CrossingHour>();
-    for (const e of crossingEventsForCharts) {
+    for (const e of observedCrossingEventsForCharts) {
       if (e.vesselType !== vesselType) continue;
       if (!byHour.has(e.hour)) byHour.set(e.hour, createEmptyCrossingHour(e.hour));
       const bucket = byHour.get(e.hour)!;
@@ -2690,8 +2855,8 @@ export default function Page() {
     return [...byHour.values()].sort((a, b) => +new Date(a.hour) - +new Date(b.hour));
   };
 
-  const tankerHourly = useMemo(() => hourlyFromEvents("tanker"), [crossingEventsForCharts]);
-  const cargoHourly = useMemo(() => hourlyFromEvents("cargo"), [crossingEventsForCharts]);
+  const tankerHourly = useMemo(() => hourlyFromEvents("tanker"), [observedCrossingEventsForCharts]);
+  const cargoHourly = useMemo(() => hourlyFromEvents("cargo"), [observedCrossingEventsForCharts]);
 
   const sharedHours = useMemo(() => {
     const eventHours = crossingEventsForCharts
@@ -2705,25 +2870,48 @@ export default function Page() {
 
   const tankerHourlyAligned = useMemo(() => alignHours(tankerHourly, sharedHours), [tankerHourly, sharedHours]);
   const cargoHourlyAligned = useMemo(() => alignHours(cargoHourly, sharedHours), [cargoHourly, sharedHours]);
-  const tankerDaily = useMemo(() => aggregateToDailyBins(tankerHourlyAligned), [tankerHourlyAligned]);
-  const cargoDaily = useMemo(() => aggregateToDailyBins(cargoHourlyAligned), [cargoHourlyAligned]);
+  const tankerDaily = useMemo(
+    () => addDataLossAttributionToDailyBins(
+      aggregateToDailyBins(tankerHourlyAligned),
+      crossingEventsForCharts,
+      crossingDataLossWindows,
+      "tanker",
+    ),
+    [crossingDataLossWindows, crossingEventsForCharts, tankerHourlyAligned],
+  );
+  const cargoDaily = useMemo(
+    () => addDataLossAttributionToDailyBins(
+      aggregateToDailyBins(cargoHourlyAligned),
+      crossingEventsForCharts,
+      crossingDataLossWindows,
+      "cargo",
+    ),
+    [cargoHourlyAligned, crossingDataLossWindows, crossingEventsForCharts],
+  );
   const chartTicks = useMemo(() => tankerDaily.map((x) => x.hour), [tankerDaily]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
-    return crossingEventsForCharts
+    return observedCrossingEventsForCharts
       .filter((e) => e.vesselType === "tanker" && isSameUtcDay(e.t, selectedTankerHour))
       .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
       .sort((a, b) => +new Date(a.t) - +new Date(b.t));
-  }, [crossingEventsForCharts, data, selectedTankerHour]);
+  }, [data, observedCrossingEventsForCharts, selectedTankerHour]);
 
   const cargoNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedCargoHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
-    return crossingEventsForCharts
+    return observedCrossingEventsForCharts
       .filter((e) => e.vesselType === "cargo" && isSameUtcDay(e.t, selectedCargoHour))
       .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t }))
       .sort((a, b) => +new Date(a.t) - +new Date(b.t));
-  }, [crossingEventsForCharts, data, selectedCargoHour]);
+  }, [data, observedCrossingEventsForCharts, selectedCargoHour]);
+
+  const selectedTankerDailyBin = selectedTankerHour
+    ? tankerDaily.find((row) => isSameUtcDay(row.hour, selectedTankerHour))
+    : null;
+  const selectedCargoDailyBin = selectedCargoHour
+    ? cargoDaily.find((row) => isSameUtcDay(row.hour, selectedCargoHour))
+    : null;
 
   const tankerTableRows = useMemo(() => {
     if (!data) return [] as CrossingEvent[];
@@ -3834,6 +4022,11 @@ export default function Page() {
           </div>
           <div className="xl:col-span-2 text-xs text-slate-400">
             Daily bars are split by transponder status: lighter shade = on, darker shade = off.
+            {crossingDataLossWindows.length ? (
+              <span className="ml-2 text-slate-500">
+                Gray bars = backward attribution after collector data loss; exact crossing dates are unknown.
+              </span>
+            ) : null}
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -3868,14 +4061,14 @@ export default function Page() {
                     tick={{ fontSize: 11 }}
                     stroke="#94a3b8"
                   />
-                  <YAxis stroke="#94a3b8" />
+                  <YAxis allowDecimals={false} stroke="#94a3b8" />
                   <Tooltip
                     content={(props) => (
                       <DailyCrossingsTooltip
                         active={props.active}
                         label={props.label as string | undefined}
                         payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
-                        rows={crossingEventsForCharts
+                        rows={observedCrossingEventsForCharts
                           .filter((e) => e.vesselType === "tanker" && props.label && isSameUtcDay(e.t, props.label as string))
                           .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t, transponderStatus: e.transponderStatus }))
                           .sort((a, b) => +new Date(a.t) - +new Date(b.t)) || []}
@@ -3888,6 +4081,7 @@ export default function Page() {
                   {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
                   {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
                   {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
+                  {crossingDataLossWindows.length ? <Bar stackId="direction" dataKey="backward_attribution_data_loss" fill="#64748b" name="Backward attribution (data loss)" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -3903,7 +4097,11 @@ export default function Page() {
                     ))}
                   </ul>
                 ) : (
-                  <div className="mt-2 text-slate-400">No tanker crossings that day.</div>
+                  <div className="mt-2 text-slate-400">
+                    {selectedTankerDailyBin?.backward_attribution_data_loss
+                      ? "No directly observed tanker crossings that day. The gray bar is backward-attributed due to collection data loss."
+                      : "No tanker crossings that day."}
+                  </div>
                 )
               ) : null}
             </div>
@@ -3971,14 +4169,14 @@ export default function Page() {
                     tick={{ fontSize: 11 }}
                     stroke="#94a3b8"
                   />
-                  <YAxis stroke="#94a3b8" />
+                  <YAxis allowDecimals={false} stroke="#94a3b8" />
                   <Tooltip
                     content={(props) => (
                       <DailyCrossingsTooltip
                         active={props.active}
                         label={props.label as string | undefined}
                         payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
-                        rows={crossingEventsForCharts
+                        rows={observedCrossingEventsForCharts
                           .filter((e) => e.vesselType === "cargo" && props.label && isSameUtcDay(e.t, props.label as string))
                           .map((e) => ({ shipName: e.shipName, shipId: e.shipId, direction: e.direction, t: e.t, transponderStatus: e.transponderStatus }))
                           .sort((a, b) => +new Date(a.t) - +new Date(b.t)) || []}
@@ -3991,6 +4189,7 @@ export default function Page() {
                   {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
                   {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
                   {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
+                  {crossingDataLossWindows.length ? <Bar stackId="direction" dataKey="backward_attribution_data_loss" fill="#64748b" name="Backward attribution (data loss)" /> : null}
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -4006,7 +4205,11 @@ export default function Page() {
                     ))}
                   </ul>
                 ) : (
-                  <div className="mt-2 text-slate-400">No cargo crossings that day.</div>
+                  <div className="mt-2 text-slate-400">
+                    {selectedCargoDailyBin?.backward_attribution_data_loss
+                      ? "No directly observed cargo crossings that day. The gray bar is backward-attributed due to collection data loss."
+                      : "No cargo crossings that day."}
+                  </div>
                 )
               ) : null}
             </div>

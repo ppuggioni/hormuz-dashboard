@@ -9,6 +9,7 @@ type SnapshotPoint = { shipId: string; shipName: string; vesselType: string; lat
 type Snapshot = { t: string; points: SnapshotPoint[] };
 type TransponderStatus = "on" | "off";
 type CrossingDirection = "east_to_west" | "west_to_east";
+type ChartCadence = "daily" | "weekly";
 type CrossingHour = {
   hour: string;
   east_to_west: number;
@@ -46,6 +47,15 @@ type RedSeaCrossingDay = {
   north_inbound_on: number;
   north_inbound_off: number;
   total: number;
+};
+type RedSeaWeeklyAverageBin = {
+  week: string;
+  weekEnd: string;
+  dayCount: number;
+  south_outbound_avg: number;
+  south_inbound_avg: number;
+  north_outbound_avg: number;
+  north_inbound_avg: number;
 };
 type RedSeaCrossingEvent = {
   eventId: string;
@@ -146,6 +156,15 @@ type DailyCrossingBin = CrossingHour & {
   backward_attribution_data_loss: number;
   backward_attribution_east_to_west: number;
   backward_attribution_west_to_east: number;
+};
+
+type WeeklyCrossingAverageBin = {
+  week: string;
+  weekEnd: string;
+  dayCount: number;
+  east_to_west_avg: number;
+  west_to_east_avg: number;
+  total_avg: number;
 };
 
 type CrossingDataLossWindow = {
@@ -1137,6 +1156,84 @@ function aggregateRedSeaEventsToDailyBins(events: RedSeaCrossingEvent[]) {
   return rows;
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function toUtcWeekStartIso(ts: string) {
+  const date = new Date(ts);
+  date.setUTCHours(0, 0, 0, 0);
+  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+  return date.toISOString();
+}
+
+function aggregateDailyCrossingsToWeeklyAverages(rows: DailyCrossingBin[]) {
+  const byWeek = new Map<string, {
+    dayCount: number;
+    eastToWest: number;
+    westToEast: number;
+  }>();
+
+  for (const row of rows) {
+    const week = toUtcWeekStartIso(row.hour);
+    const bucket = byWeek.get(week) || { dayCount: 0, eastToWest: 0, westToEast: 0 };
+    bucket.dayCount += 1;
+    bucket.eastToWest += row.east_to_west + row.backward_attribution_east_to_west;
+    bucket.westToEast += row.west_to_east + row.backward_attribution_west_to_east;
+    byWeek.set(week, bucket);
+  }
+
+  return [...byWeek.entries()]
+    .map(([week, bucket]): WeeklyCrossingAverageBin => {
+      const eastToWestAvg = bucket.dayCount ? bucket.eastToWest / bucket.dayCount : 0;
+      const westToEastAvg = bucket.dayCount ? bucket.westToEast / bucket.dayCount : 0;
+      return {
+        week,
+        weekEnd: new Date(+new Date(week) + 6 * DAY_MS).toISOString(),
+        dayCount: bucket.dayCount,
+        east_to_west_avg: Number(eastToWestAvg.toFixed(2)),
+        west_to_east_avg: Number(westToEastAvg.toFixed(2)),
+        total_avg: Number((eastToWestAvg + westToEastAvg).toFixed(2)),
+      };
+    })
+    .sort((a, b) => +new Date(a.week) - +new Date(b.week));
+}
+
+function aggregateRedSeaDailyToWeeklyAverages(rows: RedSeaCrossingDay[]) {
+  const byWeek = new Map<string, {
+    dayCount: number;
+    south_outbound: number;
+    south_inbound: number;
+    north_outbound: number;
+    north_inbound: number;
+  }>();
+
+  for (const row of rows) {
+    const week = toUtcWeekStartIso(row.day);
+    const bucket = byWeek.get(week) || {
+      dayCount: 0,
+      south_outbound: 0,
+      south_inbound: 0,
+      north_outbound: 0,
+      north_inbound: 0,
+    };
+    bucket.dayCount += 1;
+    for (const crossingType of RED_SEA_CROSSING_TYPES) bucket[crossingType] += row[crossingType];
+    byWeek.set(week, bucket);
+  }
+
+  return [...byWeek.entries()]
+    .map(([week, bucket]): RedSeaWeeklyAverageBin => ({
+      week,
+      weekEnd: new Date(+new Date(week) + 6 * DAY_MS).toISOString(),
+      dayCount: bucket.dayCount,
+      south_outbound_avg: Number((bucket.south_outbound / bucket.dayCount).toFixed(2)),
+      south_inbound_avg: Number((bucket.south_inbound / bucket.dayCount).toFixed(2)),
+      north_outbound_avg: Number((bucket.north_outbound / bucket.dayCount).toFixed(2)),
+      north_inbound_avg: Number((bucket.north_inbound / bucket.dayCount).toFixed(2)),
+    }))
+    .sort((a, b) => +new Date(a.week) - +new Date(b.week));
+}
+
 function isSameUtcDay(ts: string, dayStartIso: string) {
   const a = new Date(ts);
   const b = new Date(dayStartIso);
@@ -1150,6 +1247,13 @@ function formatDayTick(iso: string) {
   const day = String(d.getUTCDate()).padStart(2, "0");
   const month = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${day}/${month}`;
+}
+
+function formatWeekRange(weekStartIso: string, weekEndIso?: string) {
+  const options = { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" } as const;
+  const start = new Date(weekStartIso).toLocaleDateString("en-GB", options);
+  const end = new Date(weekEndIso || (+new Date(weekStartIso) + 6 * DAY_MS)).toLocaleDateString("en-GB", options);
+  return `${start} – ${end}`;
 }
 
 function formatUtcTime(iso: string) {
@@ -1433,6 +1537,39 @@ function DailyCrossingsTooltip({
   );
 }
 
+function WeeklyAverageTooltip({
+  active,
+  label,
+  payload,
+  rows,
+}: {
+  active?: boolean;
+  label?: string;
+  payload?: ReadonlyArray<{ value?: number; name?: string; color?: string }>;
+  rows: Array<WeeklyCrossingAverageBin | RedSeaWeeklyAverageBin>;
+}) {
+  if (!active || !label) return null;
+  const row = rows.find((item) => item.week === label);
+  const total = payload?.reduce((sum, item) => sum + Number(item.value || 0), 0) || 0;
+  return (
+    <div className="rounded border border-slate-700 bg-slate-950/95 p-3 text-xs text-slate-100 shadow-xl">
+      <div className="font-semibold">Week: {formatWeekRange(label, row?.weekEnd)}</div>
+      <div className="mt-1 text-slate-400">Average per day across {row?.dayCount || 0} represented day{row?.dayCount === 1 ? "" : "s"}</div>
+      <div className="mt-2 font-semibold text-white">Total daily average: {total.toFixed(2)}</div>
+      {!!payload?.length && (
+        <div className="mt-2 space-y-1">
+          {payload.map((item) => (
+            <div key={item.name} className="flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.color || "#94a3b8" }} />
+              <span>{item.name}: {Number(item.value || 0).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -1516,6 +1653,29 @@ function downloadDailyCrossingsCsv(
       data_quality: row.backward_attribution_data_loss > 0
         ? "backward attribution due to collector data loss; exact crossing date unknown"
         : "observed",
+      suspected_spoofing_excluded: discardSuspectedSpoofing,
+    })),
+  );
+}
+
+function downloadWeeklyCrossingsCsv(
+  vesselType: "tanker" | "cargo",
+  rows: WeeklyCrossingAverageBin[],
+  discardSuspectedSpoofing: boolean,
+) {
+  const generatedAtCompact = new Date().toISOString().replace(/[:.]/g, "-");
+  const filterLabel = discardSuspectedSpoofing ? "spoofing-excluded" : "all-detected";
+
+  downloadCsv(
+    `hormuz-${vesselType}-weekly-daily-average-crossings-${filterLabel}-${generatedAtCompact}.csv`,
+    rows.map((row) => ({
+      week_start_utc: row.week.slice(0, 10),
+      week_end_utc: row.weekEnd.slice(0, 10),
+      represented_days: row.dayCount,
+      vessel_type: vesselType,
+      west_to_east_daily_average: row.west_to_east_avg,
+      east_to_west_daily_average: row.east_to_west_avg,
+      total_daily_average: row.total_avg,
       suspected_spoofing_excluded: discardSuspectedSpoofing,
     })),
   );
@@ -1661,6 +1821,7 @@ export default function Page() {
   const [playing, setPlaying] = useState(false);
   const [selectedTankerHour, setSelectedTankerHour] = useState<string | null>(null);
   const [selectedCargoHour, setSelectedCargoHour] = useState<string | null>(null);
+  const [hormuzChartCadence, setHormuzChartCadence] = useState<ChartCadence>("daily");
   const [showEastToWest, setShowEastToWest] = useState(true);
   const [showWestToEast, setShowWestToEast] = useState(true);
   const [showCrossing, setShowCrossing] = useState(true);
@@ -1714,6 +1875,7 @@ export default function Page() {
   const [showAllUsniFleetLocations, setShowAllUsniFleetLocations] = useState(false);
   const [selectedRedSeaCrossingTypes, setSelectedRedSeaCrossingTypes] = useState<RedSeaCrossingType[]>(RED_SEA_CROSSING_TYPES);
   const [selectedRedSeaVesselTypes, setSelectedRedSeaVesselTypes] = useState<RedSeaVesselType[]>(["tanker"]);
+  const [redSeaChartCadence, setRedSeaChartCadence] = useState<ChartCadence>("daily");
   const [redSeaWindow, setRedSeaWindow] = useState<"24h" | "48h" | "all">("24h");
   const [selectedRedSeaEventIds, setSelectedRedSeaEventIds] = useState<string[]>([]);
   const [redSeaSort, setRedSeaSort] = useState<{ key: "time" | "ship" | "vessel" | "crossing" | "lookback" | "transponder" | "overshoot"; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
@@ -2705,6 +2867,13 @@ export default function Page() {
     () => aggregateRedSeaEventsToDailyBins(redSeaEventsForFilters),
     [redSeaEventsForFilters],
   );
+  const filteredRedSeaCrossingsByWeek = useMemo(
+    () => aggregateRedSeaDailyToWeeklyAverages(filteredRedSeaCrossingsByDay),
+    [filteredRedSeaCrossingsByDay],
+  );
+  const redSeaChartData: Array<Partial<RedSeaCrossingDay & RedSeaWeeklyAverageBin>> = redSeaChartCadence === "daily"
+    ? filteredRedSeaCrossingsByDay
+    : filteredRedSeaCrossingsByWeek;
   const redSeaVisibleCounts = useMemo(() => {
     const counts = {
       south_outbound: 0,
@@ -2904,7 +3073,22 @@ export default function Page() {
     ),
     [cargoHourlyAligned, crossingDataLossWindows, crossingEventsForCharts],
   );
+  const tankerWeekly = useMemo(
+    () => aggregateDailyCrossingsToWeeklyAverages(tankerDaily),
+    [tankerDaily],
+  );
+  const cargoWeekly = useMemo(
+    () => aggregateDailyCrossingsToWeeklyAverages(cargoDaily),
+    [cargoDaily],
+  );
+  const tankerChartData: Array<Partial<DailyCrossingBin & WeeklyCrossingAverageBin>> = hormuzChartCadence === "daily"
+    ? tankerDaily
+    : tankerWeekly;
+  const cargoChartData: Array<Partial<DailyCrossingBin & WeeklyCrossingAverageBin>> = hormuzChartCadence === "daily"
+    ? cargoDaily
+    : cargoWeekly;
   const chartTicks = useMemo(() => tankerDaily.map((x) => x.hour), [tankerDaily]);
+  const weeklyChartTicks = useMemo(() => tankerWeekly.map((x) => x.week), [tankerWeekly]);
 
   const tankerNamesAtSelectedHour = useMemo(() => {
     if (!data || !selectedTankerHour) return [] as { shipName: string; shipId: string; direction: string; t: string }[];
@@ -4032,27 +4216,48 @@ export default function Page() {
             <div className="mt-2 text-amber-50"><strong>BASELINE (pre-war):</strong> about <strong>30 tankers/day each way</strong>.</div>
           </div>
           <div className="xl:col-span-2 flex flex-wrap gap-2 text-xs">
+            <span className="self-center text-slate-400">Chart cadence</span>
+            {(["daily", "weekly"] as const).map((cadence) => (
+              <button
+                key={`hormuz-chart-${cadence}`}
+                type="button"
+                onClick={() => {
+                  setHormuzChartCadence(cadence);
+                  setSelectedTankerHour(null);
+                  setSelectedCargoHour(null);
+                }}
+                className={`rounded border px-2 py-1 ${hormuzChartCadence === cadence ? "border-emerald-300 bg-emerald-400/10 text-emerald-200" : "border-slate-700 text-slate-500"}`}
+              >
+                {cadence === "daily" ? "Daily" : "Weekly avg"}
+              </button>
+            ))}
             <button onClick={() => setShowEastToWest((v) => !v)} className={`px-2 py-1 rounded border ${showEastToWest ? "border-sky-300 text-sky-200" : "border-slate-700 text-slate-500"}`}>East → West</button>
             <button onClick={() => setShowWestToEast((v) => !v)} className={`px-2 py-1 rounded border ${showWestToEast ? "border-orange-300 text-orange-200" : "border-slate-700 text-slate-500"}`}>West → East</button>
             <button onClick={() => setDiscardSuspectedSpoofing((v) => !v)} className={`px-2 py-1 rounded border ${discardSuspectedSpoofing ? "border-rose-300 text-rose-200" : "border-slate-700 text-slate-500"}`}>Discard suspected spoofing in charts: {discardSuspectedSpoofing ? "on" : "off"}</button>
           </div>
           <div className="xl:col-span-2 text-xs text-slate-400">
-            Daily bars are split by transponder status: lighter shade = on, darker shade = off.
-            {crossingDataLossWindows.length ? (
+            {hormuzChartCadence === "daily"
+              ? "Daily bars are split by transponder status: lighter shade = on, darker shade = off."
+              : "Weekly bars show the average crossings per day for each UTC Monday–Sunday week, split only by direction."}
+            {hormuzChartCadence === "daily" && crossingDataLossWindows.length ? (
               <span className="ml-2 text-slate-500">
                 Gray bars = backward attribution after collector data loss; exact crossing dates are unknown.
               </span>
+            ) : hormuzChartCadence === "weekly" && crossingDataLossWindows.length ? (
+              <span className="ml-2 text-slate-500">Backward-attributed crossings are folded into their estimated direction before weekly averaging.</span>
             ) : null}
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-medium">Crossings in daily bins — Tanker</h2>
+              <h2 className="text-lg font-medium">{hormuzChartCadence === "daily" ? "Crossings in daily bins" : "Weekly daily-average crossings"} — Tanker</h2>
               <button
                 type="button"
-                onClick={() => downloadDailyCrossingsCsv("tanker", tankerDaily, discardSuspectedSpoofing)}
-                disabled={!tankerDaily.length}
+                onClick={() => hormuzChartCadence === "daily"
+                  ? downloadDailyCrossingsCsv("tanker", tankerDaily, discardSuspectedSpoofing)
+                  : downloadWeeklyCrossingsCsv("tanker", tankerWeekly, discardSuspectedSpoofing)}
+                disabled={hormuzChartCadence === "daily" ? !tankerDaily.length : !tankerWeekly.length}
                 className="shrink-0 rounded-md border border-slate-700 bg-slate-950/40 px-2 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                title="Download the tanker daily crossing time series as CSV"
+                title={`Download the tanker ${hormuzChartCadence === "daily" ? "daily" : "weekly daily-average"} crossing time series as CSV`}
               >
                 Download CSV
               </button>
@@ -4060,15 +4265,15 @@ export default function Page() {
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={tankerDaily}
-                  onClick={(state: any) => {
+                  data={tankerChartData}
+                  onClick={hormuzChartCadence === "daily" ? (state) => {
                     if (state?.activeLabel) setSelectedTankerHour(state.activeLabel as string);
-                  }}
+                  } : undefined}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                   <XAxis
-                    dataKey="hour"
-                    ticks={chartTicks}
+                    dataKey={hormuzChartCadence === "daily" ? "hour" : "week"}
+                    ticks={hormuzChartCadence === "daily" ? chartTicks : weeklyChartTicks}
                     tickFormatter={(v) => formatDayTick(v as string)}
                     minTickGap={40}
                     angle={-35}
@@ -4077,8 +4282,8 @@ export default function Page() {
                     tick={{ fontSize: 11 }}
                     stroke="#94a3b8"
                   />
-                  <YAxis allowDecimals={false} stroke="#94a3b8" />
-                  <Tooltip
+                  <YAxis allowDecimals={hormuzChartCadence === "weekly"} stroke="#94a3b8" />
+                  {hormuzChartCadence === "daily" ? <Tooltip
                     content={(props) => (
                       <DailyCrossingsTooltip
                         active={props.active}
@@ -4091,21 +4296,43 @@ export default function Page() {
                         shipMeta={data?.shipMeta}
                       />
                     )}
-                  />
+                  /> : <Tooltip
+                    content={(props) => (
+                      <WeeklyAverageTooltip
+                        active={props.active}
+                        label={props.label as string | undefined}
+                        payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
+                        rows={tankerWeekly}
+                      />
+                    )}
+                  />}
                   <Legend />
-                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "off")} name="West → East (off)" /> : null}
-                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
-                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
-                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
-                  {crossingDataLossWindows.length ? <Bar stackId="direction" dataKey="backward_attribution_data_loss" fill="#64748b" name="Backward attribution (data loss)" /> : null}
+                  {hormuzChartCadence === "daily" ? (
+                    <>
+                      {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "off")} name="West → East (off)" /> : null}
+                      {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
+                      {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
+                      {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
+                      {crossingDataLossWindows.length ? <Bar stackId="direction" dataKey="backward_attribution_data_loss" fill="#64748b" name="Backward attribution (data loss)" /> : null}
+                    </>
+                  ) : (
+                    <>
+                      {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_avg" fill={HORMUZ_DIRECTION_COLORS.west_to_east} name="West → East daily avg" /> : null}
+                      {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_avg" fill={HORMUZ_DIRECTION_COLORS.east_to_west} name="East → West daily avg" /> : null}
+                    </>
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-3 text-xs text-slate-300">
               <div className="font-medium text-slate-200">
-                {selectedTankerHour ? `Clicked day: ${new Date(selectedTankerHour).toUTCString()}` : "Click a tanker bar to list that day's crossings"}
+                {hormuzChartCadence === "weekly"
+                  ? "Weekly mode is an average overview. Switch to daily to inspect individual crossings."
+                  : selectedTankerHour
+                    ? `Clicked day: ${new Date(selectedTankerHour).toUTCString()}`
+                    : "Click a tanker bar to list that day's crossings"}
               </div>
-              {selectedTankerHour ? (
+              {hormuzChartCadence === "daily" && selectedTankerHour ? (
                 tankerNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
                     {tankerNamesAtSelectedHour.map((r, idx) => (
@@ -4154,13 +4381,15 @@ export default function Page() {
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-medium">Crossings in daily bins — Cargo</h2>
+              <h2 className="text-lg font-medium">{hormuzChartCadence === "daily" ? "Crossings in daily bins" : "Weekly daily-average crossings"} — Cargo</h2>
               <button
                 type="button"
-                onClick={() => downloadDailyCrossingsCsv("cargo", cargoDaily, discardSuspectedSpoofing)}
-                disabled={!cargoDaily.length}
+                onClick={() => hormuzChartCadence === "daily"
+                  ? downloadDailyCrossingsCsv("cargo", cargoDaily, discardSuspectedSpoofing)
+                  : downloadWeeklyCrossingsCsv("cargo", cargoWeekly, discardSuspectedSpoofing)}
+                disabled={hormuzChartCadence === "daily" ? !cargoDaily.length : !cargoWeekly.length}
                 className="shrink-0 rounded-md border border-slate-700 bg-slate-950/40 px-2 py-1 text-[11px] font-medium text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                title="Download the cargo daily crossing time series as CSV"
+                title={`Download the cargo ${hormuzChartCadence === "daily" ? "daily" : "weekly daily-average"} crossing time series as CSV`}
               >
                 Download CSV
               </button>
@@ -4168,15 +4397,15 @@ export default function Page() {
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={cargoDaily}
-                  onClick={(state: any) => {
+                  data={cargoChartData}
+                  onClick={hormuzChartCadence === "daily" ? (state) => {
                     if (state?.activeLabel) setSelectedCargoHour(state.activeLabel as string);
-                  }}
+                  } : undefined}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                   <XAxis
-                    dataKey="hour"
-                    ticks={chartTicks}
+                    dataKey={hormuzChartCadence === "daily" ? "hour" : "week"}
+                    ticks={hormuzChartCadence === "daily" ? chartTicks : weeklyChartTicks}
                     tickFormatter={(v) => formatDayTick(v as string)}
                     minTickGap={40}
                     angle={-35}
@@ -4185,8 +4414,8 @@ export default function Page() {
                     tick={{ fontSize: 11 }}
                     stroke="#94a3b8"
                   />
-                  <YAxis allowDecimals={false} stroke="#94a3b8" />
-                  <Tooltip
+                  <YAxis allowDecimals={hormuzChartCadence === "weekly"} stroke="#94a3b8" />
+                  {hormuzChartCadence === "daily" ? <Tooltip
                     content={(props) => (
                       <DailyCrossingsTooltip
                         active={props.active}
@@ -4199,21 +4428,43 @@ export default function Page() {
                         shipMeta={data?.shipMeta}
                       />
                     )}
-                  />
+                  /> : <Tooltip
+                    content={(props) => (
+                      <WeeklyAverageTooltip
+                        active={props.active}
+                        label={props.label as string | undefined}
+                        payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
+                        rows={cargoWeekly}
+                      />
+                    )}
+                  />}
                   <Legend />
-                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "off")} name="West → East (off)" /> : null}
-                  {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
-                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
-                  {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
-                  {crossingDataLossWindows.length ? <Bar stackId="direction" dataKey="backward_attribution_data_loss" fill="#64748b" name="Backward attribution (data loss)" /> : null}
+                  {hormuzChartCadence === "daily" ? (
+                    <>
+                      {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "off")} name="West → East (off)" /> : null}
+                      {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.west_to_east, "on")} name="West → East (on)" /> : null}
+                      {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_off" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "off")} name="East → West (off)" /> : null}
+                      {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_on" fill={getTransponderShade(HORMUZ_DIRECTION_COLORS.east_to_west, "on")} name="East → West (on)" /> : null}
+                      {crossingDataLossWindows.length ? <Bar stackId="direction" dataKey="backward_attribution_data_loss" fill="#64748b" name="Backward attribution (data loss)" /> : null}
+                    </>
+                  ) : (
+                    <>
+                      {showWestToEast ? <Bar stackId="direction" dataKey="west_to_east_avg" fill={HORMUZ_DIRECTION_COLORS.west_to_east} name="West → East daily avg" /> : null}
+                      {showEastToWest ? <Bar stackId="direction" dataKey="east_to_west_avg" fill={HORMUZ_DIRECTION_COLORS.east_to_west} name="East → West daily avg" /> : null}
+                    </>
+                  )}
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-3 text-xs text-slate-300">
               <div className="font-medium text-slate-200">
-                {selectedCargoHour ? `Clicked day: ${new Date(selectedCargoHour).toUTCString()}` : "Click a cargo bar to list that day's crossings"}
+                {hormuzChartCadence === "weekly"
+                  ? "Weekly mode is an average overview. Switch to daily to inspect individual crossings."
+                  : selectedCargoHour
+                    ? `Clicked day: ${new Date(selectedCargoHour).toUTCString()}`
+                    : "Click a cargo bar to list that day's crossings"}
               </div>
-              {selectedCargoHour ? (
+              {hormuzChartCadence === "daily" && selectedCargoHour ? (
                 cargoNamesAtSelectedHour.length ? (
                   <ul className="mt-2 space-y-1">
                     {cargoNamesAtSelectedHour.map((r, idx) => (
@@ -4736,8 +4987,24 @@ export default function Page() {
           <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-medium text-slate-100">Daily crossing counts — Red Sea crossings [{redSeaMatrixVesselLabel}]</h3>
-                  <p className="text-xs text-slate-400">Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket. Lighter shade = transponder on, darker shade = off.</p>
+                  <h3 className="text-lg font-medium text-slate-100">{redSeaChartCadence === "daily" ? "Daily crossing counts" : "Weekly daily-average crossings"} — Red Sea crossings [{redSeaMatrixVesselLabel}]</h3>
+                  <p className="text-xs text-slate-400">
+                    {redSeaChartCadence === "daily"
+                      ? "Split into a 2x2 matrix by side and direction, with one daily series per crossing bucket. Lighter shade = transponder on, darker shade = off."
+                      : "UTC Monday–Sunday weekly bars show the average crossings per day for each bucket, without a transponder split."}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-800 bg-slate-950/60 p-1 text-[11px]">
+                  {(["daily", "weekly"] as const).map((cadence) => (
+                    <button
+                      key={`red-sea-chart-${cadence}`}
+                      type="button"
+                      onClick={() => setRedSeaChartCadence(cadence)}
+                      className={`rounded px-2 py-1 transition-colors ${redSeaChartCadence === cadence ? "bg-emerald-400/15 text-emerald-200" : "text-slate-500 hover:text-slate-300"}`}
+                    >
+                      {cadence === "daily" ? "Daily" : "Weekly avg"}
+                    </button>
+                  ))}
                 </div>
               </div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -4760,32 +5027,51 @@ export default function Page() {
                   </div>
                   <div className="h-[220px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={filteredRedSeaCrossingsByDay}>
+                      <BarChart data={redSeaChartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                         <XAxis
-                          dataKey="day"
+                          dataKey={redSeaChartCadence === "daily" ? "day" : "week"}
                           tickFormatter={(v) => formatDayTick(v as string)}
                           minTickGap={24}
                           stroke="#94a3b8"
                           tick={{ fontSize: 11 }}
                         />
-                        <YAxis stroke="#94a3b8" allowDecimals={false} />
-                        <Tooltip
+                        <YAxis stroke="#94a3b8" allowDecimals={redSeaChartCadence === "weekly"} />
+                        {redSeaChartCadence === "daily" ? <Tooltip
                           labelFormatter={(v) => new Date(v as string).toUTCString()}
                           contentStyle={{ background: "#020617", border: "1px solid #334155" }}
-                        />
-                        <Bar
-                          stackId={`red-sea-${crossingType}`}
-                          dataKey={`${crossingType}_off`}
-                          fill={getTransponderShade(RED_SEA_CROSSING_TYPE_COLORS[crossingType], "off")}
-                          name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} (off)`}
-                        />
-                        <Bar
-                          stackId={`red-sea-${crossingType}`}
-                          dataKey={`${crossingType}_on`}
-                          fill={getTransponderShade(RED_SEA_CROSSING_TYPE_COLORS[crossingType], "on")}
-                          name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} (on)`}
-                        />
+                        /> : <Tooltip
+                          content={(props) => (
+                            <WeeklyAverageTooltip
+                              active={props.active}
+                              label={props.label as string | undefined}
+                              payload={props.payload as ReadonlyArray<{ value?: number; name?: string; color?: string }> | undefined}
+                              rows={filteredRedSeaCrossingsByWeek}
+                            />
+                          )}
+                        />}
+                        {redSeaChartCadence === "daily" ? (
+                          <>
+                            <Bar
+                              stackId={`red-sea-${crossingType}`}
+                              dataKey={`${crossingType}_off`}
+                              fill={getTransponderShade(RED_SEA_CROSSING_TYPE_COLORS[crossingType], "off")}
+                              name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} (off)`}
+                            />
+                            <Bar
+                              stackId={`red-sea-${crossingType}`}
+                              dataKey={`${crossingType}_on`}
+                              fill={getTransponderShade(RED_SEA_CROSSING_TYPE_COLORS[crossingType], "on")}
+                              name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} (on)`}
+                            />
+                          </>
+                        ) : (
+                          <Bar
+                            dataKey={`${crossingType}_avg`}
+                            fill={RED_SEA_CROSSING_TYPE_COLORS[crossingType]}
+                            name={`${RED_SEA_CROSSING_TYPE_LABELS[crossingType]} daily avg`}
+                          />
+                        )}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
